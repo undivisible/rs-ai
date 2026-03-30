@@ -6,3 +6,5 @@ license.workspace = true
 
 [dependencies]
 rusty_ai = { workspace = true }
+rusty_testing = { workspace = true }
+tokio = { workspace = true }
