@@ -1,0 +1,8 @@
+[package]
+name = "example_router"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rusty_ai = { workspace = true }

@@ -1,0 +1,22 @@
+[package]
+name = "rusty_openai_compatible"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "OpenAI-compatible API adapter for the Rusty AI SDK"
+
+[dependencies]
+rusty_ai = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true, features = ["sync"] }
+reqwest = { workspace = true }
+reqwest-eventsource = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+secrecy = { workspace = true }
+url = { workspace = true }

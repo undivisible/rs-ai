@@ -1,0 +1,12 @@
+[package]
+name = "example_generate_object"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rusty_ai = { workspace = true }
+rusty_chatgpt = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+schemars = { workspace = true }

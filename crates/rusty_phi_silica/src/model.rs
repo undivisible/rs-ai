@@ -1,0 +1,109 @@
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use rusty_ai::{
+    AiError, AiResult, AiStream, Capability, CapabilitySet, ContentPart, FinishReason,
+    GenerateOptions, GenerateResult, LanguageModel, Prompt, ResponseMetadata, SyntheticStreamer,
+    Usage,
+};
+
+use crate::bridge::PhiSilicaBridge;
+use crate::types::PhiSilicaAvailability;
+
+/// A [`LanguageModel`] backed by Windows Phi Silica.
+pub struct PhiSilicaModel {
+    bridge: Arc<dyn PhiSilicaBridge>,
+    capabilities: CapabilitySet,
+}
+
+impl PhiSilicaModel {
+    pub(crate) fn new(bridge: Arc<dyn PhiSilicaBridge>) -> Self {
+        let capabilities = CapabilitySet::new()
+            .with(Capability::TextInput)
+            .with(Capability::TextOutput)
+            .with(Capability::LocalExecution)
+            .with(Capability::PlatformNative);
+        Self {
+            bridge,
+            capabilities,
+        }
+    }
+
+    fn prompt_to_text(prompt: &Prompt) -> String {
+        match prompt {
+            Prompt::Text(t) => t.clone(),
+            Prompt::Messages(msgs) => msgs
+                .iter()
+                .flat_map(|m| {
+                    m.content.iter().filter_map(|c| match c {
+                        ContentPart::Text { text } => Some(text.clone()),
+                        _ => None,
+                    })
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        }
+    }
+}
+
+#[async_trait]
+impl LanguageModel for PhiSilicaModel {
+    fn model_id(&self) -> &str {
+        "phi-silica"
+    }
+
+    fn provider_id(&self) -> &str {
+        "phi_silica"
+    }
+
+    fn capabilities(&self) -> &CapabilitySet {
+        &self.capabilities
+    }
+
+    async fn generate(
+        &self,
+        prompt: Prompt,
+        options: GenerateOptions,
+    ) -> AiResult<GenerateResult> {
+        match self.bridge.availability().await {
+            PhiSilicaAvailability::Available => {}
+            other => {
+                return Err(AiError::PlatformUnavailable {
+                    platform: format!("Windows Phi Silica: {other:?}"),
+                });
+            }
+        }
+
+        let text = Self::prompt_to_text(&prompt);
+        let response = self
+            .bridge
+            .generate(&text, options.max_tokens)
+            .await
+            .map_err(|e| AiError::BridgeError {
+                bridge: "phi_silica".into(),
+                message: e,
+            })?;
+
+        Ok(GenerateResult {
+            text: Some(response),
+            tool_calls: vec![],
+            finish_reason: FinishReason::Stop,
+            usage: Usage::default(),
+            metadata: ResponseMetadata {
+                provider: "phi_silica".into(),
+                model: "phi-silica".into(),
+                ..Default::default()
+            },
+        })
+    }
+
+    async fn stream(
+        &self,
+        prompt: Prompt,
+        options: GenerateOptions,
+    ) -> AiResult<AiStream> {
+        let result = self.generate(prompt, options).await?;
+        let text = result.text.unwrap_or_default();
+        Ok(SyntheticStreamer::stream(text, 20))
+    }
+}

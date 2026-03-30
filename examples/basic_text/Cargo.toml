@@ -1,0 +1,11 @@
+[package]
+name = "example_basic_text"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rusty_ai = { workspace = true }
+rusty_chatgpt = { workspace = true }
+rusty_claude = { workspace = true }
+tokio = { workspace = true }
