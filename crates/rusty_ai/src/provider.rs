@@ -23,13 +23,13 @@ pub trait Provider: Send + Sync {
     ///
     /// This returns a static snapshot of registered models.  For providers
     /// that can dynamically discover models (cloud APIs, Ollama), prefer
-    /// [`fetch_models`] which queries the remote API.
+    /// [`Provider::fetch_models`] which queries the remote API.
     fn available_models(&self) -> Vec<ModelInfo>;
 
     /// Fetch the list of models from the remote API.
     ///
     /// Not all providers support dynamic discovery.  The default
-    /// implementation falls back to [`available_models`].
+    /// implementation falls back to [`Provider::available_models`].
     async fn fetch_models(&self) -> AiResult<Vec<ModelInfo>> {
         Ok(self.available_models())
     }
