@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use futures::stream;
 use rusty_ai::{
     AiError, AiResult, AiStream, Capability, CapabilitySet, ContentPart, FinishReason,
     GenerateOptions, GenerateResult, LanguageModel, Prompt, ResponseMetadata, StreamEvent, Usage,

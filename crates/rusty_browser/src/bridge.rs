@@ -8,6 +8,12 @@ use crate::capabilities::{BrowserAiCapabilities, BrowserAiOptions};
 /// built-in AI APIs (Chrome Prompt API, Edge AI, etc.).
 ///
 /// On non-WASM targets, a no-op implementation can be used for testing.
+///
+/// # Browser compatibility notes
+///
+/// - `window.ai` is deprecated since Chrome 138; use the `LanguageModel` global directly.
+/// - Edge AI is backed by Phi Silica on Copilot+ PCs.
+/// - Not available in Chromium/CEF builds, only official Chrome/Edge.
 #[async_trait]
 pub trait BrowserAiBridge: Send + Sync {
     /// Detect if the browser has built-in AI capabilities.
