@@ -70,6 +70,7 @@ fn convert_message(msg: &Message) -> OllamaMessage {
         } else {
             Some(tool_calls)
         },
+        thinking: None,
     }
 }
 

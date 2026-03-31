@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use futures::stream;
 use rusty_ai::{
     AiError, AiResult, AiStream, Capability, CapabilitySet, ContentPart, FinishReason,
-    GenerateOptions, GenerateResult, LanguageModel, Prompt, ResponseMetadata, SyntheticStreamer,
-    Usage,
+    GenerateOptions, GenerateResult, LanguageModel, Prompt, ResponseMetadata, StreamEvent, Usage,
 };
 
 use crate::bridge::PhiSilicaBridge;
@@ -97,13 +97,42 @@ impl LanguageModel for PhiSilicaModel {
         })
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
-        let result = self.generate(prompt, options).await?;
-        let text = result.text.unwrap_or_default();
-        Ok(SyntheticStreamer::stream(text, 20))
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
+        match self.bridge.availability().await {
+            PhiSilicaAvailability::Available => {}
+            other => {
+                return Err(AiError::PlatformUnavailable {
+                    platform: format!("Windows Phi Silica: {other:?}"),
+                });
+            }
+        }
+
+        let text = Self::prompt_to_text(&prompt);
+        let chunks = self
+            .bridge
+            .stream_tokens(&text, options.max_tokens)
+            .await
+            .map_err(|e| AiError::BridgeError {
+                bridge: "phi_silica".into(),
+                message: e,
+            })?;
+
+        let message_id = uuid::Uuid::new_v4().to_string();
+        let events: Vec<Result<StreamEvent, AiError>> = {
+            let mut v = Vec::new();
+            v.push(Ok(StreamEvent::MessageStart { message_id }));
+            for chunk in chunks {
+                if !chunk.is_empty() {
+                    v.push(Ok(StreamEvent::TextDelta { delta: chunk }));
+                }
+            }
+            v.push(Ok(StreamEvent::MessageEnd {
+                finish_reason: FinishReason::Stop,
+                usage: None,
+            }));
+            v
+        };
+
+        Ok(Box::pin(futures::stream::iter(events)))
     }
 }

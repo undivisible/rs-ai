@@ -143,6 +143,11 @@ fn response_to_stream_events(response: GenerateContentResponse) -> Vec<StreamEve
                                 delta: text.clone(),
                             });
                         }
+                        GeminiPart::Thought { text, .. } => {
+                            events.push(StreamEvent::ThinkingDelta {
+                                delta: text.clone(),
+                            });
+                        }
                         GeminiPart::FunctionCall { function_call } => {
                             let call_id = uuid::Uuid::new_v4().to_string();
                             events.push(StreamEvent::ToolCallStart {

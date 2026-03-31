@@ -29,7 +29,10 @@ impl GeminiModel {
             .with(Capability::ImageInput)
             .with(Capability::Streaming)
             .with(Capability::ToolCalling)
-            .with(Capability::StructuredOutput);
+            .with(Capability::StructuredOutput)
+            .with(Capability::ExtendedThinking)
+            .with(Capability::VideoInput)
+            .with(Capability::AudioInput);
 
         Self {
             api_key: SecretString::from(api_key.into()),

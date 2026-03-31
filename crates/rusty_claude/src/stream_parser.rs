@@ -222,6 +222,10 @@ fn map_event(event: AnthropicEvent, state: &mut StreamState) -> Vec<RustyStreamE
                     Vec::new()
                 }
             }
+            DeltaBlock::ThinkingDelta { thinking } => {
+                vec![RustyStreamEvent::ThinkingDelta { delta: thinking }]
+            }
+            DeltaBlock::SignatureDelta { .. } => Vec::new(),
         },
 
         AnthropicEvent::ContentBlockStop { index } => {

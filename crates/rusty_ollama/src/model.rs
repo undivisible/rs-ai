@@ -271,6 +271,13 @@ fn build_ndjson_stream(
                         }));
                     }
 
+                    // Emit thinking tokens if present (reasoning models)
+                    if let Some(ref thinking) = resp.thinking {
+                        if !thinking.is_empty() {
+                            events.push(Ok(StreamEvent::ThinkingDelta { delta: thinking.clone() }));
+                        }
+                    }
+
                     if !resp.message.content.is_empty() {
                         events.push(Ok(StreamEvent::TextDelta {
                             delta: resp.message.content.clone(),

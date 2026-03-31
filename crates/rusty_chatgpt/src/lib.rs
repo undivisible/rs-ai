@@ -66,6 +66,40 @@ impl ChatGptProvider {
                     .with(Capability::TextOutput)
                     .with(Capability::Streaming)
                     .with(Capability::ToolCalling),
+            })
+            .with_model_info(ModelInfo {
+                id: "gpt-5.4".into(),
+                provider: "chatgpt".into(),
+                display_name: "GPT-5.4".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::TextInput)
+                    .with(Capability::TextOutput)
+                    .with(Capability::ImageInput)
+                    .with(Capability::Streaming)
+                    .with(Capability::ToolCalling)
+                    .with(Capability::StructuredOutput)
+                    .with(Capability::ExtendedThinking),
+            })
+            .with_model_info(ModelInfo {
+                id: "gpt-5.4-mini".into(),
+                provider: "chatgpt".into(),
+                display_name: "GPT-5.4 Mini".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::TextInput)
+                    .with(Capability::TextOutput)
+                    .with(Capability::ImageInput)
+                    .with(Capability::Streaming)
+                    .with(Capability::ToolCalling)
+                    .with(Capability::StructuredOutput),
+            })
+            .with_model_info(ModelInfo {
+                id: "gpt-5.4-nano".into(),
+                provider: "chatgpt".into(),
+                display_name: "GPT-5.4 Nano".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::TextInput)
+                    .with(Capability::TextOutput)
+                    .with(Capability::Streaming),
             });
         Self { inner, config }
     }
@@ -111,6 +145,16 @@ impl ChatGptProvider {
     /// Convenience: get a GPT-4o Mini model handle.
     pub fn gpt4o_mini(&self) -> OpenAiCompatibleModel {
         self.model("gpt-4o-mini")
+    }
+
+    /// Get the GPT-5.4 model.
+    pub fn gpt54(&self) -> OpenAiCompatibleModel {
+        self.model("gpt-5.4")
+    }
+
+    /// Get the GPT-5.4 Mini model.
+    pub fn gpt54_mini(&self) -> OpenAiCompatibleModel {
+        self.model("gpt-5.4-mini")
     }
 }
 

@@ -34,17 +34,17 @@ impl ClaudeProvider {
 
     /// Get the Claude Sonnet model.
     pub fn claude_sonnet(&self) -> ClaudeModel {
-        self.model("claude-sonnet-4-20250514")
+        self.model("claude-sonnet-4-6")
     }
 
     /// Get the Claude Opus model.
     pub fn claude_opus(&self) -> ClaudeModel {
-        self.model("claude-opus-4-20250514")
+        self.model("claude-opus-4-6")
     }
 
     /// Get the Claude Haiku model.
     pub fn claude_haiku(&self) -> ClaudeModel {
-        self.model("claude-haiku-4-20250514")
+        self.model("claude-haiku-4-5-20251001")
     }
 
     /// Get a model by identifier.
@@ -81,25 +81,27 @@ impl Provider for ClaudeProvider {
             .with(Capability::TextOutput)
             .with(Capability::ImageInput)
             .with(Capability::Streaming)
-            .with(Capability::ToolCalling);
+            .with(Capability::ToolCalling)
+            .with(Capability::ExtendedThinking)
+            .with(Capability::StructuredOutput);
 
         vec![
             ModelInfo {
-                id: "claude-opus-4-20250514".to_string(),
+                id: "claude-opus-4-6".to_string(),
                 provider: "anthropic".to_string(),
                 display_name: "Claude Opus 4".to_string(),
                 capabilities: caps.clone(),
             },
             ModelInfo {
-                id: "claude-sonnet-4-20250514".to_string(),
+                id: "claude-sonnet-4-6".to_string(),
                 provider: "anthropic".to_string(),
                 display_name: "Claude Sonnet 4".to_string(),
                 capabilities: caps.clone(),
             },
             ModelInfo {
-                id: "claude-haiku-4-20250514".to_string(),
+                id: "claude-haiku-4-5-20251001".to_string(),
                 provider: "anthropic".to_string(),
-                display_name: "Claude Haiku 4".to_string(),
+                display_name: "Claude Haiku 4.5".to_string(),
                 capabilities: caps,
             },
         ]

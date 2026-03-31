@@ -61,6 +61,10 @@ pub enum UiStreamEvent {
     #[serde(rename = "error")]
     Error { code: String, message: String },
 
+    /// Intermediate thinking / reasoning tokens from a reasoning model.
+    #[serde(rename = "thinking")]
+    Thinking { delta: String },
+
     /// Generation is complete.
     #[serde(rename = "done")]
     Done { finish_reason: String },
@@ -116,6 +120,11 @@ impl From<StreamEvent> for UiStreamEvent {
             StreamEvent::Error { error } => UiStreamEvent::Error {
                 code: "stream_error".to_string(),
                 message: error,
+            },
+            StreamEvent::ThinkingDelta { delta } => UiStreamEvent::Thinking { delta },
+            StreamEvent::SyntheticStreamingNotice => UiStreamEvent::Error {
+                code: "notice".to_string(),
+                message: "synthetic streaming".to_string(),
             },
         }
     }

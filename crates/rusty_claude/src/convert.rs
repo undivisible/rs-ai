@@ -215,6 +215,25 @@ pub(crate) fn build_request(
         Some(options.stop_sequences.clone())
     };
 
+    let thinking = options.thinking.as_ref().map(|t| match t {
+        ThinkingConfig::Adaptive => ApiThinkingConfig {
+            thinking_type: "adaptive".to_string(),
+        },
+        ThinkingConfig::Enabled => ApiThinkingConfig {
+            thinking_type: "enabled".to_string(),
+        },
+        ThinkingConfig::Budget { .. } => ApiThinkingConfig {
+            thinking_type: "adaptive".to_string(),
+        },
+    });
+
+    let output_config = options.output_schema.as_ref().map(|schema| ApiOutputConfig {
+        format: ApiOutputFormat {
+            format_type: "json_schema".to_string(),
+            schema: schema.as_value().clone(),
+        },
+    });
+
     MessagesRequest {
         model: model.to_string(),
         max_tokens,
@@ -227,6 +246,8 @@ pub(crate) fn build_request(
         tools,
         tool_choice,
         stream,
+        thinking,
+        output_config,
     }
 }
 

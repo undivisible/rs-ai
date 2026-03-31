@@ -34,7 +34,9 @@ impl ClaudeModel {
             .with(Capability::TextOutput)
             .with(Capability::ImageInput)
             .with(Capability::Streaming)
-            .with(Capability::ToolCalling);
+            .with(Capability::ToolCalling)
+            .with(Capability::ExtendedThinking)
+            .with(Capability::StructuredOutput);
 
         Self {
             api_key: SecretString::from(api_key.into()),

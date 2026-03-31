@@ -92,6 +92,7 @@ fn content_part_to_gemini(part: &ContentPart) -> Option<GeminiPart> {
         },
         ContentPart::ToolCall { call } => Some(GeminiPart::FunctionCall {
             function_call: FunctionCall {
+                id: None,
                 name: call.name.clone(),
                 args: call.arguments.clone(),
             },
@@ -103,6 +104,7 @@ fn content_part_to_gemini(part: &ContentPart) -> Option<GeminiPart> {
             });
             Some(GeminiPart::FunctionResponse {
                 function_response: FunctionResponse {
+                    id: None,
                     name: result.call_id.clone(),
                     response,
                 },
@@ -121,14 +123,35 @@ fn build_generation_config(options: &GenerateOptions) -> Option<GenerationConfig
         Some(options.stop_sequences.clone())
     };
 
+    let (response_mime_type, response_schema) = if let Some(schema) = &options.output_schema {
+        (
+            Some("application/json".to_string()),
+            Some(schema.as_value().clone()),
+        )
+    } else {
+        (None, None)
+    };
+
+    let thinking_config = options.thinking.as_ref().map(|t| match t {
+        CoreThinkingConfig::Budget { tokens } => ThinkingConfig {
+            thinking_budget: Some(*tokens),
+            thinking_level: None,
+        },
+        CoreThinkingConfig::Adaptive | CoreThinkingConfig::Enabled => ThinkingConfig {
+            thinking_budget: Some(8192),
+            thinking_level: None,
+        },
+    });
+
     Some(GenerationConfig {
         temperature: options.temperature,
         max_output_tokens: max_tokens,
         top_p: options.top_p,
         top_k: options.top_k,
         stop_sequences,
-        response_mime_type: None,
-        response_schema: None,
+        response_mime_type,
+        response_schema,
+        thinking_config,
     })
 }
 

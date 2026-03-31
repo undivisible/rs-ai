@@ -15,14 +15,19 @@ impl GeminiProvider {
         }
     }
 
-    /// Get the Gemini 2.0 Flash model (general purpose).
+    /// Get Gemini 2.5 Pro (most capable).
     pub fn gemini_pro(&self) -> GeminiModel {
-        self.model("gemini-2.0-flash")
+        self.model("gemini-2.5-pro")
     }
 
-    /// Get the Gemini 2.0 Flash Lite model (fast, lightweight).
+    /// Get Gemini 2.5 Flash (best price/performance).
     pub fn gemini_flash(&self) -> GeminiModel {
-        self.model("gemini-2.0-flash-lite")
+        self.model("gemini-2.5-flash")
+    }
+
+    /// Get Gemini 2.5 Flash Lite (fastest/cheapest).
+    pub fn gemini_flash_lite(&self) -> GeminiModel {
+        self.model("gemini-2.5-flash-lite")
     }
 
     /// Get a Gemini model by its model ID.
