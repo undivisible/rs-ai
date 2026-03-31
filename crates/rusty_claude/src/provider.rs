@@ -11,6 +11,15 @@ use crate::model::ClaudeModel;
 
 const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
 
+// ── Well-known model identifiers ──
+
+/// Claude Opus 4.6 — top capability, agents/coding (1M context).
+pub const CLAUDE_OPUS_4_6: &str = "claude-opus-4-6";
+/// Claude Sonnet 4.6 — speed + intelligence balance (1M context).
+pub const CLAUDE_SONNET_4_6: &str = "claude-sonnet-4-6";
+/// Claude Haiku 4.5 — fastest (200K context).
+pub const CLAUDE_HAIKU_4_5: &str = "claude-haiku-4-5-20251001";
+
 /// Provider for Anthropic Claude models.
 pub struct ClaudeProvider {
     api_key: SecretString,
@@ -32,19 +41,19 @@ impl ClaudeProvider {
         self
     }
 
-    /// Get the Claude Sonnet model.
+    /// Get the Claude Sonnet 4.6 model.
     pub fn claude_sonnet(&self) -> ClaudeModel {
-        self.model("claude-sonnet-4-6")
+        self.model(CLAUDE_SONNET_4_6)
     }
 
-    /// Get the Claude Opus model.
+    /// Get the Claude Opus 4.6 model.
     pub fn claude_opus(&self) -> ClaudeModel {
-        self.model("claude-opus-4-6")
+        self.model(CLAUDE_OPUS_4_6)
     }
 
-    /// Get the Claude Haiku model.
+    /// Get the Claude Haiku 4.5 model.
     pub fn claude_haiku(&self) -> ClaudeModel {
-        self.model("claude-haiku-4-5-20251001")
+        self.model(CLAUDE_HAIKU_4_5)
     }
 
     /// Get a model by identifier.
@@ -87,19 +96,19 @@ impl Provider for ClaudeProvider {
 
         vec![
             ModelInfo {
-                id: "claude-opus-4-6".to_string(),
+                id: CLAUDE_OPUS_4_6.to_string(),
                 provider: "anthropic".to_string(),
-                display_name: "Claude Opus 4".to_string(),
+                display_name: "Claude Opus 4.6".to_string(),
                 capabilities: caps.clone(),
             },
             ModelInfo {
-                id: "claude-sonnet-4-6".to_string(),
+                id: CLAUDE_SONNET_4_6.to_string(),
                 provider: "anthropic".to_string(),
-                display_name: "Claude Sonnet 4".to_string(),
+                display_name: "Claude Sonnet 4.6".to_string(),
                 capabilities: caps.clone(),
             },
             ModelInfo {
-                id: "claude-haiku-4-5-20251001".to_string(),
+                id: CLAUDE_HAIKU_4_5.to_string(),
                 provider: "anthropic".to_string(),
                 display_name: "Claude Haiku 4.5".to_string(),
                 capabilities: caps,

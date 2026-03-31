@@ -22,6 +22,15 @@ use rusty_openai_compatible::{
     OpenAiCompatibleConfig, OpenAiCompatibleModel, OpenAiCompatibleProvider,
 };
 
+// ── Well-known model identifiers ──
+
+pub const GPT_4O: &str = "gpt-4o";
+pub const GPT_4O_MINI: &str = "gpt-4o-mini";
+pub const O3_MINI: &str = "o3-mini";
+pub const GPT_5_4: &str = "gpt-5.4";
+pub const GPT_5_4_MINI: &str = "gpt-5.4-mini";
+pub const GPT_5_4_NANO: &str = "gpt-5.4-nano";
+
 /// A provider pre-configured for the official OpenAI ChatGPT API.
 pub struct ChatGptProvider {
     inner: OpenAiCompatibleProvider,
@@ -34,7 +43,7 @@ impl ChatGptProvider {
         let config = OpenAiCompatibleConfig::openai(api_key);
         let inner = OpenAiCompatibleProvider::new(config.clone(), "chatgpt", "ChatGPT")
             .with_model_info(ModelInfo {
-                id: "gpt-4o".into(),
+                id: GPT_4O.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-4o".into(),
                 capabilities: CapabilitySet::new()
@@ -46,7 +55,7 @@ impl ChatGptProvider {
                     .with(Capability::StructuredOutput),
             })
             .with_model_info(ModelInfo {
-                id: "gpt-4o-mini".into(),
+                id: GPT_4O_MINI.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-4o Mini".into(),
                 capabilities: CapabilitySet::new()
@@ -58,7 +67,7 @@ impl ChatGptProvider {
                     .with(Capability::StructuredOutput),
             })
             .with_model_info(ModelInfo {
-                id: "o3-mini".into(),
+                id: O3_MINI.into(),
                 provider: "chatgpt".into(),
                 display_name: "o3-mini".into(),
                 capabilities: CapabilitySet::new()
@@ -68,7 +77,7 @@ impl ChatGptProvider {
                     .with(Capability::ToolCalling),
             })
             .with_model_info(ModelInfo {
-                id: "gpt-5.4".into(),
+                id: GPT_5_4.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-5.4".into(),
                 capabilities: CapabilitySet::new()
@@ -81,7 +90,7 @@ impl ChatGptProvider {
                     .with(Capability::ExtendedThinking),
             })
             .with_model_info(ModelInfo {
-                id: "gpt-5.4-mini".into(),
+                id: GPT_5_4_MINI.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-5.4 Mini".into(),
                 capabilities: CapabilitySet::new()
@@ -93,7 +102,7 @@ impl ChatGptProvider {
                     .with(Capability::StructuredOutput),
             })
             .with_model_info(ModelInfo {
-                id: "gpt-5.4-nano".into(),
+                id: GPT_5_4_NANO.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-5.4 Nano".into(),
                 capabilities: CapabilitySet::new()
@@ -137,24 +146,67 @@ impl ChatGptProvider {
             .with_capabilities(caps)
     }
 
-    /// Convenience: get a GPT-4o model handle.
     pub fn gpt4o(&self) -> OpenAiCompatibleModel {
-        self.model("gpt-4o")
+        self.model(GPT_4O)
     }
 
-    /// Convenience: get a GPT-4o Mini model handle.
     pub fn gpt4o_mini(&self) -> OpenAiCompatibleModel {
-        self.model("gpt-4o-mini")
+        self.model(GPT_4O_MINI)
     }
 
-    /// Get the GPT-5.4 model.
     pub fn gpt54(&self) -> OpenAiCompatibleModel {
-        self.model("gpt-5.4")
+        self.model(GPT_5_4)
     }
 
-    /// Get the GPT-5.4 Mini model.
     pub fn gpt54_mini(&self) -> OpenAiCompatibleModel {
-        self.model("gpt-5.4-mini")
+        self.model(GPT_5_4_MINI)
+    }
+
+    pub fn gpt54_nano(&self) -> OpenAiCompatibleModel {
+        self.model(GPT_5_4_NANO)
+    }
+
+    /// Fetch the list of models from the OpenAI API.
+    pub async fn list_remote_models(&self) -> rusty_ai::AiResult<Vec<String>> {
+        use secrecy::ExposeSecret;
+        let client = reqwest::Client::new();
+        let resp = client
+            .get("https://api.openai.com/v1/models")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.config.api_key().expose_secret()),
+            )
+            .send()
+            .await
+            .map_err(|e| rusty_ai::AiError::Transport {
+                message: e.to_string(),
+                source: Some(Box::new(e)),
+            })?;
+
+        if !resp.status().is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            return Err(rusty_ai::AiError::ProviderError {
+                provider: "chatgpt".into(),
+                status: None,
+                message: body,
+            });
+        }
+
+        #[derive(serde::Deserialize)]
+        struct ListModelsResponse {
+            data: Vec<ModelEntry>,
+        }
+        #[derive(serde::Deserialize)]
+        struct ModelEntry {
+            id: String,
+        }
+
+        let list: ListModelsResponse = resp
+            .json()
+            .await
+            .map_err(|e| rusty_ai::AiError::Serialization(e.to_string()))?;
+
+        Ok(list.data.into_iter().map(|m| m.id).collect())
     }
 }
 
