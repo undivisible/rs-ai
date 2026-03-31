@@ -14,9 +14,8 @@ struct Recipe {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let provider = ChatGptProvider::new(
-        std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY required"),
-    );
+    let provider =
+        ChatGptProvider::new(std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY required"));
     let model = provider.gpt4o_mini();
 
     let result: ObjectResult<Recipe> = generate_object(

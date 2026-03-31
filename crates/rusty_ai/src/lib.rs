@@ -20,22 +20,24 @@ pub mod usage;
 // Re-exports for convenience.
 pub use capability::{Capability, CapabilitySet};
 pub use content::{ContentPart, FileData, ImageData, ImageDetail};
+pub use embedding::cosine_similarity;
 pub use error::{AiError, AiResult};
 pub use message::{Message, Role};
 pub use model::{
     EmbeddingModel, GenerateOptions, LanguageModel, Middleware, MiddlewareNext, ProviderInfo,
-    ReasoningEffort, ThinkingConfig,
+    ReasoningEffort, SpeechToTextModel, TextToSpeechModel, ThinkingConfig,
 };
 pub use prompt::Prompt;
 pub use provider::Provider;
 pub use router::{Route, Router};
 pub use schema::OutputSchema;
 pub use stream::{AiStream, StreamCollector, StreamEvent, SyntheticStreamer};
-pub use structured::{EmbeddingResult, GenerateResult, ObjectResult};
+pub use structured::{
+    AudioResult, EmbeddingResult, GenerateResult, ObjectResult, TranscriptionResult, TtsOptions,
+};
 pub use tool::{ToolCallRequest, ToolCallResult, ToolChoice, ToolDefinition, ToolSet};
-pub use types::{FinishReason, ModelInfo, RequestMetadata, ResponseMetadata};
+pub use types::{FinishReason, ModelInfo, ModelRegistry, RequestMetadata, ResponseMetadata};
 pub use usage::Usage;
-pub use embedding::cosine_similarity;
 
 /// Generate text from a language model with default options.
 pub async fn generate_text(
@@ -61,9 +63,6 @@ pub async fn stream_text(
 }
 
 /// Embed texts using an embedding model.
-pub async fn embed(
-    model: &dyn EmbeddingModel,
-    texts: Vec<String>,
-) -> AiResult<EmbeddingResult> {
+pub async fn embed(model: &dyn EmbeddingModel, texts: Vec<String>) -> AiResult<EmbeddingResult> {
     model.embed(texts).await
 }

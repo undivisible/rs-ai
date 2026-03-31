@@ -123,11 +123,7 @@ impl LanguageModel for PhiSilicaModel {
         })
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
         let result = self.generate(prompt, options).await?;
         let text = result.text.unwrap_or_default();
         Ok(SyntheticStreamer::stream(text, 20))

@@ -1,5 +1,7 @@
 use async_trait::async_trait;
-use rusty_ai::{AiError, AiResult, GenerateOptions, GenerateResult, Middleware, MiddlewareNext, Prompt};
+use rusty_ai::{
+    AiError, AiResult, GenerateOptions, GenerateResult, Middleware, MiddlewareNext, Prompt,
+};
 
 /// Configuration for retry behaviour.
 #[derive(Debug, Clone)]

@@ -1,6 +1,6 @@
 use rusty_ai::{
-    ContentPart, FinishReason, GenerateOptions, GenerateResult, ImageData, Message, Prompt, Role,
-    ResponseMetadata, ToolCallRequest, ToolChoice, Usage,
+    ContentPart, FinishReason, GenerateOptions, GenerateResult, ImageData, Message, Prompt,
+    ResponseMetadata, Role, ToolCallRequest, ToolChoice, Usage,
 };
 
 use crate::api_types::*;
@@ -39,9 +39,7 @@ fn message_to_chat(msg: &Message) -> ChatMessage {
         .content
         .iter()
         .filter_map(|part| match part {
-            ContentPart::Text { text } => {
-                Some(serde_json::json!({ "type": "text", "text": text }))
-            }
+            ContentPart::Text { text } => Some(serde_json::json!({ "type": "text", "text": text })),
             ContentPart::Image { data } => Some(image_to_json(data)),
             ContentPart::ToolCall { call } => {
                 tool_calls.push(ChatToolCall {

@@ -22,14 +22,35 @@ use rusty_openai_compatible::{
     OpenAiCompatibleConfig, OpenAiCompatibleModel, OpenAiCompatibleProvider,
 };
 
-// ── Well-known model identifiers ──
+// ── Latest model aliases ──
 
-pub const GPT_4O: &str = "gpt-4o";
-pub const GPT_4O_MINI: &str = "gpt-4o-mini";
-pub const O3_MINI: &str = "o3-mini";
-pub const GPT_5_4: &str = "gpt-5.4";
-pub const GPT_5_4_MINI: &str = "gpt-5.4-mini";
-pub const GPT_5_4_NANO: &str = "gpt-5.4-nano";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GPT_4O_LATEST: &str = "gpt-4o";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GPT_4O_MINI_LATEST: &str = "gpt-4o-mini";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const O3_MINI_LATEST: &str = "o3-mini";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GPT_5_4_LATEST: &str = "gpt-5.4";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GPT_5_4_MINI_LATEST: &str = "gpt-5.4-mini";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GPT_5_4_NANO_LATEST: &str = "gpt-5.4-nano";
+
+// ── Audio / voice model identifiers ──
+
+/// OpenAI Whisper speech-to-text.
+pub const WHISPER: &str = "whisper-1";
+/// OpenAI TTS.
+pub const TTS: &str = "tts-1";
+/// OpenAI TTS HD.
+pub const TTS_HD: &str = "tts-1-hd";
+/// OpenAI GPT-4o Realtime (voice).
+pub const GPT_4O_REALTIME: &str = "gpt-4o-realtime-preview";
+/// OpenAI GPT-4o Audio (audio modality in chat completions).
+pub const GPT_4O_AUDIO: &str = "gpt-4o-audio-preview";
+/// OpenAI GPT-4o Mini Realtime.
+pub const GPT_4O_MINI_REALTIME: &str = "gpt-4o-mini-realtime-preview";
 
 /// A provider pre-configured for the official OpenAI ChatGPT API.
 pub struct ChatGptProvider {
@@ -43,7 +64,7 @@ impl ChatGptProvider {
         let config = OpenAiCompatibleConfig::openai(api_key);
         let inner = OpenAiCompatibleProvider::new(config.clone(), "chatgpt", "ChatGPT")
             .with_model_info(ModelInfo {
-                id: GPT_4O.into(),
+                id: GPT_4O_LATEST.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-4o".into(),
                 capabilities: CapabilitySet::new()
@@ -55,7 +76,7 @@ impl ChatGptProvider {
                     .with(Capability::StructuredOutput),
             })
             .with_model_info(ModelInfo {
-                id: GPT_4O_MINI.into(),
+                id: GPT_4O_MINI_LATEST.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-4o Mini".into(),
                 capabilities: CapabilitySet::new()
@@ -67,7 +88,7 @@ impl ChatGptProvider {
                     .with(Capability::StructuredOutput),
             })
             .with_model_info(ModelInfo {
-                id: O3_MINI.into(),
+                id: O3_MINI_LATEST.into(),
                 provider: "chatgpt".into(),
                 display_name: "o3-mini".into(),
                 capabilities: CapabilitySet::new()
@@ -77,7 +98,7 @@ impl ChatGptProvider {
                     .with(Capability::ToolCalling),
             })
             .with_model_info(ModelInfo {
-                id: GPT_5_4.into(),
+                id: GPT_5_4_LATEST.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-5.4".into(),
                 capabilities: CapabilitySet::new()
@@ -90,7 +111,7 @@ impl ChatGptProvider {
                     .with(Capability::ExtendedThinking),
             })
             .with_model_info(ModelInfo {
-                id: GPT_5_4_MINI.into(),
+                id: GPT_5_4_MINI_LATEST.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-5.4 Mini".into(),
                 capabilities: CapabilitySet::new()
@@ -102,12 +123,69 @@ impl ChatGptProvider {
                     .with(Capability::StructuredOutput),
             })
             .with_model_info(ModelInfo {
-                id: GPT_5_4_NANO.into(),
+                id: GPT_5_4_NANO_LATEST.into(),
                 provider: "chatgpt".into(),
                 display_name: "GPT-5.4 Nano".into(),
                 capabilities: CapabilitySet::new()
                     .with(Capability::TextInput)
                     .with(Capability::TextOutput)
+                    .with(Capability::Streaming),
+            })
+            .with_model_info(ModelInfo {
+                id: WHISPER.into(),
+                provider: "chatgpt".into(),
+                display_name: "Whisper".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::AudioInput)
+                    .with(Capability::TextOutput),
+            })
+            .with_model_info(ModelInfo {
+                id: TTS.into(),
+                provider: "chatgpt".into(),
+                display_name: "TTS".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::TextInput)
+                    .with(Capability::AudioOutput),
+            })
+            .with_model_info(ModelInfo {
+                id: TTS_HD.into(),
+                provider: "chatgpt".into(),
+                display_name: "TTS HD".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::TextInput)
+                    .with(Capability::AudioOutput),
+            })
+            .with_model_info(ModelInfo {
+                id: GPT_4O_REALTIME.into(),
+                provider: "chatgpt".into(),
+                display_name: "GPT-4o Realtime".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::TextInput)
+                    .with(Capability::TextOutput)
+                    .with(Capability::AudioInput)
+                    .with(Capability::AudioOutput)
+                    .with(Capability::Streaming),
+            })
+            .with_model_info(ModelInfo {
+                id: GPT_4O_AUDIO.into(),
+                provider: "chatgpt".into(),
+                display_name: "GPT-4o Audio".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::TextInput)
+                    .with(Capability::TextOutput)
+                    .with(Capability::AudioInput)
+                    .with(Capability::AudioOutput)
+                    .with(Capability::Streaming),
+            })
+            .with_model_info(ModelInfo {
+                id: GPT_4O_MINI_REALTIME.into(),
+                provider: "chatgpt".into(),
+                display_name: "GPT-4o Mini Realtime".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::TextInput)
+                    .with(Capability::TextOutput)
+                    .with(Capability::AudioInput)
+                    .with(Capability::AudioOutput)
                     .with(Capability::Streaming),
             });
         Self { inner, config }
@@ -129,6 +207,7 @@ impl ChatGptProvider {
     }
 
     /// Get a specific model by ID, looking up known capabilities.
+    /// Any valid OpenAI model ID is accepted.
     pub fn model(&self, model_id: &str) -> OpenAiCompatibleModel {
         let caps = self
             .inner
@@ -142,28 +221,27 @@ impl ChatGptProvider {
                     .with(Capability::TextOutput)
                     .with(Capability::Streaming)
             });
-        OpenAiCompatibleModel::new(self.config.clone(), model_id, "chatgpt")
-            .with_capabilities(caps)
+        OpenAiCompatibleModel::new(self.config.clone(), model_id, "chatgpt").with_capabilities(caps)
     }
 
     pub fn gpt4o(&self) -> OpenAiCompatibleModel {
-        self.model(GPT_4O)
+        self.model(GPT_4O_LATEST)
     }
 
     pub fn gpt4o_mini(&self) -> OpenAiCompatibleModel {
-        self.model(GPT_4O_MINI)
+        self.model(GPT_4O_MINI_LATEST)
     }
 
     pub fn gpt54(&self) -> OpenAiCompatibleModel {
-        self.model(GPT_5_4)
+        self.model(GPT_5_4_LATEST)
     }
 
     pub fn gpt54_mini(&self) -> OpenAiCompatibleModel {
-        self.model(GPT_5_4_MINI)
+        self.model(GPT_5_4_MINI_LATEST)
     }
 
     pub fn gpt54_nano(&self) -> OpenAiCompatibleModel {
-        self.model(GPT_5_4_NANO)
+        self.model(GPT_5_4_NANO_LATEST)
     }
 
     /// Fetch the list of models from the OpenAI API.

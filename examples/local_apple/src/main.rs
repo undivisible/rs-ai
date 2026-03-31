@@ -125,11 +125,7 @@ impl LanguageModel for FoundationModel {
         })
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
         let result = self.generate(prompt, options).await?;
         let text = result.text.unwrap_or_default();
         Ok(SyntheticStreamer::stream(text, 20))
@@ -141,7 +137,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let model = FoundationModel::new(MockAppleBridge);
 
     // Check availability
-    println!("Apple Foundation Model available: {}", model.bridge.is_available().await);
+    println!(
+        "Apple Foundation Model available: {}",
+        model.bridge.is_available().await
+    );
 
     // Generate text
     let result = generate_text(&model, "Explain Swift concurrency in one paragraph").await?;
@@ -150,7 +149,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Use via the LanguageModel trait with custom options
     let options = GenerateOptions::default().with_temperature(0.7);
     let result = model
-        .generate(Prompt::from("What is the latest version of macOS?"), options)
+        .generate(
+            Prompt::from("What is the latest version of macOS?"),
+            options,
+        )
         .await?;
     if let Some(text) = &result.text {
         println!("With options: {text}");

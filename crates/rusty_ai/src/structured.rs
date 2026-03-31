@@ -42,3 +42,29 @@ pub struct EmbeddingResult {
     /// Token usage information.
     pub usage: Usage,
 }
+
+/// Result of a speech-to-text transcription.
+#[derive(Debug, Clone)]
+pub struct TranscriptionResult {
+    pub text: String,
+    pub language: Option<String>,
+    pub duration_seconds: Option<f64>,
+    pub usage: Usage,
+}
+
+/// Result of text-to-speech synthesis.
+#[derive(Debug, Clone)]
+pub struct AudioResult {
+    pub audio: Vec<u8>,
+    pub mime_type: String,
+    pub usage: Usage,
+}
+
+/// Options for text-to-speech.
+#[derive(Debug, Clone, Default)]
+pub struct TtsOptions {
+    /// Speech speed multiplier (e.g. 1.0 = normal).
+    pub speed: Option<f64>,
+    /// Output audio format (e.g. "mp3", "opus", "aac", "flac", "wav", "pcm").
+    pub response_format: Option<String>,
+}

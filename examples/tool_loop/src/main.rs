@@ -75,9 +75,8 @@ impl Tool for WeatherTool {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let provider = ChatGptProvider::new(
-        std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY required"),
-    );
+    let provider =
+        ChatGptProvider::new(std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY required"));
     let model = provider.gpt4o_mini();
 
     let mut tools = ToolSet::new();
@@ -114,14 +113,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Add assistant message carrying the tool calls
         let mut assistant_parts: Vec<ContentPart> = Vec::new();
         if let Some(text) = &result.text {
-            assistant_parts.push(ContentPart::Text {
-                text: text.clone(),
-            });
+            assistant_parts.push(ContentPart::Text { text: text.clone() });
         }
         for call in &result.tool_calls {
-            assistant_parts.push(ContentPart::ToolCall {
-                call: call.clone(),
-            });
+            assistant_parts.push(ContentPart::ToolCall { call: call.clone() });
         }
         messages.push(Message {
             role: Role::Assistant,
@@ -132,10 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Execute each tool call and add results
         for call in &result.tool_calls {
-            println!(
-                "Calling tool '{}' with args: {}",
-                call.name, call.arguments
-            );
+            println!("Calling tool '{}' with args: {}", call.name, call.arguments);
             let tool_result = tools.execute(call).await?;
             println!("Tool result: {}", tool_result.content);
             messages.push(Message::tool_result(

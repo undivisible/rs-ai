@@ -20,19 +20,12 @@ pub trait BrowserAiBridge: Send + Sync {
     async fn detect(&self) -> BrowserAiCapabilities;
 
     /// Generate text using the browser's AI.
-    async fn generate(
-        &self,
-        prompt: &str,
-        options: &BrowserAiOptions,
-    ) -> Result<String, String>;
+    async fn generate(&self, prompt: &str, options: &BrowserAiOptions) -> Result<String, String>;
 
     /// Stream text using the browser's AI (if supported).
     /// Returns chunks of text.
-    async fn stream(
-        &self,
-        prompt: &str,
-        options: &BrowserAiOptions,
-    ) -> Result<Vec<String>, String>;
+    async fn stream(&self, prompt: &str, options: &BrowserAiOptions)
+        -> Result<Vec<String>, String>;
 }
 
 /// A no-op bridge for non-WASM targets, useful for testing.

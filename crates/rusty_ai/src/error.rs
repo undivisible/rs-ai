@@ -45,16 +45,10 @@ pub enum AiError {
     Serialization(String),
 
     #[error("Tool `{tool_name}` error: {message}")]
-    ToolError {
-        tool_name: String,
-        message: String,
-    },
+    ToolError { tool_name: String, message: String },
 
     #[error("Bridge `{bridge}` error: {message}")]
-    BridgeError {
-        bridge: String,
-        message: String,
-    },
+    BridgeError { bridge: String, message: String },
 
     #[error("Schema validation error: {message}")]
     SchemaValidation { message: String },

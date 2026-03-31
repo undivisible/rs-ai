@@ -5,7 +5,9 @@ use crate::error::{AiError, AiResult};
 use crate::prompt::Prompt;
 use crate::schema::OutputSchema;
 use crate::stream::AiStream;
-use crate::structured::{EmbeddingResult, GenerateResult, ObjectResult};
+use crate::structured::{
+    AudioResult, EmbeddingResult, GenerateResult, ObjectResult, TranscriptionResult, TtsOptions,
+};
 use crate::tool::{ToolChoice, ToolDefinition};
 use crate::types::RequestMetadata;
 
@@ -160,19 +162,10 @@ pub trait LanguageModel: Send + Sync {
     fn capabilities(&self) -> &CapabilitySet;
 
     /// Generate a complete response.
-    async fn generate(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult>;
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult>;
 
     /// Stream a response as a series of events.
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream>;
-
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream>;
 }
 
 /// Generate a structured object from a language model response.
@@ -242,11 +235,7 @@ pub struct MiddlewareNext<'a> {
 
 impl<'a> MiddlewareNext<'a> {
     /// Execute the next middleware (or the model if no middleware remains).
-    pub async fn run(
-        self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult> {
+    pub async fn run(self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         if let Some((first, rest)) = self.middlewares.split_first() {
             let next = MiddlewareNext {
                 middlewares: rest,
@@ -257,4 +246,34 @@ impl<'a> MiddlewareNext<'a> {
             self.model.generate(prompt, options).await
         }
     }
+}
+
+/// A model that converts speech audio to text (e.g. OpenAI Whisper).
+#[async_trait]
+pub trait SpeechToTextModel: Send + Sync {
+    fn model_id(&self) -> &str;
+    fn provider_id(&self) -> &str;
+
+    /// Transcribe audio bytes into text.
+    async fn transcribe(
+        &self,
+        audio: Vec<u8>,
+        mime_type: &str,
+        language: Option<&str>,
+    ) -> AiResult<TranscriptionResult>;
+}
+
+/// A model that converts text to speech audio (e.g. OpenAI TTS).
+#[async_trait]
+pub trait TextToSpeechModel: Send + Sync {
+    fn model_id(&self) -> &str;
+    fn provider_id(&self) -> &str;
+
+    /// Synthesize speech from text.  Returns audio bytes.
+    async fn synthesize(
+        &self,
+        text: &str,
+        voice: &str,
+        options: TtsOptions,
+    ) -> AiResult<AudioResult>;
 }

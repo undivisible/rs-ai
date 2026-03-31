@@ -60,11 +60,7 @@ impl LanguageModel for BrowserAiModel {
         &self.capabilities
     }
 
-    async fn generate(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult> {
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         let caps = self.bridge.detect().await;
         if !caps.available {
             return Err(AiError::PlatformUnavailable {
@@ -101,11 +97,7 @@ impl LanguageModel for BrowserAiModel {
         })
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
         let result = self.generate(prompt, options).await?;
         let text = result.text.unwrap_or_default();
         Ok(SyntheticStreamer::stream(text, 20))

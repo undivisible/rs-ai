@@ -1,9 +1,9 @@
+use crate::api_types::*;
+use crate::convert::{map_finish_reason, map_usage};
 use futures::stream::{self, StreamExt};
 use reqwest::Response;
 use rusty_ai::error::AiError;
 use rusty_ai::stream::{AiStream, StreamEvent};
-use crate::api_types::*;
-use crate::convert::{map_finish_reason, map_usage};
 
 /// Parse Gemini's Server-Sent Events streaming format into an `AiStream`.
 ///
@@ -73,10 +73,7 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                                 if !events.is_empty() {
                                     let items: Vec<Result<StreamEvent, AiError>> =
                                         events.into_iter().map(Ok).collect();
-                                    return Some((
-                                        stream::iter(items),
-                                        (json_stream, sent_start),
-                                    ));
+                                    return Some((stream::iter(items), (json_stream, sent_start)));
                                 }
                                 continue;
                             }
@@ -91,10 +88,7 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                         }
                     }
                     Some(Err(e)) => {
-                        return Some((
-                            stream::iter(vec![Err(e)]),
-                            (json_stream, sent_start),
-                        ));
+                        return Some((stream::iter(vec![Err(e)]), (json_stream, sent_start)));
                     }
                     None => return None,
                 }

@@ -5,7 +5,7 @@ use futures::stream;
 
 use rusty_ai::capability::{Capability, CapabilitySet};
 use rusty_ai::error::{AiError, AiResult};
-use rusty_ai::model::{GenerateOptions, LanguageModel, EmbeddingModel};
+use rusty_ai::model::{EmbeddingModel, GenerateOptions, LanguageModel};
 use rusty_ai::prompt::Prompt;
 use rusty_ai::stream::{AiStream, StreamEvent, SyntheticStreamer};
 use rusty_ai::structured::{EmbeddingResult, GenerateResult};
@@ -222,21 +222,13 @@ impl LanguageModel for MockLanguageModel {
         &self.capabilities
     }
 
-    async fn generate(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult> {
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         self.record_call(&prompt, &options);
         let response = self.next_response();
         self.response_to_result(response)
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
         self.record_call(&prompt, &options);
         let response = self.next_response();
         self.response_to_stream(response)

@@ -29,7 +29,7 @@ pub struct NanoCapabilities {
 }
 
 /// Configuration for a Gemini Nano session.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct NanoSessionConfig {
     /// Sampling temperature (0.0 - 1.0).
     pub temperature: Option<f64>,
@@ -37,14 +37,4 @@ pub struct NanoSessionConfig {
     pub top_k: Option<u32>,
     /// Maximum number of tokens to generate.
     pub max_tokens: Option<u32>,
-}
-
-impl Default for NanoSessionConfig {
-    fn default() -> Self {
-        Self {
-            temperature: None,
-            top_k: None,
-            max_tokens: None,
-        }
-    }
 }

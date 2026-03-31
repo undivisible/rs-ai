@@ -64,13 +64,8 @@ pub(crate) enum ContentBlock {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub(crate) enum ImageSource {
-    Base64 {
-        media_type: String,
-        data: String,
-    },
-    Url {
-        url: String,
-    },
+    Base64 { media_type: String, data: String },
+    Url { url: String },
 }
 
 #[derive(Serialize, Debug)]
@@ -156,13 +151,16 @@ pub(crate) enum StreamEvent {
 #[serde(tag = "type")]
 pub(crate) enum DeltaBlock {
     #[serde(rename = "text_delta")]
-    TextDelta { text: String },
+    Text { text: String },
     #[serde(rename = "input_json_delta")]
-    InputJsonDelta { partial_json: String },
+    InputJson { partial_json: String },
     #[serde(rename = "thinking_delta")]
-    ThinkingDelta { thinking: String },
+    Thinking { thinking: String },
     #[serde(rename = "signature_delta")]
-    SignatureDelta { signature: String },
+    Signature {
+        #[allow(dead_code)]
+        signature: String,
+    },
 }
 
 #[derive(Deserialize, Debug)]

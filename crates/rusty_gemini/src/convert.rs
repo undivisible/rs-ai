@@ -1,22 +1,22 @@
 use rusty_ai::{
-    ContentPart, FinishReason, GenerateOptions, GenerateResult, ImageData,
-    Prompt, ResponseMetadata, Role, ToolCallRequest, ToolChoice, Usage,
-    ThinkingConfig as CoreThinkingConfig,
+    ContentPart, FinishReason, GenerateOptions, GenerateResult, ImageData, Prompt,
+    ResponseMetadata, Role, ThinkingConfig as CoreThinkingConfig, ToolCallRequest, ToolChoice,
+    Usage,
 };
 
 use crate::api_types::*;
 
+/// The parts of a Gemini API request built from a `Prompt` and `GenerateOptions`.
+pub(crate) struct GeminiRequestParts {
+    pub contents: Vec<GeminiContent>,
+    pub system_instruction: Option<GeminiContent>,
+    pub generation_config: Option<GenerationConfig>,
+    pub tools: Option<Vec<GeminiTool>>,
+    pub tool_config: Option<ToolConfig>,
+}
+
 /// Separate system messages from conversation messages and build the Gemini request parts.
-pub(crate) fn build_request(
-    prompt: Prompt,
-    options: &GenerateOptions,
-) -> (
-    Vec<GeminiContent>,
-    Option<GeminiContent>,
-    Option<GenerationConfig>,
-    Option<Vec<GeminiTool>>,
-    Option<ToolConfig>,
-) {
+pub(crate) fn build_request(prompt: Prompt, options: &GenerateOptions) -> GeminiRequestParts {
     let messages = prompt.into_messages();
 
     let mut system_parts: Vec<GeminiPart> = Vec::new();
@@ -32,21 +32,33 @@ pub(crate) fn build_request(
                 }
             }
             Role::User => {
-                let parts = msg.content.iter().filter_map(content_part_to_gemini).collect();
+                let parts = msg
+                    .content
+                    .iter()
+                    .filter_map(content_part_to_gemini)
+                    .collect();
                 contents.push(GeminiContent {
                     role: Some("user".to_string()),
                     parts,
                 });
             }
             Role::Assistant => {
-                let parts = msg.content.iter().filter_map(content_part_to_gemini).collect();
+                let parts = msg
+                    .content
+                    .iter()
+                    .filter_map(content_part_to_gemini)
+                    .collect();
                 contents.push(GeminiContent {
                     role: Some("model".to_string()),
                     parts,
                 });
             }
             Role::Tool => {
-                let parts = msg.content.iter().filter_map(content_part_to_gemini).collect();
+                let parts = msg
+                    .content
+                    .iter()
+                    .filter_map(content_part_to_gemini)
+                    .collect();
                 contents.push(GeminiContent {
                     role: Some("user".to_string()),
                     parts,
@@ -67,14 +79,18 @@ pub(crate) fn build_request(
     let generation_config = build_generation_config(options);
     let (tools, tool_config) = build_tools(options);
 
-    (contents, system_instruction, generation_config, tools, tool_config)
+    GeminiRequestParts {
+        contents,
+        system_instruction,
+        generation_config,
+        tools,
+        tool_config,
+    }
 }
 
 fn content_part_to_gemini(part: &ContentPart) -> Option<GeminiPart> {
     match part {
-        ContentPart::Text { text } => Some(GeminiPart::Text {
-            text: text.clone(),
-        }),
+        ContentPart::Text { text } => Some(GeminiPart::Text { text: text.clone() }),
         ContentPart::Image { data } => match data {
             ImageData::Base64 { media_type, data } => Some(GeminiPart::InlineData {
                 inline_data: InlineData {
@@ -256,9 +272,7 @@ pub(crate) fn map_finish_reason(reason: &str) -> FinishReason {
     match reason {
         "STOP" => FinishReason::Stop,
         "MAX_TOKENS" => FinishReason::Length,
-        "SAFETY" | "RECITATION" | "BLOCKLIST" | "PROHIBITED_CONTENT" => {
-            FinishReason::ContentFilter
-        }
+        "SAFETY" | "RECITATION" | "BLOCKLIST" | "PROHIBITED_CONTENT" => FinishReason::ContentFilter,
         _ => FinishReason::Unknown,
     }
 }

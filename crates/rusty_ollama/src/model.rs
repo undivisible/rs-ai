@@ -114,8 +114,10 @@ impl OllamaModel {
             });
         }
 
-        let chat_resp: OllamaChatResponse =
-            resp.json().await.map_err(|e| AiError::Serialization(e.to_string()))?;
+        let chat_resp: OllamaChatResponse = resp
+            .json()
+            .await
+            .map_err(|e| AiError::Serialization(e.to_string()))?;
 
         let tool_calls = chat_resp
             .message
@@ -236,12 +238,7 @@ fn build_ndjson_stream(
                 let mut events: Vec<Result<StreamEvent, AiError>> = Vec::new();
 
                 // Process all complete lines in the buffer.
-                loop {
-                    let newline_pos = match buf.iter().position(|&b| b == b'\n') {
-                        Some(p) => p,
-                        None => break,
-                    };
-
+                while let Some(newline_pos) = buf.iter().position(|&b| b == b'\n') {
                     let line_bytes: Vec<u8> = buf.drain(..=newline_pos).collect();
                     let line = match std::str::from_utf8(&line_bytes) {
                         Ok(s) => s.trim().to_string(),
@@ -274,7 +271,9 @@ fn build_ndjson_stream(
                     // Emit thinking tokens if present (reasoning models)
                     if let Some(ref thinking) = resp.thinking {
                         if !thinking.is_empty() {
-                            events.push(Ok(StreamEvent::ThinkingDelta { delta: thinking.clone() }));
+                            events.push(Ok(StreamEvent::ThinkingDelta {
+                                delta: thinking.clone(),
+                            }));
                         }
                     }
 
@@ -312,7 +311,7 @@ fn build_ndjson_stream(
                             .message
                             .tool_calls
                             .as_ref()
-                            .map_or(false, |v| !v.is_empty());
+                            .is_some_and(|v| !v.is_empty());
 
                         let finish_reason = if has_tools {
                             FinishReason::ToolCall
@@ -381,8 +380,10 @@ impl EmbeddingModel for OllamaModel {
             });
         }
 
-        let embed_resp: OllamaEmbedResponse =
-            resp.json().await.map_err(|e| AiError::Serialization(e.to_string()))?;
+        let embed_resp: OllamaEmbedResponse = resp
+            .json()
+            .await
+            .map_err(|e| AiError::Serialization(e.to_string()))?;
 
         // Convert f32 -> f64 to match the trait signature.
         let embeddings = embed_resp

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
-use crate::error::AiResult;
-use crate::model::{EmbeddingModel, LanguageModel};
+use crate::error::{AiError, AiResult};
+use crate::model::{EmbeddingModel, LanguageModel, SpeechToTextModel, TextToSpeechModel};
 use crate::types::ModelInfo;
 
 /// A provider that exposes one or more language and/or embedding models.
@@ -32,5 +32,21 @@ pub trait Provider: Send + Sync {
     /// implementation falls back to [`available_models`].
     async fn fetch_models(&self) -> AiResult<Vec<ModelInfo>> {
         Ok(self.available_models())
+    }
+
+    /// Retrieve a speech-to-text model by its identifier.
+    fn speech_to_text_model(&self, _model_id: &str) -> AiResult<Box<dyn SpeechToTextModel>> {
+        Err(AiError::UnsupportedCapability {
+            capability: "speech_to_text".into(),
+            provider: self.id().into(),
+        })
+    }
+
+    /// Retrieve a text-to-speech model by its identifier.
+    fn text_to_speech_model(&self, _model_id: &str) -> AiResult<Box<dyn TextToSpeechModel>> {
+        Err(AiError::UnsupportedCapability {
+            capability: "text_to_speech".into(),
+            provider: self.id().into(),
+        })
     }
 }

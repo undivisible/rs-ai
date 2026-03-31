@@ -50,14 +50,14 @@ impl GeminiNanoProvider {
 
     /// Create a new multi-turn session.
     pub async fn create_session(&self, config: NanoSessionConfig) -> AiResult<NanoSession> {
-        let session_id = self
-            .bridge
-            .create_session(&config)
-            .await
-            .map_err(|e| AiError::BridgeError {
-                bridge: "gemini_nano".into(),
-                message: e,
-            })?;
+        let session_id =
+            self.bridge
+                .create_session(&config)
+                .await
+                .map_err(|e| AiError::BridgeError {
+                    bridge: "gemini_nano".into(),
+                    message: e,
+                })?;
         Ok(NanoSession::new(session_id, self.bridge.clone(), config))
     }
 }

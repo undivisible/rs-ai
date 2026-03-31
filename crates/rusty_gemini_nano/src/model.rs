@@ -88,11 +88,7 @@ impl LanguageModel for GeminiNanoModel {
         &self.capabilities
     }
 
-    async fn generate(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult> {
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         self.ensure_available().await?;
 
         let config = Self::build_config(&options);

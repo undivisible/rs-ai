@@ -7,10 +7,13 @@ use crate::prompt::Prompt;
 use crate::stream::AiStream;
 use crate::structured::GenerateResult;
 
+/// A condition function used to decide whether a route matches.
+pub type RouteCondition = Box<dyn Fn(&Prompt, &GenerateOptions) -> bool + Send + Sync>;
+
 /// A single route that maps a condition to a model.
 pub struct Route {
     pub model: Box<dyn LanguageModel>,
-    pub condition: Box<dyn Fn(&Prompt, &GenerateOptions) -> bool + Send + Sync>,
+    pub condition: RouteCondition,
     pub priority: i32,
 }
 
@@ -68,10 +71,7 @@ impl Router {
     ///
     /// The local model is used when the request does not require capabilities
     /// that only the cloud model supports.
-    pub fn local_first(
-        local: Box<dyn LanguageModel>,
-        cloud: Box<dyn LanguageModel>,
-    ) -> Self {
+    pub fn local_first(local: Box<dyn LanguageModel>, cloud: Box<dyn LanguageModel>) -> Self {
         let local_caps: Vec<Capability> = local.capabilities().iter().cloned().collect();
         Self::new()
             .add_route_with_priority(
@@ -166,20 +166,12 @@ impl LanguageModel for Router {
         &EMPTY
     }
 
-    async fn generate(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult> {
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         let model = self.select_model(&prompt, &options)?;
         model.generate(prompt, options).await
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
         let model = self.select_model(&prompt, &options)?;
         model.stream(prompt, options).await
     }

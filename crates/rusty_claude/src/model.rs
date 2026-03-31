@@ -87,15 +87,15 @@ impl ClaudeModel {
             let body_text = response.text().await.unwrap_or_default();
 
             // Try to parse structured error from Anthropic.
-            let message =
-                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&body_text) {
-                    parsed["error"]["message"]
-                        .as_str()
-                        .unwrap_or(&body_text)
-                        .to_string()
-                } else {
-                    body_text
-                };
+            let message = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&body_text)
+            {
+                parsed["error"]["message"]
+                    .as_str()
+                    .unwrap_or(&body_text)
+                    .to_string()
+            } else {
+                body_text
+            };
 
             if status_code == 401 {
                 return Err(AiError::AuthError { message });
@@ -136,8 +136,8 @@ impl LanguageModel for ClaudeModel {
             source: Some(Box::new(e)),
         })?;
 
-        let api_response: crate::api_types::MessagesResponse =
-            serde_json::from_str(&body).map_err(|e| {
+        let api_response: crate::api_types::MessagesResponse = serde_json::from_str(&body)
+            .map_err(|e| {
                 AiError::Serialization(format!("Failed to parse Anthropic response: {e}"))
             })?;
 

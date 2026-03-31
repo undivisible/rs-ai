@@ -95,7 +95,7 @@ impl Provider for MockProvider {
 
     fn available_models(&self) -> Vec<ModelInfo> {
         let mut infos: Vec<ModelInfo> = Vec::new();
-        for (_, model) in &self.models {
+        for model in self.models.values() {
             infos.push(ModelInfo {
                 id: model.id().to_owned(),
                 provider: model.provider().to_owned(),
@@ -105,13 +105,12 @@ impl Provider for MockProvider {
                     .with(rusty_ai::Capability::TextOutput),
             });
         }
-        for (_, model) in &self.embedding_models {
+        for model in self.embedding_models.values() {
             infos.push(ModelInfo {
                 id: model.id().to_owned(),
                 provider: model.provider().to_owned(),
                 display_name: format!("Mock Embedding {}", model.id()),
-                capabilities: rusty_ai::CapabilitySet::new()
-                    .with(rusty_ai::Capability::Embeddings),
+                capabilities: rusty_ai::CapabilitySet::new().with(rusty_ai::Capability::Embeddings),
             });
         }
         infos

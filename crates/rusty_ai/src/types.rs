@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::capability::CapabilitySet;
+use crate::capability::{Capability, CapabilitySet};
 
 /// Reason the model stopped generating.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -79,5 +79,47 @@ impl Default for ResponseMetadata {
             latency_ms: None,
             extra: HashMap::new(),
         }
+    }
+}
+
+/// Caches model information fetched from remote APIs.
+///
+/// Model IDs change frequently.  Use `fetch_models()` on the provider
+/// to populate the registry, then look up models by ID.
+#[derive(Debug, Clone, Default)]
+pub struct ModelRegistry {
+    models: Vec<ModelInfo>,
+}
+
+impl ModelRegistry {
+    pub fn new() -> Self {
+        Self { models: Vec::new() }
+    }
+
+    /// Merge freshly fetched models into the registry.
+    pub fn update(&mut self, models: Vec<ModelInfo>) {
+        for model in models {
+            if !self.models.iter().any(|m| m.id == model.id) {
+                self.models.push(model);
+            }
+        }
+    }
+
+    /// Look up a model by ID.
+    pub fn get(&self, id: &str) -> Option<&ModelInfo> {
+        self.models.iter().find(|m| m.id == id)
+    }
+
+    /// All known models.
+    pub fn all(&self) -> &[ModelInfo] {
+        &self.models
+    }
+
+    /// Filter models by a required capability.
+    pub fn with_capability(&self, cap: &Capability) -> Vec<&ModelInfo> {
+        self.models
+            .iter()
+            .filter(|m| m.capabilities.has(cap))
+            .collect()
     }
 }

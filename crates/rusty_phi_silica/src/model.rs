@@ -59,11 +59,7 @@ impl LanguageModel for PhiSilicaModel {
         &self.capabilities
     }
 
-    async fn generate(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult> {
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         match self.bridge.availability().await {
             PhiSilicaAvailability::Available => {}
             other => {

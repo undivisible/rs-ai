@@ -87,7 +87,7 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
             }
         },
     )
-    .flat_map(|events| stream::iter(events));
+    .flat_map(stream::iter);
 
     // Now map Anthropic events to rusty_ai StreamEvents using stateful processing.
     let mapped = futures::stream::unfold(
@@ -106,10 +106,7 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                         continue;
                     }
                     Some(Err(e)) => {
-                        return Some((
-                            stream::iter(vec![Err(e)]),
-                            (event_stream, state),
-                        ));
+                        return Some((stream::iter(vec![Err(e)]), (event_stream, state)));
                     }
                     None => return None,
                 }
@@ -208,10 +205,10 @@ fn map_event(event: AnthropicEvent, state: &mut StreamState) -> Vec<RustyStreamE
         },
 
         AnthropicEvent::ContentBlockDelta { index, delta } => match delta {
-            DeltaBlock::TextDelta { text } => {
+            DeltaBlock::Text { text } => {
                 vec![RustyStreamEvent::TextDelta { delta: text }]
             }
-            DeltaBlock::InputJsonDelta { partial_json } => {
+            DeltaBlock::InputJson { partial_json } => {
                 if let Some(tc) = state.active_tool_calls.get_mut(&index) {
                     tc.json_buf.push_str(&partial_json);
                     vec![RustyStreamEvent::ToolCallDelta {
@@ -222,10 +219,10 @@ fn map_event(event: AnthropicEvent, state: &mut StreamState) -> Vec<RustyStreamE
                     Vec::new()
                 }
             }
-            DeltaBlock::ThinkingDelta { thinking } => {
+            DeltaBlock::Thinking { thinking } => {
                 vec![RustyStreamEvent::ThinkingDelta { delta: thinking }]
             }
-            DeltaBlock::SignatureDelta { .. } => Vec::new(),
+            DeltaBlock::Signature { .. } => Vec::new(),
         },
 
         AnthropicEvent::ContentBlockStop { index } => {

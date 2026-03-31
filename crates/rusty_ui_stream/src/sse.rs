@@ -39,9 +39,7 @@ impl SseEncoder {
     /// are forwarded as [`UiStreamEvent::Error`] events so the client always
     /// receives well-formed SSE data, followed by the original error being
     /// propagated.
-    pub fn encode_stream(
-        stream: AiStream,
-    ) -> impl Stream<Item = Result<Bytes, AiError>> {
+    pub fn encode_stream(stream: AiStream) -> impl Stream<Item = Result<Bytes, AiError>> {
         stream.map(|result| match result {
             Ok(event) => {
                 let ui_event: UiStreamEvent = event.into();
@@ -114,21 +112,16 @@ mod tests {
             Ok(StreamEvent::MessageStart {
                 message_id: "m1".into(),
             }),
-            Ok(StreamEvent::TextDelta {
-                delta: "Hi".into(),
-            }),
+            Ok(StreamEvent::TextDelta { delta: "Hi".into() }),
             Ok(StreamEvent::MessageEnd {
                 finish_reason: rusty_ai::FinishReason::Stop,
                 usage: None,
             }),
         ];
 
-        let ai_stream: AiStream =
-            Box::pin(stream::iter(events));
+        let ai_stream: AiStream = Box::pin(stream::iter(events));
 
-        let encoded: Vec<_> = SseEncoder::encode_stream(ai_stream)
-            .collect()
-            .await;
+        let encoded: Vec<_> = SseEncoder::encode_stream(ai_stream).collect().await;
 
         assert_eq!(encoded.len(), 3);
         for item in &encoded {
@@ -148,18 +141,15 @@ mod tests {
         use tokio_stream::StreamExt;
 
         let events: Vec<Result<StreamEvent, AiError>> = vec![
-            Ok(StreamEvent::TextDelta {
-                delta: "Hi".into(),
+            Ok(StreamEvent::TextDelta { delta: "Hi".into() }),
+            Err(AiError::StreamError {
+                message: "connection lost".into(),
             }),
-            Err(AiError::StreamError { message: "connection lost".into() }),
         ];
 
-        let ai_stream: AiStream =
-            Box::pin(stream::iter(events));
+        let ai_stream: AiStream = Box::pin(stream::iter(events));
 
-        let encoded: Vec<_> = SseEncoder::encode_stream(ai_stream)
-            .collect()
-            .await;
+        let encoded: Vec<_> = SseEncoder::encode_stream(ai_stream).collect().await;
 
         assert_eq!(encoded.len(), 2);
         // The error should have been encoded as an SSE event (Ok bytes).

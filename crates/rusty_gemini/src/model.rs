@@ -7,7 +7,7 @@ use rusty_ai::{
 };
 
 use crate::api_types::GenerateContentRequest;
-use crate::convert::{build_request, response_to_result};
+use crate::convert::{build_request, response_to_result, GeminiRequestParts};
 use crate::stream_parser;
 
 const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -65,8 +65,13 @@ impl GeminiModel {
         prompt: Prompt,
         options: &GenerateOptions,
     ) -> GenerateContentRequest {
-        let (contents, system_instruction, generation_config, tools, tool_config) =
-            build_request(prompt, options);
+        let GeminiRequestParts {
+            contents,
+            system_instruction,
+            generation_config,
+            tools,
+            tool_config,
+        } = build_request(prompt, options);
 
         GenerateContentRequest {
             contents,
@@ -92,16 +97,12 @@ impl LanguageModel for GeminiModel {
         &self.capabilities
     }
 
-    async fn generate(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult> {
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         let request_body = self.build_api_request(prompt, &options);
 
         let response = self
             .client
-            .post(&self.generate_url())
+            .post(self.generate_url())
             .header("Content-Type", "application/json")
             .json(&request_body)
             .send()
@@ -121,22 +122,20 @@ impl LanguageModel for GeminiModel {
             });
         }
 
-        let api_response: crate::api_types::GenerateContentResponse =
-            response.json().await.map_err(|e| AiError::Serialization(e.to_string()))?;
+        let api_response: crate::api_types::GenerateContentResponse = response
+            .json()
+            .await
+            .map_err(|e| AiError::Serialization(e.to_string()))?;
 
         Ok(response_to_result(api_response, &self.model_id))
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
         let request_body = self.build_api_request(prompt, &options);
 
         let response = self
             .client
-            .post(&self.stream_url())
+            .post(self.stream_url())
             .header("Content-Type", "application/json")
             .json(&request_body)
             .send()

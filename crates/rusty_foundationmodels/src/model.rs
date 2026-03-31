@@ -60,11 +60,9 @@ impl FoundationModel {
     async fn ensure_available(&self) -> AiResult<()> {
         match self.bridge.availability().await {
             AppleModelAvailability::Available => Ok(()),
-            AppleModelAvailability::Unavailable { reason } => {
-                Err(AiError::PlatformUnavailable {
-                    platform: format!("apple/foundation_models: {reason}"),
-                })
-            }
+            AppleModelAvailability::Unavailable { reason } => Err(AiError::PlatformUnavailable {
+                platform: format!("apple/foundation_models: {reason}"),
+            }),
             AppleModelAvailability::NeedsDownload => Err(AiError::ModelUnavailable {
                 model: "apple-foundation-model (needs download)".into(),
             }),
@@ -86,11 +84,7 @@ impl LanguageModel for FoundationModel {
         &self.capabilities
     }
 
-    async fn generate(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<GenerateResult> {
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         self.ensure_available().await?;
 
         let config = Self::build_config(&options);
@@ -122,11 +116,7 @@ impl LanguageModel for FoundationModel {
         })
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
         self.ensure_available().await?;
 
         let config = Self::build_config(&options);
@@ -150,9 +140,7 @@ impl LanguageModel for FoundationModel {
             }
             _ => {
                 // Fallback: generate fully and use synthetic streaming.
-                let result = self
-                    .generate(Prompt::Text(prompt_text), options)
-                    .await?;
+                let result = self.generate(Prompt::Text(prompt_text), options).await?;
                 let text = result.text.unwrap_or_default();
                 Ok(SyntheticStreamer::stream(text, 20))
             }

@@ -227,12 +227,15 @@ pub(crate) fn build_request(
         },
     });
 
-    let output_config = options.output_schema.as_ref().map(|schema| ApiOutputConfig {
-        format: ApiOutputFormat {
-            format_type: "json_schema".to_string(),
-            schema: schema.as_value().clone(),
-        },
-    });
+    let output_config = options
+        .output_schema
+        .as_ref()
+        .map(|schema| ApiOutputConfig {
+            format: ApiOutputFormat {
+                format_type: "json_schema".to_string(),
+                schema: schema.as_value().clone(),
+            },
+        });
 
     MessagesRequest {
         model: model.to_string(),

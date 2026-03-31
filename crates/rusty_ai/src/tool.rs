@@ -82,10 +82,13 @@ impl ToolSet {
 
     /// Execute a tool call request and return the result.
     pub async fn execute(&self, call: &ToolCallRequest) -> AiResult<ToolCallResult> {
-        let tool = self.tools.get(&call.name).ok_or_else(|| AiError::ToolError {
-            tool_name: call.name.clone(),
-            message: "Tool not found".into(),
-        })?;
+        let tool = self
+            .tools
+            .get(&call.name)
+            .ok_or_else(|| AiError::ToolError {
+                tool_name: call.name.clone(),
+                message: "Tool not found".into(),
+            })?;
 
         match tool.execute(call.arguments.clone()).await {
             Ok(content) => Ok(ToolCallResult {

@@ -11,20 +11,50 @@ use crate::usage::Usage;
 /// Events emitted by a streaming response.
 #[derive(Debug, Clone)]
 pub enum StreamEvent {
-    MessageStart { message_id: String },
-    TextDelta { delta: String },
-    ToolCallStart { call_id: String, tool_name: String },
-    ToolCallDelta { call_id: String, delta: String },
-    ToolCallEnd { call_id: String, arguments: serde_json::Value },
-    ToolResult { call_id: String, content: String, is_error: bool },
-    ObjectDelta { delta: serde_json::Value },
+    MessageStart {
+        message_id: String,
+    },
+    TextDelta {
+        delta: String,
+    },
+    ToolCallStart {
+        call_id: String,
+        tool_name: String,
+    },
+    ToolCallDelta {
+        call_id: String,
+        delta: String,
+    },
+    ToolCallEnd {
+        call_id: String,
+        arguments: serde_json::Value,
+    },
+    ToolResult {
+        call_id: String,
+        content: String,
+        is_error: bool,
+    },
+    ObjectDelta {
+        delta: serde_json::Value,
+    },
     /// Emitted when an extended-thinking / reasoning model produces
     /// intermediate "thinking" tokens (Anthropic, Gemini 2.5+, Ollama think).
-    ThinkingDelta { delta: String },
-    UsageDelta { usage: Usage },
-    Warning { message: String },
-    MessageEnd { finish_reason: FinishReason, usage: Option<Usage> },
-    Error { error: String },
+    ThinkingDelta {
+        delta: String,
+    },
+    UsageDelta {
+        usage: Usage,
+    },
+    Warning {
+        message: String,
+    },
+    MessageEnd {
+        finish_reason: FinishReason,
+        usage: Option<Usage>,
+    },
+    Error {
+        error: String,
+    },
     /// Emitted once when a local runtime falls back to non-native streaming.
     SyntheticStreamingNotice,
 }
@@ -52,10 +82,7 @@ impl StreamCollector {
                 StreamEvent::TextDelta { delta } => {
                     text.push_str(&delta);
                 }
-                StreamEvent::ToolCallStart {
-                    call_id,
-                    tool_name,
-                } => {
+                StreamEvent::ToolCallStart { call_id, tool_name } => {
                     pending_tool_calls.insert(call_id, (tool_name, String::new()));
                 }
                 StreamEvent::ToolCallDelta { call_id, delta } => {

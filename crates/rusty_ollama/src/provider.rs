@@ -57,8 +57,10 @@ impl OllamaProvider {
             });
         }
 
-        let list: OllamaListResponse =
-            resp.json().await.map_err(|e| AiError::Serialization(e.to_string()))?;
+        let list: OllamaListResponse = resp
+            .json()
+            .await
+            .map_err(|e| AiError::Serialization(e.to_string()))?;
 
         Ok(list.models.into_iter().map(|m| m.name).collect())
     }

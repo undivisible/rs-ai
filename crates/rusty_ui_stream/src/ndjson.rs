@@ -34,9 +34,7 @@ impl NdjsonEncoder {
     /// [`UiStreamEvent`] and then NDJSON-encoded. Errors from the source
     /// stream are converted into [`UiStreamEvent::Error`] events so the
     /// client always receives well-formed NDJSON.
-    pub fn encode_stream(
-        stream: AiStream,
-    ) -> impl Stream<Item = Result<Bytes, AiError>> {
+    pub fn encode_stream(stream: AiStream) -> impl Stream<Item = Result<Bytes, AiError>> {
         stream.map(|result| match result {
             Ok(event) => {
                 let ui_event: UiStreamEvent = event.into();
@@ -99,21 +97,16 @@ mod tests {
             Ok(StreamEvent::MessageStart {
                 message_id: "m1".into(),
             }),
-            Ok(StreamEvent::TextDelta {
-                delta: "Hi".into(),
-            }),
+            Ok(StreamEvent::TextDelta { delta: "Hi".into() }),
             Ok(StreamEvent::MessageEnd {
                 finish_reason: rusty_ai::FinishReason::Stop,
                 usage: None,
             }),
         ];
 
-        let ai_stream: AiStream =
-            Box::pin(stream::iter(events));
+        let ai_stream: AiStream = Box::pin(stream::iter(events));
 
-        let encoded: Vec<_> = NdjsonEncoder::encode_stream(ai_stream)
-            .collect()
-            .await;
+        let encoded: Vec<_> = NdjsonEncoder::encode_stream(ai_stream).collect().await;
 
         assert_eq!(encoded.len(), 3);
         for item in &encoded {
@@ -134,18 +127,15 @@ mod tests {
         use tokio_stream::StreamExt;
 
         let events: Vec<Result<StreamEvent, AiError>> = vec![
-            Ok(StreamEvent::TextDelta {
-                delta: "Hi".into(),
+            Ok(StreamEvent::TextDelta { delta: "Hi".into() }),
+            Err(AiError::StreamError {
+                message: "timeout".into(),
             }),
-            Err(AiError::StreamError { message: "timeout".into() }),
         ];
 
-        let ai_stream: AiStream =
-            Box::pin(stream::iter(events));
+        let ai_stream: AiStream = Box::pin(stream::iter(events));
 
-        let encoded: Vec<_> = NdjsonEncoder::encode_stream(ai_stream)
-            .collect()
-            .await;
+        let encoded: Vec<_> = NdjsonEncoder::encode_stream(ai_stream).collect().await;
 
         assert_eq!(encoded.len(), 2);
         assert!(encoded[1].is_ok());

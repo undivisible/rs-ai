@@ -11,14 +11,14 @@ use crate::model::ClaudeModel;
 
 const DEFAULT_BASE_URL: &str = "https://api.anthropic.com";
 
-// ── Well-known model identifiers ──
+// ── Latest model aliases ──
 
-/// Claude Opus 4.6 — top capability, agents/coding (1M context).
-pub const CLAUDE_OPUS_4_6: &str = "claude-opus-4-6";
-/// Claude Sonnet 4.6 — speed + intelligence balance (1M context).
-pub const CLAUDE_SONNET_4_6: &str = "claude-sonnet-4-6";
-/// Claude Haiku 4.5 — fastest (200K context).
-pub const CLAUDE_HAIKU_4_5: &str = "claude-haiku-4-5-20251001";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const CLAUDE_OPUS_LATEST: &str = "claude-opus-4-6";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const CLAUDE_SONNET_LATEST: &str = "claude-sonnet-4-6";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const CLAUDE_HAIKU_LATEST: &str = "claude-haiku-4-5-20251001";
 
 /// Provider for Anthropic Claude models.
 pub struct ClaudeProvider {
@@ -43,20 +43,20 @@ impl ClaudeProvider {
 
     /// Get the Claude Sonnet 4.6 model.
     pub fn claude_sonnet(&self) -> ClaudeModel {
-        self.model(CLAUDE_SONNET_4_6)
+        self.model(CLAUDE_SONNET_LATEST)
     }
 
     /// Get the Claude Opus 4.6 model.
     pub fn claude_opus(&self) -> ClaudeModel {
-        self.model(CLAUDE_OPUS_4_6)
+        self.model(CLAUDE_OPUS_LATEST)
     }
 
     /// Get the Claude Haiku 4.5 model.
     pub fn claude_haiku(&self) -> ClaudeModel {
-        self.model(CLAUDE_HAIKU_4_5)
+        self.model(CLAUDE_HAIKU_LATEST)
     }
 
-    /// Get a model by identifier.
+    /// Get a model by identifier.  Any valid Anthropic model ID is accepted.
     pub fn model(&self, model_id: &str) -> ClaudeModel {
         ClaudeModel::new(self.api_key.expose_secret(), model_id)
             .with_base_url(self.base_url.clone())
@@ -96,19 +96,19 @@ impl Provider for ClaudeProvider {
 
         vec![
             ModelInfo {
-                id: CLAUDE_OPUS_4_6.to_string(),
+                id: CLAUDE_OPUS_LATEST.to_string(),
                 provider: "anthropic".to_string(),
                 display_name: "Claude Opus 4.6".to_string(),
                 capabilities: caps.clone(),
             },
             ModelInfo {
-                id: CLAUDE_SONNET_4_6.to_string(),
+                id: CLAUDE_SONNET_LATEST.to_string(),
                 provider: "anthropic".to_string(),
                 display_name: "Claude Sonnet 4.6".to_string(),
                 capabilities: caps.clone(),
             },
             ModelInfo {
-                id: CLAUDE_HAIKU_4_5.to_string(),
+                id: CLAUDE_HAIKU_LATEST.to_string(),
                 provider: "anthropic".to_string(),
                 display_name: "Claude Haiku 4.5".to_string(),
                 capabilities: caps,

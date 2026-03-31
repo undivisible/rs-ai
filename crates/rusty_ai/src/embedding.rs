@@ -2,7 +2,11 @@
 ///
 /// Returns 0.0 if either vector has zero magnitude.
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-    assert_eq!(a.len(), b.len(), "embedding vectors must have the same length");
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "embedding vectors must have the same length"
+    );
 
     let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
     let mag_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();

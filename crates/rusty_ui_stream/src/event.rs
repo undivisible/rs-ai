@@ -25,10 +25,7 @@ pub enum UiStreamEvent {
 
     /// A tool call has begun.
     #[serde(rename = "tool_call_start")]
-    ToolCallStart {
-        call_id: String,
-        tool_name: String,
-    },
+    ToolCallStart { call_id: String, tool_name: String },
 
     /// A chunk of tool call arguments (partial JSON).
     #[serde(rename = "tool_call_args")]
@@ -79,13 +76,9 @@ impl From<StreamEvent> for UiStreamEvent {
                 version: PROTOCOL_VERSION.to_string(),
             },
             StreamEvent::TextDelta { delta } => UiStreamEvent::Text { delta },
-            StreamEvent::ToolCallStart {
-                call_id,
-                tool_name,
-            } => UiStreamEvent::ToolCallStart {
-                call_id,
-                tool_name,
-            },
+            StreamEvent::ToolCallStart { call_id, tool_name } => {
+                UiStreamEvent::ToolCallStart { call_id, tool_name }
+            }
             StreamEvent::ToolCallDelta { call_id, delta } => {
                 UiStreamEvent::ToolCallArgs { call_id, delta }
             }

@@ -2,22 +2,22 @@ use secrecy::SecretString;
 
 use crate::model::GeminiModel;
 
-// ── Well-known model identifiers ──
+// ── Latest model aliases ──
 
-/// Gemini 2.5 Pro — most capable reasoning model.
-pub const GEMINI_25_PRO: &str = "gemini-2.5-pro";
-/// Gemini 2.5 Flash — best price/performance.
-pub const GEMINI_25_FLASH: &str = "gemini-2.5-flash";
-/// Gemini 2.5 Flash Lite — fastest and cheapest.
-pub const GEMINI_25_FLASH_LITE: &str = "gemini-2.5-flash-lite";
-/// Gemini 3.1 Pro Preview — latest reasoning + multimodal (preview).
-pub const GEMINI_31_PRO_PREVIEW: &str = "gemini-3.1-pro-preview";
-/// Gemini 3 Flash — frontier-class at low cost (preview).
-pub const GEMINI_3_FLASH: &str = "gemini-3-flash";
-/// Gemini 3.1 Flash Live Preview — real-time audio-to-audio dialogue.
-pub const GEMINI_31_FLASH_LIVE: &str = "gemini-3.1-flash-live-preview";
-/// Gemini Embedding 2 Preview — first multimodal embedding model.
-pub const GEMINI_EMBEDDING_2: &str = "gemini-embedding-2-preview";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GEMINI_PRO_LATEST: &str = "gemini-2.5-pro";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GEMINI_FLASH_LATEST: &str = "gemini-2.5-flash";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GEMINI_FLASH_LITE_LATEST: &str = "gemini-2.5-flash-lite";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GEMINI_PRO_PREVIEW_LATEST: &str = "gemini-3.1-pro-preview";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GEMINI_3_FLASH_LATEST: &str = "gemini-3-flash";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GEMINI_FLASH_LIVE_LATEST: &str = "gemini-3.1-flash-live-preview";
+/// Convenience alias. Use `fetch_models()` or pass any model ID string to `model()`.
+pub const GEMINI_EMBEDDING_LATEST: &str = "gemini-embedding-2-preview";
 
 /// Provider for Google Gemini models.
 pub struct GeminiProvider {
@@ -34,30 +34,30 @@ impl GeminiProvider {
 
     /// Get Gemini 2.5 Pro (most capable reasoning).
     pub fn gemini_pro(&self) -> GeminiModel {
-        self.model(GEMINI_25_PRO)
+        self.model(GEMINI_PRO_LATEST)
     }
 
     /// Get Gemini 2.5 Flash (best price/performance).
     pub fn gemini_flash(&self) -> GeminiModel {
-        self.model(GEMINI_25_FLASH)
+        self.model(GEMINI_FLASH_LATEST)
     }
 
     /// Get Gemini 2.5 Flash Lite (fastest/cheapest).
     pub fn gemini_flash_lite(&self) -> GeminiModel {
-        self.model(GEMINI_25_FLASH_LITE)
+        self.model(GEMINI_FLASH_LITE_LATEST)
     }
 
     /// Get Gemini 3.1 Pro Preview (latest preview).
     pub fn gemini_31_pro(&self) -> GeminiModel {
-        self.model(GEMINI_31_PRO_PREVIEW)
+        self.model(GEMINI_PRO_PREVIEW_LATEST)
     }
 
     /// Get Gemini 3 Flash (frontier-class preview).
     pub fn gemini_3_flash(&self) -> GeminiModel {
-        self.model(GEMINI_3_FLASH)
+        self.model(GEMINI_3_FLASH_LATEST)
     }
 
-    /// Get a Gemini model by its model ID.
+    /// Get a Gemini model by its model ID.  Any valid Gemini model ID is accepted.
     pub fn model(&self, model_id: &str) -> GeminiModel {
         use secrecy::ExposeSecret;
         GeminiModel::new(self.api_key.expose_secret(), model_id)
@@ -108,7 +108,12 @@ impl GeminiProvider {
         Ok(list
             .models
             .into_iter()
-            .map(|m| m.name.strip_prefix("models/").unwrap_or(&m.name).to_string())
+            .map(|m| {
+                m.name
+                    .strip_prefix("models/")
+                    .unwrap_or(&m.name)
+                    .to_string()
+            })
             .collect())
     }
 }

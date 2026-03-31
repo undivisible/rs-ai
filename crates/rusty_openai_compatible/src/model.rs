@@ -75,10 +75,7 @@ impl OpenAiCompatibleModel {
     }
 
     /// Execute a non-streaming request and return the parsed response.
-    async fn do_request(
-        &self,
-        request: ChatCompletionRequest,
-    ) -> AiResult<ChatCompletionResponse> {
+    async fn do_request(&self, request: ChatCompletionRequest) -> AiResult<ChatCompletionResponse> {
         let url = self.endpoint();
         tracing::debug!(url = %url, model = %request.model, "sending chat completion request");
 
@@ -124,8 +121,8 @@ impl OpenAiCompatibleModel {
 
         let req = self.client.post(&url).json(&request);
 
-        let mut es = reqwest_eventsource::EventSource::new(req)
-            .map_err(|e| AiError::Transport {
+        let mut es =
+            reqwest_eventsource::EventSource::new(req).map_err(|e| AiError::Transport {
                 message: e.to_string(),
                 source: Some(Box::new(e)),
             })?;

@@ -5,9 +5,8 @@ use rusty_claude::ClaudeProvider;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Using ChatGPT
-    let chatgpt = ChatGptProvider::new(
-        std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY required"),
-    );
+    let chatgpt =
+        ChatGptProvider::new(std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY required"));
     let model = chatgpt.gpt4o_mini();
 
     let result = generate_text(&model, "What is Rust programming language?").await?;
