@@ -60,8 +60,9 @@ impl OllamaModel {
             messages,
             stream,
             options: convert::convert_options(options),
-            format: None,
+            format: options.output_schema.as_ref().map(|s| s.as_value().clone()),
             tools: convert::convert_tools(options.tools.as_deref()),
+            think: options.thinking.as_ref().map(|_| true),
         }
     }
 

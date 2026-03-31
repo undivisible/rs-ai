@@ -24,6 +24,7 @@ pub use error::{AiError, AiResult};
 pub use message::{Message, Role};
 pub use model::{
     EmbeddingModel, GenerateOptions, LanguageModel, Middleware, MiddlewareNext, ProviderInfo,
+    ReasoningEffort, ThinkingConfig,
 };
 pub use prompt::Prompt;
 pub use provider::Provider;

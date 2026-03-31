@@ -17,6 +17,10 @@ pub enum Capability {
     LocalExecution,
     SessionSupport,
     PlatformNative,
+    ExtendedThinking,
+    VideoInput,
+    AudioInput,
+    AudioOutput,
 }
 
 /// An ordered set of capabilities.

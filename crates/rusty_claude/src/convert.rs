@@ -1,6 +1,6 @@
 use rusty_ai::content::{ContentPart, ImageData};
 use rusty_ai::message::{Message, Role};
-use rusty_ai::model::GenerateOptions;
+use rusty_ai::model::{GenerateOptions, ThinkingConfig};
 use rusty_ai::prompt::Prompt;
 use rusty_ai::structured::GenerateResult;
 use rusty_ai::tool::{ToolCallRequest, ToolChoice, ToolDefinition};
@@ -8,8 +8,8 @@ use rusty_ai::types::{FinishReason, ResponseMetadata};
 use rusty_ai::usage::Usage;
 
 use crate::api_types::{
-    ApiContent, ApiMessage, ApiTool, ApiToolChoice, ContentBlock, ImageSource, MessagesRequest,
-    MessagesResponse,
+    ApiContent, ApiMessage, ApiOutputConfig, ApiOutputFormat, ApiThinkingConfig, ApiTool,
+    ApiToolChoice, ContentBlock, ImageSource, MessagesRequest, MessagesResponse,
 };
 
 /// Holds the separated system prompt and non-system messages.
@@ -133,20 +133,14 @@ fn convert_tool_result_content(parts: &[ContentPart]) -> Vec<ContentBlock> {
 fn convert_image(data: &ImageData) -> ContentBlock {
     match data {
         ImageData::Base64 { media_type, data } => ContentBlock::Image {
-            source: ImageSource {
-                source_type: "base64".to_string(),
+            source: ImageSource::Base64 {
                 media_type: media_type.clone(),
                 data: data.clone(),
             },
         },
-        ImageData::Url { url, .. } => {
-            // Anthropic doesn't natively support image URLs the same way.
-            // Pass as text placeholder; a real implementation would download
-            // and base64-encode the image.
-            ContentBlock::Text {
-                text: format!("[image: {url}]"),
-            }
-        }
+        ImageData::Url { url, .. } => ContentBlock::Image {
+            source: ImageSource::Url { url: url.clone() },
+        },
     }
 }
 

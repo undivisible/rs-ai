@@ -24,6 +24,7 @@ pub(crate) struct GeminiContent {
 #[serde(untagged)]
 pub(crate) enum GeminiPart {
     Text { text: String },
+    Thought { thought: bool, text: String },
     InlineData { inline_data: InlineData },
     FunctionCall { function_call: FunctionCall },
     FunctionResponse { function_response: FunctionResponse },
@@ -37,12 +38,16 @@ pub(crate) struct InlineData {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct FunctionCall {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub name: String,
     pub args: serde_json::Value,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct FunctionResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub name: String,
     pub response: serde_json::Value,
 }
@@ -63,6 +68,18 @@ pub(crate) struct GenerationConfig {
     pub response_mime_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_schema: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking_config: Option<ThinkingConfig>,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ThinkingConfig {
+    /// Token budget for thinking (Gemini 2.5+).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking_budget: Option<u32>,
+    /// Thinking level for Gemini 3 Flash: "minimal", "low", "medium", "high".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking_level: Option<String>,
 }
 
 #[derive(Serialize)]

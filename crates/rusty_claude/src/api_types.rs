@@ -20,6 +20,10 @@ pub(crate) struct MessagesRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<ApiToolChoice>,
     pub stream: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<ApiThinkingConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_config: Option<ApiOutputConfig>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -58,11 +62,15 @@ pub(crate) enum ContentBlock {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub(crate) struct ImageSource {
-    #[serde(rename = "type")]
-    pub source_type: String,
-    pub media_type: String,
-    pub data: String,
+#[serde(tag = "type", rename_all = "snake_case")]
+pub(crate) enum ImageSource {
+    Base64 {
+        media_type: String,
+        data: String,
+    },
+    Url {
+        url: String,
+    },
 }
 
 #[derive(Serialize, Debug)]
@@ -78,6 +86,24 @@ pub(crate) struct ApiToolChoice {
     pub choice_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct ApiThinkingConfig {
+    #[serde(rename = "type")]
+    pub thinking_type: String,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct ApiOutputConfig {
+    pub format: ApiOutputFormat,
+}
+
+#[derive(Serialize, Debug)]
+pub(crate) struct ApiOutputFormat {
+    #[serde(rename = "type")]
+    pub format_type: String,
+    pub schema: serde_json::Value,
 }
 
 // --- Response types ---
@@ -133,6 +159,10 @@ pub(crate) enum DeltaBlock {
     TextDelta { text: String },
     #[serde(rename = "input_json_delta")]
     InputJsonDelta { partial_json: String },
+    #[serde(rename = "thinking_delta")]
+    ThinkingDelta { thinking: String },
+    #[serde(rename = "signature_delta")]
+    SignatureDelta { signature: String },
 }
 
 #[derive(Deserialize, Debug)]

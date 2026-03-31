@@ -1,6 +1,7 @@
 use rusty_ai::{
     ContentPart, FinishReason, GenerateOptions, GenerateResult, ImageData,
     Prompt, ResponseMetadata, Role, ToolCallRequest, ToolChoice, Usage,
+    ThinkingConfig as CoreThinkingConfig,
 };
 
 use crate::api_types::*;

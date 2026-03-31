@@ -9,6 +9,30 @@ use crate::structured::{EmbeddingResult, GenerateResult, ObjectResult};
 use crate::tool::{ToolChoice, ToolDefinition};
 use crate::types::RequestMetadata;
 
+/// Extended-thinking / reasoning configuration.
+///
+/// Supported by Anthropic (adaptive thinking), Gemini 2.5+ (thinking budget),
+/// and Ollama reasoning models (think flag).
+#[derive(Debug, Clone)]
+pub enum ThinkingConfig {
+    /// Enable thinking with adaptive budget (Anthropic claude-opus-4-6+).
+    Adaptive,
+    /// Enable thinking with a fixed token budget (Gemini 2.5+).
+    Budget { tokens: u32 },
+    /// Simple on/off flag (Ollama, Gemini 3 Flash `think: true`).
+    Enabled,
+}
+
+/// Reasoning effort level for models that support it (OpenAI Responses API).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReasoningEffort {
+    None,
+    Low,
+    Medium,
+    High,
+    XHigh,
+}
+
 /// Options that control generation behaviour.
 #[derive(Debug, Clone, Default)]
 pub struct GenerateOptions {
@@ -23,6 +47,10 @@ pub struct GenerateOptions {
     pub tools: Option<Vec<ToolDefinition>>,
     pub tool_choice: Option<ToolChoice>,
     pub output_schema: Option<OutputSchema>,
+    /// Extended thinking / reasoning configuration.
+    pub thinking: Option<ThinkingConfig>,
+    /// Reasoning effort (OpenAI Responses API).
+    pub reasoning_effort: Option<ReasoningEffort>,
     pub metadata: RequestMetadata,
 }
 
@@ -90,6 +118,18 @@ impl GenerateOptions {
     /// Set the output schema for structured generation.
     pub fn with_output_schema(mut self, schema: OutputSchema) -> Self {
         self.output_schema = Some(schema);
+        self
+    }
+
+    /// Enable extended thinking with adaptive budget.
+    pub fn with_thinking(mut self, config: ThinkingConfig) -> Self {
+        self.thinking = Some(config);
+        self
+    }
+
+    /// Set the reasoning effort level (OpenAI Responses API).
+    pub fn with_reasoning_effort(mut self, effort: ReasoningEffort) -> Self {
+        self.reasoning_effort = Some(effort);
         self
     }
 

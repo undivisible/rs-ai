@@ -13,6 +13,8 @@ pub(crate) struct OllamaChatRequest {
     pub format: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<Vec<OllamaTool>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub think: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,6 +25,8 @@ pub(crate) struct OllamaMessage {
     pub images: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<OllamaToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -86,6 +90,9 @@ pub(crate) struct OllamaChatResponse {
     pub eval_count: Option<u64>,
     #[serde(default)]
     pub prompt_eval_count: Option<u64>,
+    /// Thinking content from reasoning models (e.g. deepseek-r1, qwen3 with think=true)
+    #[serde(default)]
+    pub thinking: Option<String>,
 }
 
 // ── Embedding ──

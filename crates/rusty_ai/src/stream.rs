@@ -18,10 +18,15 @@ pub enum StreamEvent {
     ToolCallEnd { call_id: String, arguments: serde_json::Value },
     ToolResult { call_id: String, content: String, is_error: bool },
     ObjectDelta { delta: serde_json::Value },
+    /// Emitted when an extended-thinking / reasoning model produces
+    /// intermediate "thinking" tokens (Anthropic, Gemini 2.5+, Ollama think).
+    ThinkingDelta { delta: String },
     UsageDelta { usage: Usage },
     Warning { message: String },
     MessageEnd { finish_reason: FinishReason, usage: Option<Usage> },
     Error { error: String },
+    /// Emitted once when a local runtime falls back to non-native streaming.
+    SyntheticStreamingNotice,
 }
 
 /// A boxed, pinned, sendable stream of `StreamEvent` results.
@@ -109,6 +114,8 @@ impl SyntheticStreamer {
             v.push(Ok(StreamEvent::MessageStart {
                 message_id: uuid::Uuid::new_v4().to_string(),
             }));
+            // Notify callers that this is simulated streaming.
+            v.push(Ok(StreamEvent::SyntheticStreamingNotice));
 
             let mut pos = 0;
             while pos < text.len() {
