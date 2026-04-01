@@ -24,7 +24,26 @@ pub struct OpenAiCompatibleModel {
 
 impl OpenAiCompatibleModel {
     /// Create a new model instance.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the system TLS stack cannot be initialized. This is a
+    /// system-level failure (e.g. missing TLS libraries). Use [`try_new`] to
+    /// handle this case without panicking.
+    ///
+    /// [`try_new`]: OpenAiCompatibleModel::try_new
     pub fn new(config: OpenAiCompatibleConfig, model_id: &str, provider_id: &str) -> Self {
+        Self::try_new(config, model_id, provider_id)
+            .expect("Failed to initialize HTTP client (TLS unavailable or system misconfigured)")
+    }
+
+    /// Create a new model instance, returning an error if the HTTP client
+    /// cannot be initialized (e.g. TLS is unavailable on the system).
+    pub fn try_new(
+        config: OpenAiCompatibleConfig,
+        model_id: &str,
+        provider_id: &str,
+    ) -> AiResult<Self> {
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
@@ -51,15 +70,18 @@ impl OpenAiCompatibleModel {
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .build()
-            .expect("failed to build HTTP client");
+            .map_err(|e| AiError::Transport {
+                message: format!("Failed to build HTTP client: {e}"),
+                source: Some(Box::new(e)),
+            })?;
 
-        Self {
+        Ok(Self {
             config,
             model_id: model_id.to_string(),
             provider_id: provider_id.to_string(),
             capabilities: CapabilitySet::new(),
             client,
-        }
+        })
     }
 
     /// Builder-style setter for capabilities.

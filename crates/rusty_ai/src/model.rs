@@ -17,7 +17,7 @@ use crate::types::RequestMetadata;
 /// and Ollama reasoning models (think flag).
 #[derive(Debug, Clone)]
 pub enum ThinkingConfig {
-    /// Enable thinking with adaptive budget (Anthropic claude-opus-4-6+).
+    /// Enable thinking with adaptive budget (Anthropic claude-3-7-sonnet and later).
     Adaptive,
     /// Enable thinking with a fixed token budget (Gemini 2.5+).
     Budget { tokens: u32 },

@@ -40,6 +40,9 @@ pub use types::{FinishReason, ModelInfo, ModelRegistry, RequestMetadata, Respons
 pub use usage::Usage;
 
 /// Generate text from a language model with default options.
+///
+/// Returns an error if the model responds with no text content (e.g. the
+/// model responded with only tool calls).
 pub async fn generate_text(
     model: &dyn LanguageModel,
     prompt: impl Into<Prompt>,
@@ -47,9 +50,12 @@ pub async fn generate_text(
     let result = model
         .generate(prompt.into(), GenerateOptions::default())
         .await?;
-    result
-        .text
-        .ok_or(AiError::Serialization("No text in response".into()))
+    result.text.ok_or_else(|| AiError::ProviderError {
+        provider: model.provider_id().to_string(),
+        status: None,
+        message: "Response contained no text content (model responded with tool calls only)"
+            .to_string(),
+    })
 }
 
 /// Stream text from a language model with default options.
