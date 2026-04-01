@@ -33,16 +33,20 @@ impl CacheMiddleware {
 
     /// Compute a deterministic cache key from the prompt and generation options.
     ///
+    /// Returns `None` if the prompt cannot be serialized, in which case the
+    /// caller should bypass the cache entirely to avoid hash collisions.
+    ///
     /// Both the prompt content and all generation-affecting options are included
     /// so that requests with the same prompt but different parameters (temperature,
     /// tools, output schema, etc.) are treated as distinct cache entries.
     /// The request metadata (which contains a per-request UUID) is excluded.
-    fn cache_key(prompt: &Prompt, options: &GenerateOptions) -> u64 {
+    fn cache_key(prompt: &Prompt, options: &GenerateOptions) -> Option<u64> {
         let mut hasher = DefaultHasher::new();
 
-        if let Ok(json) = serde_json::to_string(prompt) {
-            json.hash(&mut hasher);
-        }
+        let prompt_json = serde_json::to_string(prompt)
+            .map_err(|e| tracing::error!(error = %e, "Failed to serialize prompt for cache key; bypassing cache"))
+            .ok()?;
+        prompt_json.hash(&mut hasher);
 
         // Numeric options — hash the bit pattern to keep f64 deterministic.
         options.temperature.map(f64::to_bits).hash(&mut hasher);
@@ -72,7 +76,7 @@ impl CacheMiddleware {
         format!("{:?}", options.thinking).hash(&mut hasher);
         format!("{:?}", options.reasoning_effort).hash(&mut hasher);
 
-        hasher.finish()
+        Some(hasher.finish())
     }
 }
 
@@ -84,7 +88,10 @@ impl Middleware for CacheMiddleware {
         options: GenerateOptions,
         next: MiddlewareNext<'_>,
     ) -> AiResult<GenerateResult> {
-        let key = Self::cache_key(&prompt, &options);
+        let Some(key) = Self::cache_key(&prompt, &options) else {
+            // Prompt could not be serialized; bypass cache to avoid collisions.
+            return next.run(prompt, options).await;
+        };
 
         // Check cache.
         {

@@ -109,21 +109,25 @@ impl Middleware for LoggingMiddleware {
                 let prompt_tokens = res.usage.prompt_tokens;
                 let completion_tokens = res.usage.completion_tokens;
                 let finish_reason = &res.finish_reason;
+                let latency_ms = elapsed.as_millis() as u64;
 
-                tracing::info!(
-                    latency_ms = elapsed.as_millis() as u64,
-                    prompt_tokens = ?prompt_tokens,
-                    completion_tokens = ?completion_tokens,
-                    finish_reason = ?finish_reason,
-                    "generate response"
-                );
+                match self.level {
+                    tracing::Level::TRACE => tracing::trace!(latency_ms, prompt_tokens = ?prompt_tokens, completion_tokens = ?completion_tokens, finish_reason = ?finish_reason, "generate response"),
+                    tracing::Level::DEBUG => tracing::debug!(latency_ms, prompt_tokens = ?prompt_tokens, completion_tokens = ?completion_tokens, finish_reason = ?finish_reason, "generate response"),
+                    tracing::Level::WARN => tracing::warn!(latency_ms, prompt_tokens = ?prompt_tokens, completion_tokens = ?completion_tokens, finish_reason = ?finish_reason, "generate response"),
+                    tracing::Level::ERROR => tracing::error!(latency_ms, prompt_tokens = ?prompt_tokens, completion_tokens = ?completion_tokens, finish_reason = ?finish_reason, "generate response"),
+                    _ => tracing::info!(latency_ms, prompt_tokens = ?prompt_tokens, completion_tokens = ?completion_tokens, finish_reason = ?finish_reason, "generate response"),
+                }
             }
             Err(e) => {
-                tracing::error!(
-                    latency_ms = elapsed.as_millis() as u64,
-                    error = %e,
-                    "generate failed"
-                );
+                let latency_ms = elapsed.as_millis() as u64;
+                // Use ?e (Debug) to preserve the full error source chain.
+                match self.level {
+                    tracing::Level::TRACE => tracing::trace!(latency_ms, error = ?e, "generate failed"),
+                    tracing::Level::DEBUG => tracing::debug!(latency_ms, error = ?e, "generate failed"),
+                    tracing::Level::WARN => tracing::warn!(latency_ms, error = ?e, "generate failed"),
+                    _ => tracing::error!(latency_ms, error = ?e, "generate failed"),
+                }
             }
         }
 

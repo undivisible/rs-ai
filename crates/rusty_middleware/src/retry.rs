@@ -92,6 +92,9 @@ impl Middleware for RetryMiddleware {
             }
         }
 
-        Err(last_error.expect("at least one attempt must have been made"))
+        Err(last_error.unwrap_or_else(|| AiError::Transport {
+            message: "Retry loop exhausted without capturing an error (this is a bug in RetryMiddleware)".to_string(),
+            source: None,
+        }))
     }
 }
