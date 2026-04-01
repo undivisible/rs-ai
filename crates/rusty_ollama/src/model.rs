@@ -252,12 +252,15 @@ fn build_ndjson_stream(
                     let resp: OllamaChatResponse = match serde_json::from_str(&line) {
                         Ok(r) => r,
                         Err(e) => {
-                            tracing::warn!(
+                            tracing::error!(
                                 line = %line,
                                 error = %e,
-                                "Failed to parse Ollama stream chunk"
+                                "Failed to parse Ollama stream chunk; terminating stream"
                             );
-                            continue;
+                            events.push(Err(AiError::StreamError {
+                                message: format!("Unparseable NDJSON chunk from Ollama: {e}"),
+                            }));
+                            return std::future::ready(Some(events));
                         }
                     };
 

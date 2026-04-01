@@ -29,10 +29,11 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                         buffer.push_str(&text);
                     }
                     Some(Err(e)) => {
+                        let msg = e.to_string();
                         return Some((
                             Err(AiError::Transport {
-                                message: e.to_string(),
-                                source: None,
+                                message: msg,
+                                source: Some(Box::new(e)),
                             }),
                             (byte_stream, buffer),
                         ));
@@ -78,12 +79,17 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                                 continue;
                             }
                             Err(e) => {
-                                tracing::warn!(
+                                tracing::error!(
                                     data = %json_str,
                                     error = %e,
-                                    "Failed to parse Gemini SSE event"
+                                    "Failed to parse Gemini SSE event; terminating stream"
                                 );
-                                continue;
+                                return Some((
+                                    stream::iter(vec![Err(AiError::StreamError {
+                                        message: format!("Unparseable SSE event from Gemini: {e}"),
+                                    })]),
+                                    (json_stream, sent_start),
+                                ));
                             }
                         }
                     }

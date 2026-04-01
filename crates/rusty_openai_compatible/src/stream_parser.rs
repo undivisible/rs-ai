@@ -75,8 +75,14 @@ pub(crate) fn parse_sse_stream(
                     let chunk: ChatCompletionChunk = match serde_json::from_str(data) {
                         Ok(c) => c,
                         Err(e) => {
-                            tracing::warn!(data, error = %e, "failed to parse SSE chunk");
-                            continue;
+                            tracing::error!(data, error = %e, "failed to parse SSE chunk; terminating stream");
+                            state.done = true;
+                            return Some((
+                                vec![Err(AiError::StreamError {
+                                    message: format!("Unparseable SSE chunk: {e}"),
+                                })],
+                                state,
+                            ));
                         }
                     };
 
@@ -123,11 +129,17 @@ pub(crate) fn parse_sse_stream(
                                         if let Some((old_id, _old_name, old_args)) =
                                             state.pending_tools.remove(&idx)
                                         {
-                                            let args = parse_tool_args(&old_args);
-                                            events.push(Ok(StreamEvent::ToolCallEnd {
-                                                call_id: old_id,
-                                                arguments: args,
-                                            }));
+                                            match serde_json::from_str(&old_args) {
+                                                Ok(arguments) => events.push(Ok(StreamEvent::ToolCallEnd {
+                                                    call_id: old_id,
+                                                    arguments,
+                                                })),
+                                                Err(e) => events.push(Err(AiError::StreamError {
+                                                    message: format!(
+                                                        "Malformed tool call arguments (JSON parse error: {e})"
+                                                    ),
+                                                })),
+                                            }
                                         }
 
                                         state.pending_tools.insert(
@@ -143,16 +155,14 @@ pub(crate) fn parse_sse_stream(
                                             call_id: tc.id.clone(),
                                             tool_name: tc.function.name.clone(),
                                         }));
-                                    } else if let Some((_id, _name, ref mut args)) =
+                                    } else if let Some((ref id, _name, ref mut args)) =
                                         state.pending_tools.get_mut(&idx)
                                     {
                                         // Continuation of an existing tool call.
                                         let arg_delta = &tc.function.arguments;
                                         if !arg_delta.is_empty() {
                                             args.push_str(arg_delta);
-                                            // Extract the call_id for the delta event.
-                                            let call_id =
-                                                state.pending_tools.get(&idx).unwrap().0.clone();
+                                            let call_id = id.clone();
                                             events.push(Ok(StreamEvent::ToolCallDelta {
                                                 call_id,
                                                 delta: arg_delta.clone(),
@@ -214,7 +224,7 @@ pub(crate) fn parse_sse_stream(
     .flat_map(stream::iter)
 }
 
-/// Flush all pending tool calls into `ToolCallEnd` events.
+/// Flush all pending tool calls into `ToolCallEnd` (or `StreamError`) events.
 fn flush_pending_tools(
     pending: &mut HashMap<u32, (String, String, String)>,
 ) -> Vec<Result<StreamEvent, AiError>> {
@@ -223,16 +233,18 @@ fn flush_pending_tools(
     indices.sort();
     for idx in indices {
         if let Some((id, _name, args)) = pending.remove(&idx) {
-            let arguments = parse_tool_args(&args);
-            events.push(Ok(StreamEvent::ToolCallEnd {
-                call_id: id,
-                arguments,
-            }));
+            match serde_json::from_str(&args) {
+                Ok(arguments) => events.push(Ok(StreamEvent::ToolCallEnd {
+                    call_id: id,
+                    arguments,
+                })),
+                Err(e) => events.push(Err(AiError::StreamError {
+                    message: format!(
+                        "Malformed tool call arguments for call `{id}` (JSON parse error: {e})"
+                    ),
+                })),
+            }
         }
     }
     events
-}
-
-fn parse_tool_args(raw: &str) -> serde_json::Value {
-    serde_json::from_str(raw).unwrap_or_else(|_| serde_json::Value::Object(Default::default()))
 }

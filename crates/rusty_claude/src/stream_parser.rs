@@ -64,10 +64,11 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                         buffer.push_str(&text);
                     }
                     Some(Err(e)) => {
+                        let msg = e.to_string();
                         return Some((
                             vec![Err(AiError::Transport {
-                                message: e.to_string(),
-                                source: None,
+                                message: msg,
+                                source: Some(Box::new(e)),
                             })],
                             (byte_stream, buffer),
                         ));
@@ -147,8 +148,10 @@ fn parse_sse_event(raw: &str) -> Vec<Result<AnthropicEvent, AiError>> {
     match serde_json::from_str::<AnthropicEvent>(&data) {
         Ok(event) => vec![Ok(event)],
         Err(e) => {
-            tracing::warn!(data = %data, error = %e, "Failed to parse Anthropic SSE event");
-            Vec::new()
+            tracing::error!(data = %data, error = %e, "Failed to parse Anthropic SSE event; terminating stream");
+            vec![Err(AiError::StreamError {
+                message: format!("Unparseable SSE event from Anthropic: {e}"),
+            })]
         }
     }
 }
@@ -227,12 +230,26 @@ fn map_event(event: AnthropicEvent, state: &mut StreamState) -> Vec<RustyStreamE
 
         AnthropicEvent::ContentBlockStop { index } => {
             if let Some(tc) = state.active_tool_calls.remove(&index) {
-                let arguments = serde_json::from_str(&tc.json_buf)
-                    .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
-                vec![RustyStreamEvent::ToolCallEnd {
-                    call_id: tc.id,
-                    arguments,
-                }]
+                match serde_json::from_str(&tc.json_buf) {
+                    Ok(arguments) => vec![RustyStreamEvent::ToolCallEnd {
+                        call_id: tc.id,
+                        arguments,
+                    }],
+                    Err(e) => {
+                        tracing::error!(
+                            call_id = %tc.id,
+                            tool_name = %tc.name,
+                            error = %e,
+                            "Malformed tool call JSON buffer; cannot reconstruct arguments"
+                        );
+                        vec![RustyStreamEvent::Error {
+                            error: format!(
+                                "Malformed tool call arguments for `{}`: {e}",
+                                tc.name
+                            ),
+                        }]
+                    }
+                }
             } else {
                 Vec::new()
             }
