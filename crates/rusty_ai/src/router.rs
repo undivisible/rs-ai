@@ -204,8 +204,16 @@ mod tests {
     }
 
     impl TrackingModel {
-        fn new(id: &'static str, capabilities: CapabilitySet, log: Arc<Mutex<Vec<String>>>) -> Self {
-            Self { id, capabilities, called: log }
+        fn new(
+            id: &'static str,
+            capabilities: CapabilitySet,
+            log: Arc<Mutex<Vec<String>>>,
+        ) -> Self {
+            Self {
+                id,
+                capabilities,
+                called: log,
+            }
         }
     }
 
@@ -223,7 +231,11 @@ mod tests {
             &self.capabilities
         }
 
-        async fn generate(&self, _prompt: Prompt, _options: GenerateOptions) -> AiResult<GenerateResult> {
+        async fn generate(
+            &self,
+            _prompt: Prompt,
+            _options: GenerateOptions,
+        ) -> AiResult<GenerateResult> {
             self.called.lock().unwrap().push(self.id.to_string());
             Ok(GenerateResult {
                 text: Some(self.id.to_string()),
@@ -260,9 +272,16 @@ mod tests {
         let cloud = TrackingModel::new("cloud", full_caps(), log.clone());
 
         let router = Router::local_first(Box::new(local), Box::new(cloud));
-        let result = router.generate(Prompt::from("hello"), GenerateOptions::default()).await.unwrap();
+        let result = router
+            .generate(Prompt::from("hello"), GenerateOptions::default())
+            .await
+            .unwrap();
 
-        assert_eq!(result.text.as_deref(), Some("local"), "plain text should route to local");
+        assert_eq!(
+            result.text.as_deref(),
+            Some("local"),
+            "plain text should route to local"
+        );
         assert_eq!(*log.lock().unwrap(), vec!["local"]);
     }
 
@@ -278,9 +297,16 @@ mod tests {
             description: "web search".into(),
             parameters: serde_json::json!({}),
         }]);
-        let result = router.generate(Prompt::from("search for rust"), options).await.unwrap();
+        let result = router
+            .generate(Prompt::from("search for rust"), options)
+            .await
+            .unwrap();
 
-        assert_eq!(result.text.as_deref(), Some("cloud"), "tool call should route to cloud when local lacks ToolCalling");
+        assert_eq!(
+            result.text.as_deref(),
+            Some("cloud"),
+            "tool call should route to cloud when local lacks ToolCalling"
+        );
         assert_eq!(*log.lock().unwrap(), vec!["cloud"]);
     }
 
@@ -296,9 +322,16 @@ mod tests {
             description: "web search".into(),
             parameters: serde_json::json!({}),
         }]);
-        let result = router.generate(Prompt::from("use tool"), options).await.unwrap();
+        let result = router
+            .generate(Prompt::from("use tool"), options)
+            .await
+            .unwrap();
 
-        assert_eq!(result.text.as_deref(), Some("local"), "should prefer local when it supports the required capabilities");
+        assert_eq!(
+            result.text.as_deref(),
+            Some("local"),
+            "should prefer local when it supports the required capabilities"
+        );
         assert_eq!(*log.lock().unwrap(), vec!["local"]);
     }
 
@@ -309,11 +342,19 @@ mod tests {
         let cloud = TrackingModel::new("cloud", full_caps(), log.clone());
 
         let router = Router::local_first(Box::new(local), Box::new(cloud));
-        let options = GenerateOptions::default()
-            .with_output_schema(OutputSchema::from_value(serde_json::json!({"type": "object"})));
-        let result = router.generate(Prompt::from("give me json"), options).await.unwrap();
+        let options = GenerateOptions::default().with_output_schema(OutputSchema::from_value(
+            serde_json::json!({"type": "object"}),
+        ));
+        let result = router
+            .generate(Prompt::from("give me json"), options)
+            .await
+            .unwrap();
 
-        assert_eq!(result.text.as_deref(), Some("cloud"), "structured output should route to cloud when local lacks StructuredOutput");
+        assert_eq!(
+            result.text.as_deref(),
+            Some("cloud"),
+            "structured output should route to cloud when local lacks StructuredOutput"
+        );
         assert_eq!(*log.lock().unwrap(), vec!["cloud"]);
     }
 }

@@ -50,7 +50,10 @@ impl CacheMiddleware {
         options.top_p.map(f64::to_bits).hash(&mut hasher);
         options.top_k.hash(&mut hasher);
         options.stop_sequences.hash(&mut hasher);
-        options.frequency_penalty.map(f64::to_bits).hash(&mut hasher);
+        options
+            .frequency_penalty
+            .map(f64::to_bits)
+            .hash(&mut hasher);
         options.presence_penalty.map(f64::to_bits).hash(&mut hasher);
         options.seed.hash(&mut hasher);
 
@@ -123,8 +126,8 @@ impl Middleware for CacheMiddleware {
 mod tests {
     use std::time::Duration;
 
-    use rusty_ai::{GenerateOptions, Prompt};
     use rusty_ai::tool::ToolDefinition;
+    use rusty_ai::{GenerateOptions, Prompt};
     use rusty_testing::{MockLanguageModel, MockResponse};
 
     use crate::chain::MiddlewareChain;
@@ -137,11 +140,9 @@ mod tests {
 
     #[tokio::test]
     async fn same_prompt_and_options_hits_cache() {
-        let model = MockLanguageModel::new("test")
-            .with_response(text_response("response-1"));
+        let model = MockLanguageModel::new("test").with_response(text_response("response-1"));
 
-        let chain = MiddlewareChain::new(model)
-            .with(CacheMiddleware::new(Duration::from_secs(60)));
+        let chain = MiddlewareChain::new(model).with(CacheMiddleware::new(Duration::from_secs(60)));
 
         let prompt = Prompt::from("hello");
         let opts = GenerateOptions::default();
@@ -160,12 +161,23 @@ mod tests {
             .with_response(text_response("response-cold"))
             .with_response(text_response("response-hot"));
 
-        let chain = MiddlewareChain::new(model)
-            .with(CacheMiddleware::new(Duration::from_secs(60)));
+        let chain = MiddlewareChain::new(model).with(CacheMiddleware::new(Duration::from_secs(60)));
 
         let prompt = Prompt::from("same prompt");
-        let cold = chain.generate(prompt.clone(), GenerateOptions::default().with_temperature(0.0)).await.unwrap();
-        let hot = chain.generate(prompt.clone(), GenerateOptions::default().with_temperature(1.0)).await.unwrap();
+        let cold = chain
+            .generate(
+                prompt.clone(),
+                GenerateOptions::default().with_temperature(0.0),
+            )
+            .await
+            .unwrap();
+        let hot = chain
+            .generate(
+                prompt.clone(),
+                GenerateOptions::default().with_temperature(1.0),
+            )
+            .await
+            .unwrap();
 
         assert_eq!(cold.text.as_deref(), Some("response-cold"));
         assert_eq!(hot.text.as_deref(), Some("response-hot"));
@@ -177,20 +189,25 @@ mod tests {
             .with_response(text_response("no-tools"))
             .with_response(text_response("with-tools"));
 
-        let chain = MiddlewareChain::new(model)
-            .with(CacheMiddleware::new(Duration::from_secs(60)));
+        let chain = MiddlewareChain::new(model).with(CacheMiddleware::new(Duration::from_secs(60)));
 
         let prompt = Prompt::from("same prompt");
 
-        let r_plain = chain.generate(prompt.clone(), GenerateOptions::default()).await.unwrap();
-        let r_tools = chain.generate(
-            prompt.clone(),
-            GenerateOptions::default().with_tools(vec![ToolDefinition {
-                name: "search".into(),
-                description: "search the web".into(),
-                parameters: serde_json::json!({}),
-            }]),
-        ).await.unwrap();
+        let r_plain = chain
+            .generate(prompt.clone(), GenerateOptions::default())
+            .await
+            .unwrap();
+        let r_tools = chain
+            .generate(
+                prompt.clone(),
+                GenerateOptions::default().with_tools(vec![ToolDefinition {
+                    name: "search".into(),
+                    description: "search the web".into(),
+                    parameters: serde_json::json!({}),
+                }]),
+            )
+            .await
+            .unwrap();
 
         assert_eq!(r_plain.text.as_deref(), Some("no-tools"));
         assert_eq!(r_tools.text.as_deref(), Some("with-tools"));
@@ -203,8 +220,8 @@ mod tests {
             .with_response(text_response("second"));
 
         // TTL of 1ms so the entry expires immediately.
-        let chain = MiddlewareChain::new(model)
-            .with(CacheMiddleware::new(Duration::from_millis(1)));
+        let chain =
+            MiddlewareChain::new(model).with(CacheMiddleware::new(Duration::from_millis(1)));
 
         let prompt = Prompt::from("hello");
         let opts = GenerateOptions::default();
@@ -214,6 +231,10 @@ mod tests {
         let r2 = chain.generate(prompt.clone(), opts.clone()).await.unwrap();
 
         assert_eq!(r1.text.as_deref(), Some("first"));
-        assert_eq!(r2.text.as_deref(), Some("second"), "expired entry should trigger a fresh model call");
+        assert_eq!(
+            r2.text.as_deref(),
+            Some("second"),
+            "expired entry should trigger a fresh model call"
+        );
     }
 }
