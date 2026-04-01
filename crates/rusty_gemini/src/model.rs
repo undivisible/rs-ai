@@ -114,10 +114,17 @@ impl LanguageModel for GeminiModel {
 
         let status = response.status();
         if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
+            let status_code = status.as_u16();
+            let body = match response.text().await {
+                Ok(body) => body,
+                Err(e) => {
+                    tracing::warn!(status = status_code, error = %e, "Failed to read Gemini error response body");
+                    format!("<failed to read response body: {e}>")
+                }
+            };
             return Err(AiError::ProviderError {
                 provider: "gemini".to_string(),
-                status: Some(status.as_u16()),
+                status: Some(status_code),
                 message: body,
             });
         }
@@ -147,10 +154,17 @@ impl LanguageModel for GeminiModel {
 
         let status = response.status();
         if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
+            let status_code = status.as_u16();
+            let body = match response.text().await {
+                Ok(body) => body,
+                Err(e) => {
+                    tracing::warn!(status = status_code, error = %e, "Failed to read Gemini error response body");
+                    format!("<failed to read response body: {e}>")
+                }
+            };
             return Err(AiError::ProviderError {
                 provider: "gemini".to_string(),
-                status: Some(status.as_u16()),
+                status: Some(status_code),
                 message: body,
             });
         }

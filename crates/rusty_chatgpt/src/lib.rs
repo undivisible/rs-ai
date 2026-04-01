@@ -261,11 +261,19 @@ impl ChatGptProvider {
                 source: Some(Box::new(e)),
             })?;
 
-        if !resp.status().is_success() {
-            let body = resp.text().await.unwrap_or_default();
+        let status = resp.status();
+        if !status.is_success() {
+            let status_code = status.as_u16();
+            let body = match resp.text().await {
+                Ok(body) => body,
+                Err(e) => {
+                    tracing::warn!(status = status_code, error = %e, "Failed to read ChatGPT error response body");
+                    format!("<failed to read response body: {e}>")
+                }
+            };
             return Err(rusty_ai::AiError::ProviderError {
                 provider: "chatgpt".into(),
-                status: None,
+                status: Some(status_code),
                 message: body,
             });
         }

@@ -84,7 +84,13 @@ impl ClaudeModel {
         let status = response.status();
         if !status.is_success() {
             let status_code = status.as_u16();
-            let body_text = response.text().await.unwrap_or_default();
+            let body_text = match response.text().await {
+                Ok(body) => body,
+                Err(e) => {
+                    tracing::warn!(status = status_code, error = %e, "Failed to read Anthropic error response body");
+                    format!("<failed to read response body: {e}>")
+                }
+            };
 
             // Try to parse structured error from Anthropic.
             let message = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&body_text)

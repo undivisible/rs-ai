@@ -93,7 +93,13 @@ impl OpenAiCompatibleModel {
         let status = response.status();
         if !status.is_success() {
             let status_code = status.as_u16();
-            let body = response.text().await.unwrap_or_default();
+            let body = match response.text().await {
+                Ok(body) => body,
+                Err(e) => {
+                    tracing::warn!(status = status_code, error = %e, "Failed to read error response body");
+                    format!("<failed to read response body: {e}>")
+                }
+            };
 
             // Attempt to parse structured error.
             if let Ok(api_err) = serde_json::from_str::<ApiErrorResponse>(&body) {

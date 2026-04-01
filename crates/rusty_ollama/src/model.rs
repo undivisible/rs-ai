@@ -106,10 +106,17 @@ impl OllamaModel {
 
         let status = resp.status();
         if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
+            let status_code = status.as_u16();
+            let body = match resp.text().await {
+                Ok(body) => body,
+                Err(e) => {
+                    tracing::warn!(status = status_code, error = %e, "Failed to read Ollama error response body");
+                    format!("<failed to read response body: {e}>")
+                }
+            };
             return Err(AiError::ProviderError {
                 provider: "ollama".to_string(),
-                status: Some(status.as_u16()),
+                status: Some(status_code),
                 message: body,
             });
         }
@@ -194,10 +201,17 @@ impl LanguageModel for OllamaModel {
 
         let status = resp.status();
         if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
+            let status_code = status.as_u16();
+            let body = match resp.text().await {
+                Ok(body) => body,
+                Err(e) => {
+                    tracing::warn!(status = status_code, error = %e, "Failed to read Ollama error response body");
+                    format!("<failed to read response body: {e}>")
+                }
+            };
             return Err(AiError::ProviderError {
                 provider: "ollama".to_string(),
-                status: Some(status.as_u16()),
+                status: Some(status_code),
                 message: body,
             });
         }
@@ -375,10 +389,17 @@ impl EmbeddingModel for OllamaModel {
 
         let status = resp.status();
         if !status.is_success() {
-            let body = resp.text().await.unwrap_or_default();
+            let status_code = status.as_u16();
+            let body = match resp.text().await {
+                Ok(body) => body,
+                Err(e) => {
+                    tracing::warn!(status = status_code, error = %e, "Failed to read Ollama error response body");
+                    format!("<failed to read response body: {e}>")
+                }
+            };
             return Err(AiError::ProviderError {
                 provider: "ollama".to_string(),
-                status: Some(status.as_u16()),
+                status: Some(status_code),
                 message: body,
             });
         }
