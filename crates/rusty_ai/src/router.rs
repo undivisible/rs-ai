@@ -69,17 +69,23 @@ impl Router {
 
     /// Create a router that prefers a local model and falls back to a cloud model.
     ///
-    /// The local model is used when the request does not require capabilities
-    /// that only the cloud model supports.
+    /// The local model is selected when its capabilities satisfy the request
+    /// (e.g. it supports tool calling when tools are provided). When the local
+    /// model cannot satisfy the request, the cloud model is used as a fallback.
     pub fn local_first(local: Box<dyn LanguageModel>, cloud: Box<dyn LanguageModel>) -> Self {
-        let local_caps: Vec<Capability> = local.capabilities().iter().cloned().collect();
+        let local_caps = local.capabilities().clone();
         Self::new()
             .add_route_with_priority(
                 local,
-                move |_prompt, _options| {
-                    // Prefer local: always try local first
-                    let _ = &local_caps;
-                    true
+                move |_prompt, options| {
+                    let mut needed = Vec::new();
+                    if options.tools.is_some() {
+                        needed.push(Capability::ToolCalling);
+                    }
+                    if options.output_schema.is_some() {
+                        needed.push(Capability::StructuredOutput);
+                    }
+                    local_caps.supports_all(&needed)
                 },
                 10,
             )
@@ -174,5 +180,140 @@ impl LanguageModel for Router {
     async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
         let model = self.select_model(&prompt, &options)?;
         model.stream(prompt, options).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use async_trait::async_trait;
+
+    use super::*;
+    use crate::schema::OutputSchema;
+    use crate::structured::GenerateResult;
+    use crate::tool::ToolDefinition;
+    use crate::types::{FinishReason, ResponseMetadata};
+    use crate::usage::Usage;
+
+    // Minimal inline mock that records which model was called.
+    struct TrackingModel {
+        id: &'static str,
+        capabilities: CapabilitySet,
+        called: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl TrackingModel {
+        fn new(id: &'static str, capabilities: CapabilitySet, log: Arc<Mutex<Vec<String>>>) -> Self {
+            Self { id, capabilities, called: log }
+        }
+    }
+
+    #[async_trait]
+    impl LanguageModel for TrackingModel {
+        fn model_id(&self) -> &str {
+            self.id
+        }
+
+        fn provider_id(&self) -> &str {
+            "mock"
+        }
+
+        fn capabilities(&self) -> &CapabilitySet {
+            &self.capabilities
+        }
+
+        async fn generate(&self, _prompt: Prompt, _options: GenerateOptions) -> AiResult<GenerateResult> {
+            self.called.lock().unwrap().push(self.id.to_string());
+            Ok(GenerateResult {
+                text: Some(self.id.to_string()),
+                tool_calls: Vec::new(),
+                finish_reason: FinishReason::Stop,
+                usage: Usage::default(),
+                metadata: ResponseMetadata::default(),
+            })
+        }
+
+        async fn stream(&self, _prompt: Prompt, _options: GenerateOptions) -> AiResult<AiStream> {
+            unimplemented!()
+        }
+    }
+
+    fn local_caps_only() -> CapabilitySet {
+        CapabilitySet::new()
+            .with(Capability::TextInput)
+            .with(Capability::TextOutput)
+    }
+
+    fn full_caps() -> CapabilitySet {
+        CapabilitySet::new()
+            .with(Capability::TextInput)
+            .with(Capability::TextOutput)
+            .with(Capability::ToolCalling)
+            .with(Capability::StructuredOutput)
+    }
+
+    #[tokio::test]
+    async fn local_first_selects_local_for_plain_text() {
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let local = TrackingModel::new("local", local_caps_only(), log.clone());
+        let cloud = TrackingModel::new("cloud", full_caps(), log.clone());
+
+        let router = Router::local_first(Box::new(local), Box::new(cloud));
+        let result = router.generate(Prompt::from("hello"), GenerateOptions::default()).await.unwrap();
+
+        assert_eq!(result.text.as_deref(), Some("local"), "plain text should route to local");
+        assert_eq!(*log.lock().unwrap(), vec!["local"]);
+    }
+
+    #[tokio::test]
+    async fn local_first_falls_back_to_cloud_when_tools_needed_and_local_lacks_tool_calling() {
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let local = TrackingModel::new("local", local_caps_only(), log.clone());
+        let cloud = TrackingModel::new("cloud", full_caps(), log.clone());
+
+        let router = Router::local_first(Box::new(local), Box::new(cloud));
+        let options = GenerateOptions::default().with_tools(vec![ToolDefinition {
+            name: "search".into(),
+            description: "web search".into(),
+            parameters: serde_json::json!({}),
+        }]);
+        let result = router.generate(Prompt::from("search for rust"), options).await.unwrap();
+
+        assert_eq!(result.text.as_deref(), Some("cloud"), "tool call should route to cloud when local lacks ToolCalling");
+        assert_eq!(*log.lock().unwrap(), vec!["cloud"]);
+    }
+
+    #[tokio::test]
+    async fn local_first_selects_local_when_local_supports_tools() {
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let local = TrackingModel::new("local", full_caps(), log.clone());
+        let cloud = TrackingModel::new("cloud", full_caps(), log.clone());
+
+        let router = Router::local_first(Box::new(local), Box::new(cloud));
+        let options = GenerateOptions::default().with_tools(vec![ToolDefinition {
+            name: "search".into(),
+            description: "web search".into(),
+            parameters: serde_json::json!({}),
+        }]);
+        let result = router.generate(Prompt::from("use tool"), options).await.unwrap();
+
+        assert_eq!(result.text.as_deref(), Some("local"), "should prefer local when it supports the required capabilities");
+        assert_eq!(*log.lock().unwrap(), vec!["local"]);
+    }
+
+    #[tokio::test]
+    async fn local_first_falls_back_when_structured_output_needed_and_local_lacks_it() {
+        let log = Arc::new(Mutex::new(Vec::new()));
+        let local = TrackingModel::new("local", local_caps_only(), log.clone());
+        let cloud = TrackingModel::new("cloud", full_caps(), log.clone());
+
+        let router = Router::local_first(Box::new(local), Box::new(cloud));
+        let options = GenerateOptions::default()
+            .with_output_schema(OutputSchema::from_value(serde_json::json!({"type": "object"})));
+        let result = router.generate(Prompt::from("give me json"), options).await.unwrap();
+
+        assert_eq!(result.text.as_deref(), Some("cloud"), "structured output should route to cloud when local lacks StructuredOutput");
+        assert_eq!(*log.lock().unwrap(), vec!["cloud"]);
     }
 }
