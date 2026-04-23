@@ -11,7 +11,6 @@ pub mod prompt;
 pub mod provider;
 pub mod router;
 pub mod schema;
-pub mod simple;
 pub mod stream;
 pub mod structured;
 pub mod tool;
@@ -39,7 +38,6 @@ pub use structured::{
 pub use tool::{ToolCallRequest, ToolCallResult, ToolChoice, ToolDefinition, ToolSet};
 pub use types::{FinishReason, ModelInfo, ModelRegistry, RequestMetadata, ResponseMetadata};
 pub use usage::Usage;
-pub use simple::{rai_chatgpt, rai_claude, rai_compatible, rai_gemini, SimpleModel};
 
 /// Generate text from a language model with default options.
 ///

@@ -1,0 +1,16 @@
+[package]
+name = "rai_simple"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Simplified, convenient API for common RAI use cases"
+
+[dependencies]
+rai_ai = { workspace = true }
+rai_claude = { workspace = true }
+rai_chatgpt = { workspace = true }
+rai_gemini = { workspace = true }
+rai_openai_compatible = { workspace = true }
+
+# Re-export for convenience
+tokio = { workspace = true }
