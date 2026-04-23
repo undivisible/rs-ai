@@ -5,12 +5,12 @@
 use rai_gemini::{
     live_api::{LiveEvent, LiveVoice, SpeechConfig, VoiceConfig, PrebuiltVoiceConfig,
                LiveGenerationConfig, BidiSetup},
-    GeminiProvider, GEMINI_FLASH_LIVE_LATEST,
+    GEMINI_FLASH_LIVE_LATEST,
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let provider = GeminiProvider::new(std::env::var("GOOGLE_API_KEY")?);
+    let api_key = std::env::var("GOOGLE_API_KEY")?;
 
     println!("🎙️  Connecting to Gemini Live API ({GEMINI_FLASH_LIVE_LATEST})…");
 
@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Connect and wait for setup confirmation.
     let mut session = rai_gemini::live_api::LiveSession::connect(
-        &std::env::var("GOOGLE_API_KEY")?,
+        &api_key,
         GEMINI_FLASH_LIVE_LATEST,
         setup,
     )

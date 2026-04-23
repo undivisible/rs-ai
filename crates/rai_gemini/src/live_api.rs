@@ -329,7 +329,7 @@ pub struct LiveSession {
 }
 
 impl LiveSession {
-    pub async fn connect(api_key: &str, model: &str, config: BidiSetup) -> LiveResult<Self> {
+    pub async fn connect(api_key: &str, _model: &str, config: BidiSetup) -> LiveResult<Self> {
         let url_str = format!("{LIVE_URL}?key={api_key}");
         let request = url_str.as_str().into_client_request().map_err(|e| {
             LiveError::WebSocket(e)

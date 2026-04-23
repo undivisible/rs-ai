@@ -16,7 +16,6 @@ use tokio_tungstenite::{
     connect_async_tls_with_config,
     tungstenite::{client::IntoClientRequest, http::HeaderValue, Message},
 };
-use url::Url;
 
 const REALTIME_URL: &str = "wss://api.openai.com/v1/realtime";
 const BETA_HEADER: &str = "realtime=v1";
