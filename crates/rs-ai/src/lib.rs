@@ -42,6 +42,9 @@ pub struct ClientBuilder {
     model_id: Option<String>,
     /// Accumulated image URLs or paths added via [`ClientBuilder::with_image`].
     images: Vec<String>,
+    /// Cloudflare AI Gateway path — either `account_id/gateway_id` or a full
+    /// `https://gateway.ai.cloudflare.com/v1/...` URL prefix.
+    cf_gateway: Option<String>,
 }
 
 enum ProviderType {
@@ -104,6 +107,34 @@ impl ClientBuilder {
     /// ```
     pub fn with_image(mut self, url_or_path: impl Into<String>) -> Self {
         self.images.push(url_or_path.into());
+        self
+    }
+
+    /// Route all requests through a Cloudflare AI Gateway.
+    ///
+    /// Pass either `"account_id/gateway_id"` or a full gateway URL prefix.
+    /// The correct provider-specific path is appended automatically.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// // Using account_id/gateway_id shorthand
+    /// let response = rs_ai::claude()
+    ///     .api_key("sk-ant-...")
+    ///     .model("claude-sonnet-4-6")
+    ///     .cf_ai_gateway("fc62a6e6528bec6d3d81c3bf8967ceeb/my-gateway")
+    ///     .generate("Hello!")
+    ///     .await?;
+    ///
+    /// // Same with a full URL prefix
+    /// let response = rs_ai::gemini()
+    ///     .api_key("AIzaSy...")
+    ///     .model("gemini-2.5-flash")
+    ///     .cf_ai_gateway("https://gateway.ai.cloudflare.com/v1/abc123/prod")
+    ///     .generate("Hello!")
+    ///     .await?;
+    /// ```
+    pub fn cf_ai_gateway(mut self, gateway: impl Into<String>) -> Self {
+        self.cf_gateway = Some(gateway.into());
         self
     }
 
@@ -321,22 +352,59 @@ impl ClientBuilder {
             message: "API key not set. Use .api_key() to specify credentials.".to_string(),
         })?;
 
+        // Compute the CF AI Gateway base URL if configured.
+        // Accepts either "account_id/gateway_id" or a full URL prefix.
+        let cf_base = self.cf_gateway.as_deref().map(|gw| {
+            if gw.starts_with("https://") || gw.starts_with("http://") {
+                gw.trim_end_matches('/').to_string()
+            } else {
+                format!(
+                    "https://gateway.ai.cloudflare.com/v1/{}",
+                    gw.trim_end_matches('/')
+                )
+            }
+        });
+
         let model: Box<dyn LanguageModel> = match self.provider_type {
             ProviderType::Claude => {
-                let provider = ClaudeProvider::new(api_key);
+                let mut provider = ClaudeProvider::new(api_key);
+                if let Some(gw) = &cf_base {
+                    provider = provider.with_base_url(format!("{}/anthropic", gw));
+                }
                 Box::new(provider.model(&model_id))
             }
             ProviderType::ChatGpt => {
-                let provider = ChatGptProvider::new(api_key);
-                Box::new(provider.model(&model_id))
+                if let Some(gw) = &cf_base {
+                    let config = OpenAiCompatibleConfig::new(format!("{}/openai", gw), api_key);
+                    let provider = OpenAiCompatibleProvider::new(config, "chatgpt", "ChatGPT");
+                    provider.language_model(&model_id)
+                } else {
+                    let provider = ChatGptProvider::new(api_key);
+                    Box::new(provider.model(&model_id))
+                }
             }
             ProviderType::Gemini => {
                 let provider = GeminiProvider::new(api_key);
-                Box::new(provider.model(&model_id))
+                if let Some(gw) = &cf_base {
+                    Box::new(
+                        provider.model_with_base_url(
+                            &model_id,
+                            format!("{}/google-ai-studio/v1/models", gw),
+                        ),
+                    )
+                } else {
+                    Box::new(provider.model(&model_id))
+                }
             }
             ProviderType::Xai => {
-                let provider = XaiProvider::new(api_key);
-                Box::new(provider.model(&model_id))
+                if let Some(gw) = &cf_base {
+                    let config = OpenAiCompatibleConfig::new(format!("{}/grok", gw), api_key);
+                    let provider = OpenAiCompatibleProvider::new(config, "xai", "xAI Grok");
+                    provider.language_model(&model_id)
+                } else {
+                    let provider = XaiProvider::new(api_key);
+                    Box::new(provider.model(&model_id))
+                }
             }
             ProviderType::Cloudflare { account_id } => {
                 let provider = CloudflareProvider::new(account_id, api_key);
@@ -547,6 +615,7 @@ pub fn claude() -> ClientBuilder {
         api_key: None,
         model_id: None,
         images: Vec::new(),
+        cf_gateway: None,
     }
 }
 
@@ -566,6 +635,7 @@ pub fn chatgpt() -> ClientBuilder {
         api_key: None,
         model_id: None,
         images: Vec::new(),
+        cf_gateway: None,
     }
 }
 
@@ -585,6 +655,7 @@ pub fn gemini() -> ClientBuilder {
         api_key: None,
         model_id: None,
         images: Vec::new(),
+        cf_gateway: None,
     }
 }
 
@@ -604,6 +675,7 @@ pub fn xai() -> ClientBuilder {
         api_key: None,
         model_id: None,
         images: Vec::new(),
+        cf_gateway: None,
     }
 }
 
@@ -628,6 +700,7 @@ pub fn cloudflare(account_id: impl Into<String>) -> ClientBuilder {
         api_key: None,
         model_id: None,
         images: Vec::new(),
+        cf_gateway: None,
     }
 }
 
@@ -649,5 +722,6 @@ pub fn compatible(base_url: impl Into<String>) -> ClientBuilder {
         api_key: None,
         model_id: None,
         images: Vec::new(),
+        cf_gateway: None,
     }
 }

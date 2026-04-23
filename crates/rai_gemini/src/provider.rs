@@ -63,6 +63,12 @@ impl GeminiProvider {
         GeminiModel::new(self.api_key.expose_secret(), model_id)
     }
 
+    /// Get a Gemini model with a custom base URL (e.g. for Cloudflare AI Gateway).
+    pub fn model_with_base_url(&self, model_id: &str, base_url: impl Into<String>) -> GeminiModel {
+        use secrecy::ExposeSecret;
+        GeminiModel::new(self.api_key.expose_secret(), model_id).with_base_url(base_url)
+    }
+
     /// Open a Gemini Live API session for bidirectional voice/video streaming.
     ///
     /// # Example

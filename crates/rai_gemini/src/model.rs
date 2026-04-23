@@ -10,7 +10,7 @@ use crate::api_types::GenerateContentRequest;
 use crate::convert::{build_request, response_to_result, GeminiRequestParts};
 use crate::stream_parser;
 
-const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
+const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
 
 /// A Google Gemini language model.
 pub struct GeminiModel {
@@ -18,6 +18,7 @@ pub struct GeminiModel {
     model_id: String,
     capabilities: CapabilitySet,
     client: reqwest::Client,
+    base_url: String,
 }
 
 impl GeminiModel {
@@ -39,13 +40,20 @@ impl GeminiModel {
             model_id: model_id.to_string(),
             capabilities,
             client: reqwest::Client::new(),
+            base_url: DEFAULT_BASE_URL.to_string(),
         }
+    }
+
+    /// Override the base URL (e.g. for Cloudflare AI Gateway).
+    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = base_url.into();
+        self
     }
 
     fn generate_url(&self) -> String {
         format!(
             "{}/{}:generateContent?key={}",
-            BASE_URL,
+            self.base_url,
             self.model_id,
             self.api_key.expose_secret()
         )
@@ -54,7 +62,7 @@ impl GeminiModel {
     fn stream_url(&self) -> String {
         format!(
             "{}/{}:streamGenerateContent?key={}&alt=sse",
-            BASE_URL,
+            self.base_url,
             self.model_id,
             self.api_key.expose_secret()
         )
