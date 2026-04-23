@@ -5,8 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-rusty_ai = { workspace = true }
-rusty_chatgpt = { workspace = true }
+rai_ai = { workspace = true }
+rai_chatgpt = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 schemars = { workspace = true }

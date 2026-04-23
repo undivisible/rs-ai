@@ -5,6 +5,6 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-rusty_ai = { workspace = true }
-rusty_testing = { workspace = true }
+rai_ai = { workspace = true }
+rai_testing = { workspace = true }
 tokio = { workspace = true }

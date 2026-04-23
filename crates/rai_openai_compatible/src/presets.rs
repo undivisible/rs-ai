@@ -87,12 +87,13 @@ pub mod azure {
 
     /// Create configuration for Azure OpenAI
     pub fn config(resource_name: &str, api_key: impl Into<String>) -> OpenAiCompatibleConfig {
+        let api_key_str = api_key.into();
         let base_url = format!(
             "https://{}.openai.azure.com/openai/deployments",
             resource_name
         );
-        OpenAiCompatibleConfig::new(base_url, api_key)
-            .with_header("api-key", api_key.into())
+        OpenAiCompatibleConfig::new(base_url, api_key_str.clone())
+            .with_header("api-key", api_key_str)
     }
 
     pub const GPT4_TURBO: &str = "gpt-4-turbo";

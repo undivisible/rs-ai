@@ -52,17 +52,18 @@ impl SimpleModel {
 /// let ai = rai_claude("claude-sonnet-4-6");
 /// let response = ai.generate("Hello, world!").await?;
 /// ```
-pub async fn rai_claude(model_id: &str) -> AiResult<SimpleModel> {
-    use crate::provider::Provider;
-
-    let api_key = std::env::var("ANTHROPIC_API_KEY")
-        .map_err(|_| AiError::ConfigError("ANTHROPIC_API_KEY not found".to_string()))?;
+pub async fn rai_claude(_model_id: &str) -> AiResult<SimpleModel> {
+    let _api_key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| AiError::AuthError {
+        message: "ANTHROPIC_API_KEY not found. Set the environment variable.".to_string(),
+    })?;
 
     // This will be implemented by the rai_claude provider
     // For now, return a placeholder that will be connected via the provider system
-    Err(AiError::ConfigError(
-        "Claude provider not initialized - use rai_claude crate directly".to_string(),
-    ))
+    Err(AiError::ProviderError {
+        provider: "claude".to_string(),
+        status: None,
+        message: "Claude provider integration pending - use rai_claude crate directly".to_string(),
+    })
 }
 
 /// Factory function for ChatGPT models.
@@ -72,14 +73,17 @@ pub async fn rai_claude(model_id: &str) -> AiResult<SimpleModel> {
 /// let ai = rai_chatgpt("gpt-4o");
 /// let response = ai.generate("Hello, world!").await?;
 /// ```
-pub async fn rai_chatgpt(model_id: &str) -> AiResult<SimpleModel> {
-    let api_key = std::env::var("OPENAI_API_KEY")
-        .map_err(|_| AiError::ConfigError("OPENAI_API_KEY not found".to_string()))?;
+pub async fn rai_chatgpt(_model_id: &str) -> AiResult<SimpleModel> {
+    let _api_key = std::env::var("OPENAI_API_KEY").map_err(|_| AiError::AuthError {
+        message: "OPENAI_API_KEY not found. Set the environment variable.".to_string(),
+    })?;
 
     // This will be implemented by the rai_chatgpt provider
-    Err(AiError::ConfigError(
-        "ChatGPT provider not initialized - use rai_chatgpt crate directly".to_string(),
-    ))
+    Err(AiError::ProviderError {
+        provider: "chatgpt".to_string(),
+        status: None,
+        message: "ChatGPT provider integration pending - use rai_chatgpt crate directly".to_string(),
+    })
 }
 
 /// Factory function for Gemini models.
@@ -89,14 +93,17 @@ pub async fn rai_chatgpt(model_id: &str) -> AiResult<SimpleModel> {
 /// let ai = rai_gemini("gemini-2.0-flash");
 /// let response = ai.generate("Hello, world!").await?;
 /// ```
-pub async fn rai_gemini(model_id: &str) -> AiResult<SimpleModel> {
-    let api_key = std::env::var("GOOGLE_API_KEY")
-        .map_err(|_| AiError::ConfigError("GOOGLE_API_KEY not found".to_string()))?;
+pub async fn rai_gemini(_model_id: &str) -> AiResult<SimpleModel> {
+    let _api_key = std::env::var("GOOGLE_API_KEY").map_err(|_| AiError::AuthError {
+        message: "GOOGLE_API_KEY not found. Set the environment variable.".to_string(),
+    })?;
 
     // This will be implemented by the rai_gemini provider
-    Err(AiError::ConfigError(
-        "Gemini provider not initialized - use rai_gemini crate directly".to_string(),
-    ))
+    Err(AiError::ProviderError {
+        provider: "gemini".to_string(),
+        status: None,
+        message: "Gemini provider integration pending - use rai_gemini crate directly".to_string(),
+    })
 }
 
 /// Factory function for OpenAI-compatible endpoints.
@@ -107,13 +114,15 @@ pub async fn rai_gemini(model_id: &str) -> AiResult<SimpleModel> {
 /// let response = ai.generate("Hello, world!").await?;
 /// ```
 pub async fn rai_compatible(
-    base_url: &str,
-    preset: Option<&str>,
-    model_id: &str,
-    api_key: &str,
+    _base_url: &str,
+    _preset: Option<&str>,
+    _model_id: &str,
+    _api_key: &str,
 ) -> AiResult<SimpleModel> {
     // Will be implemented by rai_openai_compatible provider
-    Err(AiError::ConfigError(
-        "OpenAI compatible provider not initialized".to_string(),
-    ))
+    Err(AiError::ProviderError {
+        provider: "openai_compatible".to_string(),
+        status: None,
+        message: "OpenAI compatible provider integration pending".to_string(),
+    })
 }
