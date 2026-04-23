@@ -5,6 +5,12 @@ edition.workspace = true
 license.workspace = true
 description = "Browser-based local AI model detection for WASM targets (Chrome/Edge built-in AI)"
 
+[features]
+default = []
+# Enable WASM bindings for Chrome Prompt API / Edge AI.
+# Requires building with: wasm-pack build --target web
+wasm = ["wasm-bindgen", "wasm-bindgen-futures", "js-sys", "web-sys"]
+
 [dependencies]
 rai_ai = { workspace = true }
 async-trait = { workspace = true }
@@ -16,10 +22,15 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
-
-# WASM dependencies would be feature-gated
-# [target.'cfg(target_arch = "wasm32")'.dependencies]
-# wasm-bindgen = "0.2"
-# wasm-bindgen-futures = "0.4"
-# web-sys = { version = "0.3", features = ["Window", "Navigator"] }
-# js-sys = "0.3"
+# WASM-only — only compiled when `wasm` feature is enabled.
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
+js-sys = { version = "0.3", optional = true }
+web-sys = { version = "0.3", optional = true, features = [
+    "Window",
+    "Navigator",
+    "console",
+    # Note: Chrome Prompt API types (LanguageModel, LanguageModelCapabilities etc.)
+    # are not yet in web-sys; they are bound manually via wasm_bindgen extern "C"
+    # blocks in wasm_bridge.rs using the raw JS global.
+] }

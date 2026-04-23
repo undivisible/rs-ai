@@ -24,6 +24,8 @@ members = [
     "examples/local_apple",
     "examples/local_windows",
     "examples/router",
+    "examples/realtime_voice",
+    "examples/gemini_live",
 ]
 
 [workspace.package]
@@ -86,7 +88,7 @@ base64 = "0.22"
 mime = "0.3"
 
 # Real-time APIs (WebSocket)
-tokio-tungstenite = "0.24"
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 
 # WASM and platform-specific dependencies should be added to individual crates
 # See CRATE_AUDIT.md for recommended dependencies by crate:

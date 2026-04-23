@@ -12,4 +12,12 @@ async-trait = { workspace = true }
 secrecy = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
 tracing = { workspace = true }
+url = { workspace = true }
+base64 = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }

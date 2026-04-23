@@ -14,6 +14,7 @@ mod bridge;
 mod capabilities;
 mod model;
 mod provider;
+pub mod wasm_bridge;
 
 pub use bridge::*;
 pub use capabilities::*;

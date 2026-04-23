@@ -13,6 +13,9 @@
 //! let model = provider.language_model("gpt-4o").unwrap();
 //! ```
 
+pub mod realtime_api;
+pub use realtime_api::RealtimeSession;
+
 use rai_ai::capability::{Capability, CapabilitySet};
 use rai_ai::error::AiResult;
 use rai_ai::model::{EmbeddingModel, LanguageModel};
@@ -242,6 +245,31 @@ impl ChatGptProvider {
 
     pub fn gpt54_nano(&self) -> OpenAiCompatibleModel {
         self.model(GPT_5_4_NANO_LATEST)
+    }
+
+    /// Open a Realtime API WebSocket session for voice/audio streaming.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let provider = rai_chatgpt::ChatGptProvider::new(std::env::var("OPENAI_API_KEY")?);
+    /// let mut session = provider.realtime_session(rai_chatgpt::GPT_4O_REALTIME).await?;
+    /// session.send_text("Say hello").await?;
+    /// while let Some(ev) = session.recv().await {
+    ///     if let Ok(rai_chatgpt::realtime_api::ServerEvent::TextDelta { delta, .. }) = ev {
+    ///         print!("{delta}");
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn realtime_session(
+        &self,
+        model: &str,
+    ) -> Result<RealtimeSession, realtime_api::RealtimeError> {
+        use secrecy::ExposeSecret;
+        RealtimeSession::connect(self.config.api_key().expose_secret(), model).await
     }
 
     /// Fetch the list of models from the OpenAI API.

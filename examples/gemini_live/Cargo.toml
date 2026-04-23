@@ -1,0 +1,9 @@
+[package]
+name = "example_gemini_live"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rai_gemini = { workspace = true }
+tokio = { workspace = true }

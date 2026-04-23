@@ -63,6 +63,48 @@ impl GeminiProvider {
         GeminiModel::new(self.api_key.expose_secret(), model_id)
     }
 
+    /// Open a Gemini Live API session for bidirectional voice/video streaming.
+    ///
+    /// # Example
+    /// ```no_run
+    /// use rai_gemini::{GeminiProvider, live_api::{LiveEvent, LiveGenerationConfig, BidiSetup}};
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let provider = GeminiProvider::new(std::env::var("GOOGLE_API_KEY")?);
+    /// let mut session = provider
+    ///     .live_session("gemini-2.5-flash-live-preview")
+    ///     .await?;
+    ///
+    /// session.send_text("Hello, can you hear me?").await?;
+    /// while let Some(ev) = session.recv().await {
+    ///     match ev? {
+    ///         LiveEvent::TextDelta(t) => print!("{t}"),
+    ///         LiveEvent::TurnComplete => break,
+    ///         _ => {}
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn live_session(
+        &self,
+        model_id: &str,
+    ) -> Result<crate::live_api::LiveSession, crate::live_api::LiveError> {
+        use crate::live_api::{BidiSetup, LiveGenerationConfig};
+        use secrecy::ExposeSecret;
+        let setup = BidiSetup {
+            model: format!("models/{model_id}"),
+            system_instruction: None,
+            generation_config: Some(LiveGenerationConfig {
+                response_modalities: Some(vec!["AUDIO".into(), "TEXT".into()]),
+                ..Default::default()
+            }),
+            tools: None,
+        };
+        crate::live_api::LiveSession::connect(self.api_key.expose_secret(), model_id, setup).await
+    }
+
     /// Fetch the list of models from the Gemini API.
     ///
     /// Calls `GET /v1beta/models?key=...` and returns model names.
