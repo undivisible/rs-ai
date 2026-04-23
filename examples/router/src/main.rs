@@ -1,5 +1,5 @@
-use rusty_ai::*;
-use rusty_testing::*;
+use rai_ai::*;
+use rai_testing::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

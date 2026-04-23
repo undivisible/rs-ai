@@ -1,6 +1,6 @@
-use rusty_ai::*;
-use rusty_chatgpt::ChatGptProvider;
-use rusty_claude::ClaudeProvider;
+use rai_ai::*;
+use rai_chatgpt::ChatGptProvider;
+use rai_claude::ClaudeProvider;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

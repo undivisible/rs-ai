@@ -1,0 +1,16 @@
+[package]
+name = "rai_ui_stream"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "UI stream protocol for frontend integration with the Rusty AI SDK"
+
+[dependencies]
+rai_ai = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+bytes = { workspace = true }
+pin-project-lite = { workspace = true }

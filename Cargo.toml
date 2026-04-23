@@ -1,19 +1,19 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/rusty_ai",
-    "crates/rusty_middleware",
-    "crates/rusty_ui_stream",
-    "crates/rusty_testing",
-    "crates/rusty_chatgpt",
-    "crates/rusty_claude",
-    "crates/rusty_gemini",
-    "crates/rusty_openai_compatible",
-    "crates/rusty_gemini_nano",
-    "crates/rusty_foundationmodels",
-    "crates/rusty_phi_silica",
-    "crates/rusty_browser",
-    "crates/rusty_ollama",
+    "crates/rai_ai",
+    "crates/rai_middleware",
+    "crates/rai_ui_stream",
+    "crates/rai_testing",
+    "crates/rai_chatgpt",
+    "crates/rai_claude",
+    "crates/rai_gemini",
+    "crates/rai_openai_compatible",
+    "crates/rai_gemini_nano",
+    "crates/rai_foundationmodels",
+    "crates/rai_phi_silica",
+    "crates/rai_browser",
+    "crates/rai_ollama",
     "examples/basic_text",
     "examples/stream_text",
     "examples/generate_object",
@@ -35,23 +35,23 @@ repository = "https://github.com/undivisible/rusty_ai"
 
 [workspace.dependencies]
 # Core
-rusty_ai = { path = "crates/rusty_ai" }
-rusty_middleware = { path = "crates/rusty_middleware" }
-rusty_ui_stream = { path = "crates/rusty_ui_stream" }
-rusty_testing = { path = "crates/rusty_testing" }
+rai_ai = { path = "crates/rai_ai" }
+rai_middleware = { path = "crates/rai_middleware" }
+rai_ui_stream = { path = "crates/rai_ui_stream" }
+rai_testing = { path = "crates/rai_testing" }
 
 # Cloud providers
-rusty_chatgpt = { path = "crates/rusty_chatgpt" }
-rusty_claude = { path = "crates/rusty_claude" }
-rusty_gemini = { path = "crates/rusty_gemini" }
-rusty_openai_compatible = { path = "crates/rusty_openai_compatible" }
+rai_chatgpt = { path = "crates/rai_chatgpt" }
+rai_claude = { path = "crates/rai_claude" }
+rai_gemini = { path = "crates/rai_gemini" }
+rai_openai_compatible = { path = "crates/rai_openai_compatible" }
 
 # Local / platform runtimes
-rusty_gemini_nano = { path = "crates/rusty_gemini_nano" }
-rusty_foundationmodels = { path = "crates/rusty_foundationmodels" }
-rusty_phi_silica = { path = "crates/rusty_phi_silica" }
-rusty_browser = { path = "crates/rusty_browser" }
-rusty_ollama = { path = "crates/rusty_ollama" }
+rai_gemini_nano = { path = "crates/rai_gemini_nano" }
+rai_foundationmodels = { path = "crates/rai_foundationmodels" }
+rai_phi_silica = { path = "crates/rai_phi_silica" }
+rai_browser = { path = "crates/rai_browser" }
+rai_ollama = { path = "crates/rai_ollama" }
 
 # Async / streaming
 tokio = { version = "1", features = ["full"] }

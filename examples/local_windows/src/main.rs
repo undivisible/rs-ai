@@ -1,22 +1,22 @@
 //! Example: Windows Phi Silica integration.
 //!
 //! This example demonstrates how the Phi Silica provider would be used once the
-//! `rusty_phi_silica` crate is fully implemented.
+//! `rai_phi_silica` crate is fully implemented.
 //!
 //! On a real Windows device the bridge would call into the Windows Copilot
 //! Runtime via the Windows App SDK. Here we show the intended usage pattern
 //! with a mock bridge that mirrors the Gemini Nano example.
 
 use async_trait::async_trait;
-use rusty_ai::capability::{Capability, CapabilitySet};
-use rusty_ai::error::{AiError, AiResult};
-use rusty_ai::model::{GenerateOptions, LanguageModel};
-use rusty_ai::prompt::Prompt;
-use rusty_ai::stream::{AiStream, SyntheticStreamer};
-use rusty_ai::structured::GenerateResult;
-use rusty_ai::types::{FinishReason, ResponseMetadata};
-use rusty_ai::usage::Usage;
-use rusty_ai::*;
+use rai_ai::capability::{Capability, CapabilitySet};
+use rai_ai::error::{AiError, AiResult};
+use rai_ai::model::{GenerateOptions, LanguageModel};
+use rai_ai::prompt::Prompt;
+use rai_ai::stream::{AiStream, SyntheticStreamer};
+use rai_ai::structured::GenerateResult;
+use rai_ai::types::{FinishReason, ResponseMetadata};
+use rai_ai::usage::Usage;
+use rai_ai::*;
 
 /// Trait representing the bridge to Phi Silica on Windows.
 #[async_trait]

@@ -1,22 +1,22 @@
 //! Example: Apple Foundation Models integration.
 //!
 //! This example demonstrates how the Apple Foundation Models provider would be
-//! used once the `rusty_foundationmodels` crate is fully implemented.
+//! used once the `rai_foundationmodels` crate is fully implemented.
 //!
 //! On a real Apple device the bridge would call into the Foundation Models
 //! framework via Swift/Objective-C interop. Here we show the intended usage
 //! pattern with a mock bridge that mirrors the Gemini Nano example.
 
 use async_trait::async_trait;
-use rusty_ai::capability::{Capability, CapabilitySet};
-use rusty_ai::error::{AiError, AiResult};
-use rusty_ai::model::{GenerateOptions, LanguageModel};
-use rusty_ai::prompt::Prompt;
-use rusty_ai::stream::{AiStream, SyntheticStreamer};
-use rusty_ai::structured::GenerateResult;
-use rusty_ai::types::{FinishReason, ResponseMetadata};
-use rusty_ai::usage::Usage;
-use rusty_ai::*;
+use rai_ai::capability::{Capability, CapabilitySet};
+use rai_ai::error::{AiError, AiResult};
+use rai_ai::model::{GenerateOptions, LanguageModel};
+use rai_ai::prompt::Prompt;
+use rai_ai::stream::{AiStream, SyntheticStreamer};
+use rai_ai::structured::GenerateResult;
+use rai_ai::types::{FinishReason, ResponseMetadata};
+use rai_ai::usage::Usage;
+use rai_ai::*;
 
 /// Trait representing the bridge to Apple Foundation Models on-device runtime.
 #[async_trait]

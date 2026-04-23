@@ -1,6 +1,6 @@
-use rusty_ai::model::generate_object;
-use rusty_ai::*;
-use rusty_chatgpt::ChatGptProvider;
+use rai_ai::model::generate_object;
+use rai_ai::*;
+use rai_chatgpt::ChatGptProvider;
 use schemars::JsonSchema;
 use serde::Deserialize;
 

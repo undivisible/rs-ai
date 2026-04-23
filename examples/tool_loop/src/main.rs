@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use rusty_ai::tool::Tool;
-use rusty_ai::*;
-use rusty_chatgpt::ChatGptProvider;
+use rai_ai::tool::Tool;
+use rai_ai::*;
+use rai_chatgpt::ChatGptProvider;
 
 // Define a calculator tool
 struct CalculatorTool;
