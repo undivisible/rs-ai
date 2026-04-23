@@ -1,0 +1,14 @@
+[package]
+name = "example_agent_with_tools"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rai_claude = { workspace = true }
+rai_ai = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+futures = { workspace = true }

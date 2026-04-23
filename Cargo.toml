@@ -27,6 +27,7 @@ members = [
     "examples/router",
     "examples/realtime_voice",
     "examples/gemini_live",
+    "examples/agent_with_tools",
 ]
 
 [workspace.package]
