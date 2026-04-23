@@ -332,7 +332,7 @@ type WsStream = futures::stream::SplitStream<
 pub struct RealtimeSession {
     sink: Arc<Mutex<WsSink>>,
     stream: Arc<Mutex<WsStream>>,
-    model: String,
+    _model: String,
 }
 
 impl RealtimeSession {
@@ -354,7 +354,7 @@ impl RealtimeSession {
         Ok(Self {
             sink: Arc::new(Mutex::new(sink)),
             stream: Arc::new(Mutex::new(stream)),
-            model: model.to_string(),
+            _model: model.to_string(),
         })
     }
 

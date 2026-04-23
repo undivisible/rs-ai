@@ -9,7 +9,7 @@ members = [
     "crates/rai_claude",
     "crates/rai_gemini",
     "crates/rai_openai_compatible",
-    "crates/rai_simple",
+    "crates/rs-ai",
     "crates/rai_gemini_nano",
     "crates/rai_foundationmodels",
     "crates/rai_phi_silica",
@@ -29,6 +29,7 @@ members = [
     "examples/gemini_live",
     "examples/agent_with_tools",
     "examples/streaming_tool_use",
+    "examples/fluent_api",
 ]
 
 [workspace.package]
@@ -50,7 +51,7 @@ rai_chatgpt = { path = "crates/rai_chatgpt" }
 rai_claude = { path = "crates/rai_claude" }
 rai_gemini = { path = "crates/rai_gemini" }
 rai_openai_compatible = { path = "crates/rai_openai_compatible" }
-rai_simple = { path = "crates/rai_simple" }
+rs-ai = { path = "crates/rs-ai" }
 
 # Local / platform runtimes
 rai_gemini_nano = { path = "crates/rai_gemini_nano" }

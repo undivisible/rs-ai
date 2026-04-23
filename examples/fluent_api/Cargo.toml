@@ -1,0 +1,9 @@
+[package]
+name = "fluent_api"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+rs-ai = { workspace = true }
+tokio = { workspace = true }
