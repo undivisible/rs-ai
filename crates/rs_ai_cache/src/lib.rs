@@ -22,9 +22,10 @@
 use serde::{Deserialize, Serialize};
 
 /// Cache TTL configuration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CacheTTL {
     /// 5-minute ephemeral cache (Anthropic, xAI default)
+    #[default]
     FiveMinutes,
     /// 1-hour persistent cache (Anthropic)
     OneHour,
@@ -53,12 +54,6 @@ impl CacheTTL {
             CacheTTL::OneHour => Some("persistent"),
             _ => None,
         }
-    }
-}
-
-impl Default for CacheTTL {
-    fn default() -> Self {
-        CacheTTL::FiveMinutes
     }
 }
 
