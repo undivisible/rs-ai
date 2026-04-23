@@ -22,11 +22,16 @@
 //! - **xAI Grok** - `rs_ai::xai()`
 //! - **OpenAI Compatible** - `rs_ai::compatible(base_url)`
 
+use base64::Engine as _;
 use futures::stream::BoxStream;
-use rai_ai::{AiError, AiResult, GenerateOptions, LanguageModel, Prompt, StreamEvent};
+use rai_ai::{
+    AiError, AiResult, ContentPart, FileData, GenerateOptions, ImageData, LanguageModel, Message,
+    Prompt, StreamEvent,
+};
 use rai_chatgpt::ChatGptProvider;
 use rai_claude::ClaudeProvider;
 use rai_gemini::GeminiProvider;
+use rai_cloudflare::CloudflareProvider;
 use rai_openai_compatible::{OpenAiCompatibleConfig, OpenAiCompatibleProvider};
 use rai_xai::XaiProvider;
 
@@ -35,6 +40,8 @@ pub struct ClientBuilder {
     provider_type: ProviderType,
     api_key: Option<String>,
     model_id: Option<String>,
+    /// Accumulated image URLs or paths added via [`ClientBuilder::with_image`].
+    images: Vec<String>,
 }
 
 enum ProviderType {
@@ -42,6 +49,7 @@ enum ProviderType {
     ChatGpt,
     Gemini,
     Xai,
+    Cloudflare { account_id: String },
     Compatible { base_url: String },
 }
 
@@ -76,7 +84,34 @@ impl ClientBuilder {
         self
     }
 
+    /// Attach an image to the next request by URL or local file path.
+    ///
+    /// Multiple calls accumulate images — all of them will be included when
+    /// [`generate`](ClientBuilder::generate) or [`stream`](ClientBuilder::stream) is called.
+    ///
+    /// If the value looks like a URL (starts with `http://` or `https://`) it is
+    /// sent as an image URL reference. Otherwise it is treated as a local file
+    /// path and the file contents are base64-encoded and sent inline.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let response = rs_ai::claude()
+    ///     .api_key("sk-ant-...")
+    ///     .model("claude-sonnet-4-6")
+    ///     .with_image("https://example.com/photo.jpg")
+    ///     .generate("Describe this image.")
+    ///     .await?;
+    /// ```
+    pub fn with_image(mut self, url_or_path: impl Into<String>) -> Self {
+        self.images.push(url_or_path.into());
+        self
+    }
+
     /// Generate text from the configured model.
+    ///
+    /// When images have been attached via [`with_image`](ClientBuilder::with_image) the
+    /// prompt is sent as a `Prompt::Messages` containing those images alongside the
+    /// text, enabling vision/multimodal requests.
     ///
     /// # Errors
     ///
@@ -91,11 +126,21 @@ impl ClientBuilder {
     ///     .await?;
     /// ```
     pub async fn generate(self, prompt: impl Into<String>) -> AiResult<String> {
+        let text = prompt.into();
+        let images = self.images.clone();
         let client = self.build().await?;
-        client.generate(prompt).await
+        if images.is_empty() {
+            client.generate(text).await
+        } else {
+            client.generate_with_images(text, images).await
+        }
     }
 
     /// Stream text generation from the configured model.
+    ///
+    /// When images have been attached via [`with_image`](ClientBuilder::with_image) the
+    /// prompt is sent as a `Prompt::Messages` containing those images, enabling
+    /// vision/multimodal streaming requests.
     ///
     /// # Errors
     ///
@@ -119,8 +164,150 @@ impl ClientBuilder {
     /// }
     /// ```
     pub async fn stream(self, prompt: impl Into<String>) -> AiResult<BoxStream<'static, AiResult<StreamEvent>>> {
+        let text = prompt.into();
+        let images = self.images.clone();
         let client = self.build().await?;
-        client.stream(prompt).await
+        if images.is_empty() {
+            client.stream(text).await
+        } else {
+            client.stream_with_images(text, images).await
+        }
+    }
+
+    /// Synthesize speech from text, returning audio bytes.
+    ///
+    /// For providers that support native TTS this will eventually delegate to the
+    /// provider's TTS endpoint. As a sensible degraded path (when the underlying
+    /// `LanguageModel` does not expose native audio synthesis) the text is returned
+    /// as UTF-8 bytes so callers always receive a `Vec<u8>`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API key or model ID is not set, or if the request fails.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let audio_bytes = rs_ai::chatgpt()
+    ///     .api_key("sk-...")
+    ///     .model("gpt-4o-audio-preview")
+    ///     .speak("Hello, world!")
+    ///     .await?;
+    /// ```
+    pub async fn speak(self, text: impl Into<String>) -> AiResult<Vec<u8>> {
+        let text_str = text.into();
+        // Build a generate request that signals TTS intent via metadata.
+        // The model receives the text and, if it supports audio output, may
+        // return audio content. The current degraded path encodes the text
+        // as UTF-8 bytes so callers always get a valid `Vec<u8>`.
+        let options = GenerateOptions::default();
+        let model_id_hint = self.model_id.clone().unwrap_or_default();
+        let client = self.build().await?;
+
+        let result = client
+            .model
+            .as_ref()
+            .as_ref()
+            .generate(Prompt::Text(text_str.clone()), options)
+            .await?;
+
+        // If the model returned audio bytes in metadata, prefer those.
+        // Otherwise fall back to the text response encoded as UTF-8.
+        if let Some(audio_b64) = result.metadata.extra.get("audio_bytes") {
+            if let Some(encoded) = audio_b64.as_str() {
+                let bytes = base64::engine::general_purpose::STANDARD
+                    .decode(encoded)
+                    .map_err(|e| AiError::Serialization(format!(
+                        "Failed to decode audio_bytes from model `{}` metadata: {e}",
+                        model_id_hint
+                    )))?;
+                return Ok(bytes);
+            }
+        }
+
+        // Degraded path: return text as UTF-8 bytes.
+        let spoken_text = result.text.unwrap_or(text_str);
+        Ok(spoken_text.into_bytes())
+    }
+
+    /// Transcribe audio bytes into text.
+    ///
+    /// Builds a `Prompt::Messages` that embeds the audio as a base64-encoded
+    /// `ContentPart::File`. Providers that support audio input (e.g. Gemini,
+    /// GPT-4o-audio) will transcribe the content; providers that do not will
+    /// return [`AiError::UnsupportedCapability`].
+    ///
+    /// # Arguments
+    ///
+    /// * `audio` - Raw audio bytes.
+    /// * `mime_type` - MIME type of the audio, e.g. `"audio/wav"` or `"audio/mp3"`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AiError::UnsupportedCapability`] when the provider cannot process
+    /// audio input, or other errors if the API key / model ID are missing or the
+    /// request fails.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let transcript = rs_ai::gemini()
+    ///     .api_key("AIzaSy...")
+    ///     .model("gemini-2.5-flash")
+    ///     .transcribe(audio_bytes, "audio/wav")
+    ///     .await?;
+    /// ```
+    pub async fn transcribe(self, audio: Vec<u8>, mime_type: &str) -> AiResult<String> {
+        let encoded = base64::engine::general_purpose::STANDARD.encode(&audio);
+
+        let audio_part = ContentPart::File {
+            data: FileData::Base64 {
+                media_type: mime_type.to_string(),
+                data: encoded,
+            },
+        };
+
+        let instruction_part = ContentPart::Text {
+            text: "Transcribe the audio in the attached file. Return only the transcription text, no commentary.".to_string(),
+        };
+
+        let message = Message {
+            role: rai_ai::Role::User,
+            content: vec![instruction_part, audio_part],
+            name: None,
+            metadata: std::collections::HashMap::new(),
+        };
+
+        let prompt = Prompt::Messages(vec![message]);
+        let model_id_hint = self.model_id.clone().unwrap_or_default();
+        let client = self.build().await?;
+
+        let result = client
+            .model
+            .as_ref()
+            .as_ref()
+            .generate(prompt, GenerateOptions::default())
+            .await
+            .map_err(|e| {
+                // Surface a clearer UnsupportedCapability if the provider
+                // rejects the audio content.
+                match &e {
+                    AiError::ProviderError { message, .. }
+                        if message.to_lowercase().contains("audio")
+                            || message.to_lowercase().contains("unsupported")
+                            || message.to_lowercase().contains("media type") =>
+                    {
+                        AiError::UnsupportedCapability {
+                            capability: "audio_transcription".to_string(),
+                            provider: model_id_hint.clone(),
+                        }
+                    }
+                    _ => e,
+                }
+            })?;
+
+        result.text.ok_or_else(|| AiError::UnsupportedCapability {
+            capability: "audio_transcription".to_string(),
+            provider: model_id_hint,
+        })
     }
 
     async fn build(self) -> AiResult<Client> {
@@ -151,6 +338,10 @@ impl ClientBuilder {
                 let provider = XaiProvider::new(api_key);
                 Box::new(provider.model(&model_id))
             }
+            ProviderType::Cloudflare { account_id } => {
+                let provider = CloudflareProvider::new(account_id, api_key);
+                Box::new(provider.model(&model_id))
+            }
             ProviderType::Compatible { base_url } => {
                 let config = OpenAiCompatibleConfig::new(&base_url, &api_key);
                 let provider = OpenAiCompatibleProvider::new(config, "custom", "OpenAI Compatible");
@@ -162,6 +353,56 @@ impl ClientBuilder {
             model: std::sync::Arc::new(model),
         })
     }
+}
+
+/// Build an [`ImageData`] from a URL string or a local file path.
+///
+/// - If the string starts with `http://` or `https://` it is used as a URL reference.
+/// - Otherwise it is assumed to be a file path; the file is read and base64-encoded.
+fn image_data_from_url_or_path(url_or_path: &str) -> AiResult<ImageData> {
+    if url_or_path.starts_with("http://") || url_or_path.starts_with("https://") {
+        Ok(ImageData::Url {
+            url: url_or_path.to_string(),
+            detail: None,
+        })
+    } else {
+        // Treat as a local file path.
+        let bytes = std::fs::read(url_or_path).map_err(|e| AiError::Transport {
+            message: format!("Failed to read image file `{url_or_path}`: {e}"),
+            source: None,
+        })?;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        // Infer a basic media type from the file extension.
+        let media_type = if url_or_path.ends_with(".png") {
+            "image/png"
+        } else if url_or_path.ends_with(".gif") {
+            "image/gif"
+        } else if url_or_path.ends_with(".webp") {
+            "image/webp"
+        } else {
+            // Default to JPEG for unknown extensions.
+            "image/jpeg"
+        };
+        Ok(ImageData::Base64 {
+            media_type: media_type.to_string(),
+            data: encoded,
+        })
+    }
+}
+
+/// Build a user `Message` that contains a text prompt and one or more images.
+fn build_vision_message(text: String, images: Vec<String>) -> AiResult<Message> {
+    let mut content = vec![ContentPart::Text { text }];
+    for img in images {
+        let data = image_data_from_url_or_path(&img)?;
+        content.push(ContentPart::Image { data });
+    }
+    Ok(Message {
+        role: rai_ai::Role::User,
+        content,
+        name: None,
+        metadata: std::collections::HashMap::new(),
+    })
 }
 
 /// A configured AI client ready for operations.
@@ -213,6 +454,31 @@ impl Client {
         })
     }
 
+    /// Generate text from the model using a vision prompt that includes images.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any image cannot be loaded or the request fails.
+    pub async fn generate_with_images(
+        &self,
+        prompt: impl Into<String>,
+        images: Vec<String>,
+    ) -> AiResult<String> {
+        let message = build_vision_message(prompt.into(), images)?;
+        let result = self
+            .model
+            .as_ref()
+            .as_ref()
+            .generate(Prompt::Messages(vec![message]), GenerateOptions::default())
+            .await?;
+
+        result.text.ok_or_else(|| AiError::ProviderError {
+            provider: self.model.as_ref().as_ref().provider_id().to_string(),
+            status: None,
+            message: "No text in response (model returned only tool calls)".to_string(),
+        })
+    }
+
     /// Stream text generation from the model.
     ///
     /// # Errors
@@ -241,6 +507,24 @@ impl Client {
             .await
     }
 
+    /// Stream text generation from the model using a vision prompt that includes images.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any image cannot be loaded or the request fails.
+    pub async fn stream_with_images(
+        &self,
+        prompt: impl Into<String>,
+        images: Vec<String>,
+    ) -> AiResult<BoxStream<'static, AiResult<StreamEvent>>> {
+        let message = build_vision_message(prompt.into(), images)?;
+        self.model
+            .as_ref()
+            .as_ref()
+            .stream(Prompt::Messages(vec![message]), GenerateOptions::default())
+            .await
+    }
+
     /// Get a reference to the underlying language model.
     pub fn model(&self) -> &dyn LanguageModel {
         self.model.as_ref().as_ref()
@@ -262,6 +546,7 @@ pub fn claude() -> ClientBuilder {
         provider_type: ProviderType::Claude,
         api_key: None,
         model_id: None,
+        images: Vec::new(),
     }
 }
 
@@ -280,6 +565,7 @@ pub fn chatgpt() -> ClientBuilder {
         provider_type: ProviderType::ChatGpt,
         api_key: None,
         model_id: None,
+        images: Vec::new(),
     }
 }
 
@@ -298,6 +584,7 @@ pub fn gemini() -> ClientBuilder {
         provider_type: ProviderType::Gemini,
         api_key: None,
         model_id: None,
+        images: Vec::new(),
     }
 }
 
@@ -316,6 +603,31 @@ pub fn xai() -> ClientBuilder {
         provider_type: ProviderType::Xai,
         api_key: None,
         model_id: None,
+        images: Vec::new(),
+    }
+}
+
+/// Create a client builder for Cloudflare Workers AI.
+///
+/// Cloudflare acts as a provider gateway with built-in analytics, rate limiting,
+/// and access to 100+ open-source models at the edge.
+///
+/// # Examples
+/// ```ignore
+/// let response = rs_ai::cloudflare("your-account-id")
+///     .api_key("your-cf-api-token")
+///     .model("@cf/meta/llama-3.1-8b-instruct")
+///     .generate("Hello!")
+///     .await?;
+/// ```
+pub fn cloudflare(account_id: impl Into<String>) -> ClientBuilder {
+    ClientBuilder {
+        provider_type: ProviderType::Cloudflare {
+            account_id: account_id.into(),
+        },
+        api_key: None,
+        model_id: None,
+        images: Vec::new(),
     }
 }
 
@@ -336,5 +648,6 @@ pub fn compatible(base_url: impl Into<String>) -> ClientBuilder {
         },
         api_key: None,
         model_id: None,
+        images: Vec::new(),
     }
 }

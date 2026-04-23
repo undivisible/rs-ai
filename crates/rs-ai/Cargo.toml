@@ -12,7 +12,9 @@ rai_chatgpt = { workspace = true }
 rai_gemini = { workspace = true }
 rai_openai_compatible = { workspace = true }
 rai_xai = { workspace = true }
+rai_cloudflare = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }
 serde_json = { workspace = true }
+base64 = { workspace = true }
