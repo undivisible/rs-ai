@@ -1,338 +1,317 @@
-# RAI - Rust AI SDK
+# RAI — Rust AI SDK
 
-A comprehensive Rust SDK for building AI applications with support for multiple cloud and local AI providers, with a simplified async-first API.
-
-## Overview
-
-RAI (Rust AI) is a unified framework that provides a consistent, easy-to-use interface for working with various AI providers including:
-
-- **Cloud Providers**: Claude (Anthropic), ChatGPT (OpenAI), Gemini (Google)
-- **Cloud-Compatible Routers**: OpenRouter, Amazon Bedrock, Kilo, Together AI, OctoML
-- **Local Providers**: Ollama, vLLM, LM Studio, text-generation-webui
-- **Platform Runtimes**: Gemini Nano, Phi Silica, Foundation Models, Browser Runtime
-- **Real-time Features**: Gemini Live API, OpenAI Realtime API, tool streaming
+A comprehensive Rust SDK for building AI applications with 15+ cloud and local providers, real-time voice/video streaming, and a clean async-first API.
 
 ## Quick Start
 
-### Simple API
+### Simplified API (`rai_simple`)
+
+The `rai_simple` crate provides zero-boilerplate access to any provider:
 
 ```rust
-use rai::*;
+use rai_simple::{rai_claude, rai_chatgpt, rai_gemini};
 
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Each function reads the API key from the environment variable
+    let claude = rai_claude("claude-sonnet-4-6")?;  // ANTHROPIC_API_KEY
+    let gpt    = rai_chatgpt("gpt-4o")?;             // OPENAI_API_KEY
+    let gemini = rai_gemini("gemini-2.5-flash")?;    // GOOGLE_API_KEY
+    Ok(())
+}
+```
+
+```rust
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Claude
-    let claude = rai_claude("claude-sonnet-4-6").await?;
-    let result = claude.generate("What is 2+2?").await?;
-    println!("Claude: {}", result);
-
-    // ChatGPT
-    let gpt = rai_chatgpt("gpt-4o").await?;
-    let result = gpt.generate("Hello, world!").await?;
-    println!("ChatGPT: {}", result);
-
-    // Gemini
-    let gemini = rai_gemini("gemini-2.0-flash").await?;
-    let result = gemini.generate("Tell me a joke").await?;
-    println!("Gemini: {}", result);
-
+    let ai = rai_simple::rai_claude("claude-sonnet-4-6")?;
+    let answer = ai.generate("What is 2 + 2?").await?;
+    println!("{}", answer);
     Ok(())
+}
+```
+
+### Provider API (`rai_claude`, `rai_chatgpt`, `rai_gemini`)
+
+For direct provider access with full control:
+
+```rust
+use rai_claude::ClaudeProvider;
+use rai_ai::{LanguageModel, Prompt, GenerateOptions};
+
+let provider = ClaudeProvider::new(std::env::var("ANTHROPIC_API_KEY")?);
+let model    = provider.claude_sonnet();
+
+let result = model.generate(
+    Prompt::Text("What is the capital of France?".into()),
+    GenerateOptions::default(),
+).await?;
+
+println!("{}", result.text.unwrap());
+```
+
+### Streaming
+
+```rust
+use futures::StreamExt;
+use rai_claude::ClaudeProvider;
+use rai_ai::{GenerateOptions, LanguageModel, Prompt, StreamEvent};
+
+let provider = ClaudeProvider::new(std::env::var("ANTHROPIC_API_KEY")?);
+let model    = provider.claude_sonnet();
+
+let mut stream = model
+    .stream(Prompt::Text("Write a poem about Rust.".into()), GenerateOptions::default())
+    .await?;
+
+while let Some(event) = stream.next().await {
+    match event? {
+        StreamEvent::TextDelta { delta }       => print!("{}", delta),
+        StreamEvent::MessageEnd { usage, .. }  => println!("\nDone: {:?}", usage),
+        _ => {}
+    }
+}
+```
+
+### Streaming Tool Use
+
+```rust
+use rai_ai::{GenerateOptions, LanguageModel, Prompt, StreamEvent, ToolChoice, ToolDefinition};
+use schemars::schema_for;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, schemars::JsonSchema)]
+struct WeatherInput { location: String }
+
+let tools = vec![ToolDefinition {
+    name:        "get_weather".into(),
+    description: "Get the current weather for a location.".into(),
+    parameters:  serde_json::to_value(schema_for!(WeatherInput))?,
+}];
+
+let options = GenerateOptions::default()
+    .with_tools(tools)
+    .with_tool_choice(ToolChoice::Auto);
+
+let mut stream = model
+    .stream(Prompt::Text("What's the weather in Tokyo?".into()), options)
+    .await?;
+
+while let Some(event) = stream.next().await {
+    match event? {
+        StreamEvent::ToolCallStart { call_id, tool_name } =>
+            println!("🔧 {} [{}]", tool_name, call_id),
+        StreamEvent::ToolCallEnd { call_id: _, arguments } =>
+            println!("   args: {}", arguments),
+        StreamEvent::MessageEnd { .. } => break,
+        _ => {}
+    }
+}
+```
+
+### Gemini Live API (Real-Time Voice/Video)
+
+```rust
+use rai_gemini::{
+    live_api::{LiveEvent, LiveSession, BidiSetup, LiveGenerationConfig},
+    GEMINI_FLASH_LIVE_LATEST,
+};
+
+let setup = BidiSetup {
+    model: format!("models/{GEMINI_FLASH_LIVE_LATEST}"),
+    system_instruction: None,
+    generation_config: Some(LiveGenerationConfig {
+        response_modalities: Some(vec!["AUDIO".into(), "TEXT".into()]),
+        ..Default::default()
+    }),
+    tools: None,
+};
+
+let mut session = LiveSession::connect(
+    &std::env::var("GOOGLE_API_KEY")?,
+    GEMINI_FLASH_LIVE_LATEST,
+    setup,
+).await?;
+
+// Wait for setup confirmation, then send text or audio
+session.send_text("Hello, how are you?").await?;
+
+while let Some(ev) = session.recv().await {
+    match ev? {
+        LiveEvent::TextDelta(t)   => print!("{t}"),
+        LiveEvent::AudioDelta(pcm) => { /* write to speaker */ }
+        LiveEvent::TurnComplete    => break,
+        _ => {}
+    }
+}
+```
+
+### OpenAI Realtime API (Voice Agents)
+
+```rust
+use rai_chatgpt::{ChatGptProvider, GPT_4O_REALTIME};
+use rai_chatgpt::realtime_api::{ServerEvent, SessionConfig, TurnDetection, Voice};
+
+let provider = ChatGptProvider::new(std::env::var("OPENAI_API_KEY")?);
+let mut session = provider.realtime_session(GPT_4O_REALTIME).await?;
+
+session.configure(SessionConfig {
+    voice:           Some(Voice::Alloy),
+    turn_detection:  Some(TurnDetection::server_vad()),
+    instructions:    Some("You are a helpful assistant.".into()),
+    ..Default::default()
+}).await?;
+
+session.send_text("Tell me a fun fact about Rust.").await?;
+
+while let Some(ev) = session.recv().await {
+    match ev? {
+        ServerEvent::TextDelta { delta, .. }    => print!("{delta}"),
+        ServerEvent::ResponseDone { .. }         => break,
+        ServerEvent::Error { error }             => {
+            eprintln!("Error: {}", error.message);
+            break;
+        }
+        _ => {}
+    }
 }
 ```
 
 ### OpenAI-Compatible Providers
 
 ```rust
-use rai::*;
+use rai_openai_compatible::{OpenAiCompatibleConfig, OpenAiCompatibleProvider};
 use rai_openai_compatible::presets;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // OpenRouter
-    let config = presets::openrouter::config(
-        std::env::var("OPENROUTER_KEY")?
-    );
-    let provider = rai_openai_compatible::OpenAiCompatibleProvider::new(config);
-    let model = provider.model(presets::openrouter::CLAUDE_SONNET);
-    
-    let result = generate_text(&model, "What is Rust?").await?;
-    println!("Response: {}", result);
+// OpenRouter — 300+ models
+let config   = presets::openrouter::config(std::env::var("OPENROUTER_KEY")?);
+let provider = OpenAiCompatibleProvider::new(config, "openrouter", "OpenRouter");
+let model    = provider.language_model(presets::openrouter::CLAUDE_SONNET);
 
-    // Kilo Gateway
-    let config = presets::kilo::config(
-        std::env::var("KILO_API_KEY")?
-    );
-    let provider = rai_openai_compatible::OpenAiCompatibleProvider::new(config);
-    let model = provider.model(presets::kilo::GPT4O);
-    
-    let result = generate_text(&model, "Explain quantum computing").await?;
-    println!("Response: {}", result);
+// Amazon Bedrock
+let config   = presets::bedrock::config(std::env::var("AWS_ACCESS_KEY_ID")?)
+    .with_header("X-AWS-Region", "us-west-2");
+let provider = OpenAiCompatibleProvider::new(config, "bedrock", "Amazon Bedrock");
 
-    // Local Ollama
-    let config = presets::ollama::config(None); // Uses localhost:11434
-    let provider = rai_openai_compatible::OpenAiCompatibleProvider::new(config);
-    let model = provider.model("llama2");
-    
-    let result = generate_text(&model, "Hello").await?;
-    println!("Response: {}", result);
-
-    Ok(())
-}
+// Local Ollama
+let config   = presets::ollama::config(None); // defaults to localhost:11434
+let provider = OpenAiCompatibleProvider::new(config, "ollama", "Ollama");
+let model    = provider.language_model("llama3.2");
 ```
 
-### Streaming Responses
+## Supported Providers
 
-```rust
-use futures::StreamExt;
-use rai::*;
+| Crate | Provider | Notes |
+|-------|----------|-------|
+| `rai_claude` | Anthropic Claude | Native API, tool streaming, vision |
+| `rai_chatgpt` | OpenAI ChatGPT | OpenAI-compat + Realtime API (voice) |
+| `rai_gemini` | Google Gemini | Native API + Live API (voice/video) |
+| `rai_openai_compatible` | Generic OpenAI-compat | 9 presets (see below) |
+| `rai_ollama` | Ollama | Direct Ollama API with model management |
+| `rai_gemini_nano` | Gemini Nano | On-device (Android, Chrome) |
+| `rai_phi_silica` | Phi Silica | On-device (Windows Arm) |
+| `rai_foundationmodels` | Foundation Models | Cross-provider |
+| `rai_browser` | Browser Prompt API | WASM, Chrome 138+ |
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let model = rai_claude("claude-sonnet-4-6").await?;
-    let mut stream = model.model().stream(
-        Prompt::Text("Write a poem about Rust".into()),
-        GenerateOptions::default()
-    ).await?;
+### OpenAI-Compatible Presets
 
-    while let Some(event) = stream.next().await {
-        match event? {
-            StreamEvent::TextDelta { delta } => print!("{}", delta),
-            StreamEvent::MessageEnd { usage, .. } => {
-                println!("\nTokens: {:?}", usage);
-            }
-            _ => {}
-        }
-    }
+`rai_openai_compatible::presets` includes:
+- `openrouter` — 300+ models via OpenRouter
+- `kilo` — Kilo AI Gateway (cost management)
+- `bedrock` — Amazon Bedrock
+- `together` — Together AI (open-source models)
+- `octoml` — OctoML serverless
+- `azure` — Azure OpenAI
+- `cloudflare` — Cloudflare Workers AI
+- `vllm` — Self-hosted vLLM
+- `ollama` — Self-hosted Ollama (OpenAI-compat mode)
 
-    Ok(())
-}
-```
-
-### Tool Use (Function Calling)
-
-```rust
-use rai::*;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
-struct Calculator {
-    operation: String,
-    a: f64,
-    b: f64,
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let model = rai_claude("claude-sonnet-4-6").await?;
-    
-    let tools = vec![
-        ToolDefinition {
-            name: "calculator".to_string(),
-            description: "Basic math operations".to_string(),
-            input_schema: schemars::schema_for!(Calculator),
-        }
-    ];
-
-    // Model will intelligently call tools and continue
-    let result = generate_text(&model.model(), "What is 15 + 27?").await?;
-    println!("Result: {}", result);
-
-    Ok(())
-}
-```
-
-### Structured Output (JSON Generation)
-
-```rust
-use rai::*;
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct BookReview {
-    title: String,
-    rating: u8,
-    summary: String,
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let model = rai_claude("claude-sonnet-4-6").await?;
-
-    let review: BookReview = generate_object(
-        model.model(),
-        "Review 'The Rust Book'"
-    ).await?;
-    
-    println!("Rating: {}/10", review.rating);
-    println!("Summary: {}", review.summary);
-
-    Ok(())
-}
-```
-
-## Available Provider Presets
-
-### Cloud-Compatible Routers
-- **OpenRouter** - 300+ models from all major providers
-- **Kilo Gateway** - Unified routing and cost management
-- **Together AI** - Optimized open-source models
-- **OctoML** - Serverless model hosting
-- **Azure OpenAI** - Microsoft-hosted OpenAI models
-- **Amazon Bedrock** - AWS-managed AI models
-
-### Local / Self-Hosted
-- **Ollama** - Simple local model runner
-- **vLLM** - High-throughput LLM inference
-- **LM Studio** - GUI for local models
-- **text-generation-webui** - Full-featured local inference
-- **Cloudflare Workers AI** - Edge network inference
-
-## Features
-
-### Unified API
-- Consistent interface across all 15+ providers
-- Single implementation for text, streaming, structured output, and tools
-
-### Real-Time Capabilities
-- **Gemini Live API** - Low-latency voice/vision conversations
-- **OpenAI Realtime API** - Voice agents with function calling
-- **Streaming Tool Use** - Real-time function calling across all providers
-
-### Type Safety
-- Compile-time safety through Rust's type system
-- Automatic JSON schema generation for structured outputs
-
-### Async/Streaming First
-- Non-blocking async-await throughout
-- Streaming responses for large outputs
-- Efficient memory usage
-
-### Easy Local Development
-- Docker compose with popular models
-- Ollama integration for M1/M2/M3 Macs and Windows
-- Zero config with sensible defaults
-
-## Project Structure
+## Workspace Layout
 
 ```
 rai/
 ├── crates/
-│   ├── rai_ai/                    # Core traits and simplified API
-│   ├── rai_middleware/            # Request/response middleware
-│   ├── rai_ui_stream/             # UI streaming utilities
-│   ├── rai_testing/               # Test utilities and mocks
-│   ├── rai_claude/                # Anthropic Claude integration
-│   ├── rai_chatgpt/               # OpenAI ChatGPT integration
-│   ├── rai_gemini/                # Google Gemini integration
-│   ├── rai_openai_compatible/     # Generic OpenAI-compatible endpoints
-│   ├── rai_ollama/                # Ollama local models
-│   ├── rai_gemini_nano/           # On-device Gemini
-│   ├── rai_phi_silica/            # Microsoft Phi Silica
-│   ├── rai_foundationmodels/      # Foundation models
-│   └── rai_browser/               # Browser runtime
+│   ├── rai_ai/                  # Core traits, types, streaming
+│   ├── rai_simple/              # Simplified factory functions
+│   ├── rai_middleware/          # Request/response middleware
+│   ├── rai_ui_stream/           # UI streaming utilities
+│   ├── rai_testing/             # Test utilities and mocks
+│   ├── rai_claude/              # Anthropic Claude
+│   ├── rai_chatgpt/             # OpenAI ChatGPT + Realtime API
+│   ├── rai_gemini/              # Google Gemini + Live API
+│   ├── rai_openai_compatible/   # Generic OpenAI-compat (9 presets)
+│   ├── rai_ollama/              # Ollama direct API
+│   ├── rai_gemini_nano/         # On-device Gemini Nano
+│   ├── rai_phi_silica/          # Microsoft Phi Silica
+│   ├── rai_foundationmodels/    # Foundation models
+│   └── rai_browser/             # Browser WASM runtime
 ├── examples/
-│   ├── basic_text/                # Simple text generation
-│   ├── stream_text/               # Streaming responses
-│   ├── generate_object/           # Structured JSON output
-│   ├── stream_object/             # Streaming structured data
-│   ├── tool_loop/                 # Tool use and agents
-│   ├── multimodal/                # Images and media
-│   ├── local_android/             # Android deployment
-│   ├── local_apple/               # Apple Silicon support
-│   ├── local_windows/             # Windows local models
-│   └── router/                    # Multi-provider routing
+│   ├── basic_text/              # Multi-provider text generation
+│   ├── stream_text/             # Streaming text responses
+│   ├── generate_object/         # Structured output
+│   ├── stream_object/           # Streaming structured output
+│   ├── tool_loop/               # Basic tool use
+│   ├── streaming_tool_use/      # Real-time streaming tool calls
+│   ├── agent_with_tools/        # Agent loop with tool calling
+│   ├── multimodal/              # Images and media
+│   ├── realtime_voice/          # OpenAI Realtime API voice agent
+│   ├── gemini_live/             # Gemini Live API voice/text session
+│   ├── router/                  # Multi-provider routing
+│   └── local_*/                 # Android, Apple, Windows local models
 └── Cargo.toml
 ```
 
-## Configuration
-
-Each provider requires environment variables:
+## Environment Variables
 
 ```bash
-# Cloud Providers
-ANTHROPIC_API_KEY=...         # Claude
-OPENAI_API_KEY=...            # ChatGPT
-GOOGLE_API_KEY=...            # Gemini
+# Cloud providers
+ANTHROPIC_API_KEY=sk-ant-...   # rai_claude
+OPENAI_API_KEY=sk-...          # rai_chatgpt
+GOOGLE_API_KEY=...             # rai_gemini
 
-# Compatible Routers
-OPENROUTER_KEY=...            # OpenRouter
-KILO_API_KEY=...              # Kilo
-TOGETHER_API_KEY=...          # Together
+# OpenAI-compatible routers
+OPENROUTER_KEY=sk-or-...
+KILO_API_KEY=...
+TOGETHER_API_KEY=...
 
-# AWS
-AWS_REGION=...
+# AWS (Bedrock)
+AWS_REGION=us-west-2
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 ```
 
 ## Development
 
-### Building
-
 ```bash
+# Build
 cargo build
+
+# Check (fast, no codegen)
+cargo check --workspace
+
+# Test
+cargo test --workspace
+
+# Run an example
+ANTHROPIC_API_KEY=... cargo run --example agent_with_tools
+GOOGLE_API_KEY=...    cargo run --example gemini_live
+OPENAI_API_KEY=...    cargo run --example realtime_voice
 ```
 
-### Running Tests
+## Key Dependencies
 
-```bash
-cargo test
-```
+- `tokio` — async runtime
+- `futures` — Stream utilities
+- `reqwest` — HTTP client
+- `tokio-tungstenite` — WebSocket (Realtime / Live APIs)
+- `serde` / `serde_json` — serialization
+- `schemars` — JSON schema generation for tool definitions
+- `secrecy` — secure API key handling
+- `thiserror` — ergonomic error types
 
-### Running Examples
+## References
 
-```bash
-ANTHROPIC_API_KEY=sk-... cargo run --example basic_text
-OPENROUTER_KEY=sk-... cargo run --example router
-```
-
-## Performance
-
-- **Async Throughout** - Non-blocking I/O via tokio
-- **Streaming Support** - Handle large outputs without loading in memory
-- **Connection Pooling** - HTTP connection reuse via reqwest
-- **Lazy Initialization** - Models and providers created on-demand
-- **Zero-Copy** - Efficient reference handling
-
-## Security
-
-- **API Key Handling** - Secure key management via `secrecy` crate
-- **HTTPS Only** - All provider connections encrypted
-- **No Secret Logging** - Keys excluded from traces
-- **Safe Deserialization** - Validated JSON parsing
-- **Input Validation** - Provider-specific safety checks
-
-## Recent Additions (2026)
-
-- ✨ Simplified single-function API (`rai_claude`, `rai_chatgpt`, etc.)
-- ✨ Comprehensive OpenAI-compatible presets (OpenRouter, Bedrock, Kilo, Ollama, etc.)
-- ✨ Gemini 2.5 Flash with Live API support
-- ✨ OpenAI Realtime API for voice agents
-- ✨ Streaming tool use across all providers
-- ✨ Automated test suite
-- ✨ Renamed from `rusty_ai` to `rai` for clarity
-
-## Sources
-
-For more information on the features used:
-
-- [Claude API Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use)
-- [Claude API Streaming](https://platform.claude.com/docs/en/build-with-claude/streaming)
+- [Anthropic Claude API](https://docs.anthropic.com/en/docs/build-with-claude/tool-use)
 - [Gemini Live API](https://ai.google.dev/gemini-api/docs/live-api)
-- [OpenAI Realtime API](https://developers.openai.com/api/docs/guides/realtime)
-- [OpenRouter Documentation](https://openrouter.ai/docs/api/api-reference)
-- [Amazon Bedrock Claude](https://platform.claude.com/docs/en/build-with-claude/claude-in-amazon-bedrock)
-- [Kilo AI Gateway](https://kilo.ai/docs/gateway/api-reference)
-
-## License
-
-MPL-2.0 (Mozilla Public License 2.0)
-
-## Contributing
-
-Contributions welcome! Please submit pull requests and open issues for bugs and feature requests.
-
-## Support
-
-For issues and questions:
-https://github.com/undivisible/rusty_ai
+- [OpenAI Realtime API](https://platform.openai.com/docs/api-reference/realtime)
+- [OpenRouter](https://openrouter.ai/docs/api/api-reference)
+- [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/)
