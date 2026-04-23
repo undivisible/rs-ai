@@ -11,7 +11,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use rai_langfuse::with_langfuse;
+//! use rs_ai_langfuse::with_langfuse;
 //!
 //! let model: Box<dyn LanguageModel> = /* any provider */;
 //! let observable = with_langfuse(

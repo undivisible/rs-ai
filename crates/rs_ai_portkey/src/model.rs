@@ -23,7 +23,6 @@ impl PortkeyModel {
         let capabilities = CapabilitySet::new()
             .with(Capability::TextInput)
             .with(Capability::TextOutput)
-            .with(Capability::ImageInput)
             .with(Capability::Streaming)
             .with(Capability::ToolCalling);
 

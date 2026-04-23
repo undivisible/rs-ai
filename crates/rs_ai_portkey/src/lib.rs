@@ -14,6 +14,8 @@
 //! - **Fallback**: Automatic retry with fallback providers
 //! - **Caching**: Response caching for common requests
 //! - **Observability**: Built-in analytics and tracking
+//! - **Text generation**: Full support for text-based prompts and responses
+//! - **Streaming**: Real-time streaming responses
 //!
 //! # Authentication
 //!
@@ -22,7 +24,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! use rai_portkey::PortkeyProvider;
+//! use rs_ai_portkey::PortkeyProvider;
 //!
 //! let provider = PortkeyProvider::new(
 //!     std::env::var("PORTKEY_API_KEY").unwrap(),

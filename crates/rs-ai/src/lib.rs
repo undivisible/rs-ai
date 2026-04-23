@@ -424,7 +424,11 @@ impl ClientBuilder {
                 if let Some(gw) = &cf_base {
                     provider = provider.with_base_url(format!("{}/anthropic", gw));
                 }
-                Box::new(provider.model(&model_id))
+                let mut m = provider.model(&model_id);
+                if let Some(cache_cfg) = &self.cache_config {
+                    m.set_cache(cache_cfg.clone());
+                }
+                Box::new(m)
             }
             ProviderType::ChatGpt => {
                 if let Some(gw) = &cf_base {
@@ -433,20 +437,30 @@ impl ClientBuilder {
                     provider.language_model(&model_id)
                 } else {
                     let provider = ChatGptProvider::new(api_key);
-                    Box::new(provider.model(&model_id))
+                    let mut m = provider.model(&model_id);
+                    if let Some(cache_cfg) = &self.cache_config {
+                        m.set_cache(cache_cfg.clone());
+                    }
+                    Box::new(m)
                 }
             }
             ProviderType::Gemini => {
                 let provider = GeminiProvider::new(api_key);
                 if let Some(gw) = &cf_base {
-                    Box::new(
-                        provider.model_with_base_url(
-                            &model_id,
-                            format!("{}/google-ai-studio/v1/models", gw),
-                        ),
-                    )
+                    let mut m = provider.model_with_base_url(
+                        &model_id,
+                        format!("{}/google-ai-studio/v1/models", gw),
+                    );
+                    if let Some(cache_cfg) = &self.cache_config {
+                        m.set_cache(cache_cfg.clone());
+                    }
+                    Box::new(m)
                 } else {
-                    Box::new(provider.model(&model_id))
+                    let mut m = provider.model(&model_id);
+                    if let Some(cache_cfg) = &self.cache_config {
+                        m.set_cache(cache_cfg.clone());
+                    }
+                    Box::new(m)
                 }
             }
             ProviderType::Xai => {
@@ -456,7 +470,11 @@ impl ClientBuilder {
                     provider.language_model(&model_id)
                 } else {
                     let provider = XaiProvider::new(api_key);
-                    Box::new(provider.model(&model_id))
+                    let mut m = provider.model(&model_id);
+                    if let Some(cache_cfg) = &self.cache_config {
+                        m.set_cache(cache_cfg.clone());
+                    }
+                    Box::new(m)
                 }
             }
             ProviderType::Cloudflare { account_id } => {
