@@ -84,3 +84,25 @@ url = "2"
 secrecy = "0.10"
 base64 = "0.22"
 mime = "0.3"
+
+# Real-time APIs (WebSocket)
+tokio-tungstenite = "0.24"
+
+# WASM support (feature-gated in browser crate)
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "Navigator",
+    "console",
+] }
+
+# Development dependencies for testing
+[dev-dependencies]
+mockall = "0.12"
+proptest = "1.4"
+tokio-test = "0.4"
+wiremock = "0.6"
