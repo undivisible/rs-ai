@@ -9,6 +9,7 @@ members = [
     "crates/rai_claude",
     "crates/rai_gemini",
     "crates/rai_openai_compatible",
+    "crates/rai_xai",
     "crates/rs-ai",
     "crates/rai_gemini_nano",
     "crates/rai_foundationmodels",
@@ -51,6 +52,7 @@ rai_chatgpt = { path = "crates/rai_chatgpt" }
 rai_claude = { path = "crates/rai_claude" }
 rai_gemini = { path = "crates/rai_gemini" }
 rai_openai_compatible = { path = "crates/rai_openai_compatible" }
+rai_xai = { path = "crates/rai_xai" }
 rs-ai = { path = "crates/rs-ai" }
 
 # Local / platform runtimes

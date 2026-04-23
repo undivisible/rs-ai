@@ -11,6 +11,7 @@ rai_claude = { workspace = true }
 rai_chatgpt = { workspace = true }
 rai_gemini = { workspace = true }
 rai_openai_compatible = { workspace = true }
+rai_xai = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
 thiserror = { workspace = true }

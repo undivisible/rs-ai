@@ -19,6 +19,7 @@
 //! - **Claude** - `rs_ai::claude()`
 //! - **ChatGPT** - `rs_ai::chatgpt()`
 //! - **Gemini** - `rs_ai::gemini()`
+//! - **xAI Grok** - `rs_ai::xai()`
 //! - **OpenAI Compatible** - `rs_ai::compatible(base_url)`
 
 use futures::stream::BoxStream;
@@ -27,6 +28,7 @@ use rai_chatgpt::ChatGptProvider;
 use rai_claude::ClaudeProvider;
 use rai_gemini::GeminiProvider;
 use rai_openai_compatible::{OpenAiCompatibleConfig, OpenAiCompatibleProvider};
+use rai_xai::XaiProvider;
 
 /// Fluent builder for creating and configuring AI clients.
 pub struct ClientBuilder {
@@ -39,6 +41,7 @@ enum ProviderType {
     Claude,
     ChatGpt,
     Gemini,
+    Xai,
     Compatible { base_url: String },
 }
 
@@ -144,6 +147,10 @@ impl ClientBuilder {
                 let provider = GeminiProvider::new(api_key);
                 Box::new(provider.model(&model_id))
             }
+            ProviderType::Xai => {
+                let provider = XaiProvider::new(api_key);
+                Box::new(provider.model(&model_id))
+            }
             ProviderType::Compatible { base_url } => {
                 let config = OpenAiCompatibleConfig::new(&base_url, &api_key);
                 let provider = OpenAiCompatibleProvider::new(config, "custom", "OpenAI Compatible");
@@ -151,13 +158,30 @@ impl ClientBuilder {
             }
         };
 
-        Ok(Client { model })
+        Ok(Client {
+            model: std::sync::Arc::new(model),
+        })
     }
 }
 
 /// A configured AI client ready for operations.
+///
+/// Can be cloned and reused to make multiple requests with the same configuration.
+///
+/// # Examples
+///
+/// Pre-configure and reuse:
+/// ```ignore
+/// let ai = rs_ai::claude()
+///     .api_key("sk-ant-...")
+///     .model("claude-sonnet-4-6");
+///
+/// let response1 = ai.generate("Hello").await?;
+/// let response2 = ai.generate("Hi again").await?;
+/// ```
+#[derive(Clone)]
 pub struct Client {
-    model: Box<dyn LanguageModel>,
+    model: std::sync::Arc<Box<dyn LanguageModel>>,
 }
 
 impl Client {
@@ -166,15 +190,24 @@ impl Client {
     /// # Errors
     ///
     /// Returns an error if the request fails.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let response = ai.generate("What is 2+2?").await?;
+    /// println!("{}", response);
+    /// ```
     pub async fn generate(&self, prompt: impl Into<String>) -> AiResult<String> {
         let prompt_str = prompt.into();
         let result = self
             .model
+            .as_ref()
+            .as_ref()
             .generate(Prompt::Text(prompt_str), GenerateOptions::default())
             .await?;
 
         result.text.ok_or_else(|| AiError::ProviderError {
-            provider: self.model.provider_id().to_string(),
+            provider: self.model.as_ref().as_ref().provider_id().to_string(),
             status: None,
             message: "No text in response (model returned only tool calls)".to_string(),
         })
@@ -185,16 +218,32 @@ impl Client {
     /// # Errors
     ///
     /// Returns an error if the request fails.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use futures::StreamExt;
+    ///
+    /// let mut stream = ai.stream("Hello").await?;
+    /// while let Some(event) = stream.next().await {
+    ///     match event? {
+    ///         StreamEvent::TextDelta { text } => print!("{}", text),
+    ///         _ => {}
+    ///     }
+    /// }
+    /// ```
     pub async fn stream(&self, prompt: impl Into<String>) -> AiResult<BoxStream<'static, AiResult<StreamEvent>>> {
         let prompt_str = prompt.into();
         self.model
+            .as_ref()
+            .as_ref()
             .stream(Prompt::Text(prompt_str), GenerateOptions::default())
             .await
     }
 
     /// Get a reference to the underlying language model.
     pub fn model(&self) -> &dyn LanguageModel {
-        &*self.model
+        self.model.as_ref().as_ref()
     }
 }
 
@@ -247,6 +296,24 @@ pub fn chatgpt() -> ClientBuilder {
 pub fn gemini() -> ClientBuilder {
     ClientBuilder {
         provider_type: ProviderType::Gemini,
+        api_key: None,
+        model_id: None,
+    }
+}
+
+/// Create a client builder for xAI Grok.
+///
+/// # Examples
+/// ```ignore
+/// let response = rs_ai::xai()
+///     .api_key("xai-...")
+///     .model("grok-4.20-reasoning")
+///     .generate("Hello!")
+///     .await?;
+/// ```
+pub fn xai() -> ClientBuilder {
+    ClientBuilder {
+        provider_type: ProviderType::Xai,
         api_key: None,
         model_id: None,
     }
