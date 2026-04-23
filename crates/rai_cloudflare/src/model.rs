@@ -44,7 +44,11 @@ impl LanguageModel for CloudflareModel {
         &self.capabilities
     }
 
-    async fn generate(&self, prompt: Prompt, _options: GenerateOptions) -> AiResult<GenerateResult> {
+    async fn generate(
+        &self,
+        prompt: Prompt,
+        _options: GenerateOptions,
+    ) -> AiResult<GenerateResult> {
         let text = match prompt {
             Prompt::Text(t) => t,
             _ => {
@@ -94,7 +98,11 @@ impl LanguageModel for CloudflareModel {
         })
     }
 
-    async fn stream(&self, prompt: Prompt, _options: GenerateOptions) -> AiResult<rai_ai::AiStream> {
+    async fn stream(
+        &self,
+        prompt: Prompt,
+        _options: GenerateOptions,
+    ) -> AiResult<rai_ai::AiStream> {
         let text = match prompt {
             Prompt::Text(t) => t,
             _ => {
@@ -127,18 +135,16 @@ impl LanguageModel for CloudflareModel {
                     Err(e) => Some(Err::<_, reqwest::Error>(e)),
                 })
             })
-            .flat_map(|result| {
-                match result {
-                    Ok(buffer) => {
-                        let events = parse_stream_buffer(&buffer);
-                        futures::stream::iter(events)
-                    }
-                    Err(e) => {
-                        let err = Err::<StreamEvent, AiError>(AiError::StreamError {
-                            message: e.to_string(),
-                        });
-                        futures::stream::iter(vec![err])
-                    }
+            .flat_map(|result| match result {
+                Ok(buffer) => {
+                    let events = parse_stream_buffer(&buffer);
+                    futures::stream::iter(events)
+                }
+                Err(e) => {
+                    let err = Err::<StreamEvent, AiError>(AiError::StreamError {
+                        message: e.to_string(),
+                    });
+                    futures::stream::iter(vec![err])
                 }
             });
 
@@ -184,9 +190,7 @@ fn parse_stream_buffer(buffer: &str) -> Vec<Result<StreamEvent, AiError>> {
                     }
                 }
             }
-            Err(_) => {
-                // Skip unparseable lines
-            }
+            Err(_) => {}
         }
     }
 

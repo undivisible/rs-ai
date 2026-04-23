@@ -1,5 +1,5 @@
+use rai_ai::{LanguageModel, Provider};
 use rai_claude::ClaudeProvider;
-use rai_ai::{Provider, LanguageModel};
 
 #[test]
 fn test_claude_provider_creation() {
@@ -44,8 +44,8 @@ fn test_claude_haiku_convenience() {
 
 #[test]
 fn test_claude_with_custom_base_url() {
-    let provider = ClaudeProvider::new("test-api-key")
-        .with_base_url("https://custom.anthropic.com");
+    let provider =
+        ClaudeProvider::new("test-api-key").with_base_url("https://custom.anthropic.com");
 
     let model = provider.model("claude-sonnet-4-6");
     assert_eq!(model.provider_id(), "anthropic");

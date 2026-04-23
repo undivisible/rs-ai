@@ -2,10 +2,10 @@
 
 mod api_types;
 mod convert;
+pub mod live_api;
 mod model;
 mod provider;
 mod stream_parser;
-pub mod live_api;
 
 pub use live_api::LiveSession;
 pub use model::*;

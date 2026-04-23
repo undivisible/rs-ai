@@ -1,5 +1,5 @@
-use rai_chatgpt::ChatGptProvider;
 use rai_ai::LanguageModel;
+use rai_chatgpt::ChatGptProvider;
 
 #[test]
 fn test_chatgpt_provider_creation() {
@@ -53,8 +53,7 @@ fn test_chatgpt_gpt54_nano_convenience() {
 
 #[test]
 fn test_chatgpt_with_org_id() {
-    let provider = ChatGptProvider::new("sk-test-key")
-        .with_org("org-12345");
+    let provider = ChatGptProvider::new("sk-test-key").with_org("org-12345");
 
     let model = provider.gpt4o();
     assert_eq!(model.model_id(), "gpt-4o");

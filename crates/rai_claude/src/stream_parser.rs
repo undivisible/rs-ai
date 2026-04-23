@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use futures::stream::{self, StreamExt};
-use reqwest::Response;
 use rai_ai::error::AiError;
 use rai_ai::stream::{AiStream, StreamEvent as RustyStreamEvent};
 use rai_ai::Usage;
+use reqwest::Response;
 
 use crate::api_types::{ContentBlock, DeltaBlock, StreamEvent as AnthropicEvent};
 use crate::convert::map_stop_reason;
@@ -12,8 +12,6 @@ use crate::convert::map_stop_reason;
 /// State tracked while parsing a streaming response from the Anthropic API.
 struct StreamState {
     message_id: String,
-    /// Maps content-block index to tool-call metadata (id, name, accumulated
-    /// JSON fragments).
     active_tool_calls: HashMap<usize, ToolCallState>,
     input_tokens: u64,
     output_tokens: u64,
@@ -41,12 +39,10 @@ impl StreamState {
 pub(crate) fn parse_stream(response: Response) -> AiStream {
     let byte_stream = response.bytes_stream();
 
-    // We'll buffer bytes and split by SSE boundary ("\n\n").
     let event_stream = futures::stream::unfold(
         (byte_stream, String::new()),
         |(mut byte_stream, mut buffer)| async move {
             loop {
-                // Try to extract a complete SSE event from the buffer.
                 if let Some(pos) = buffer.find("\n\n") {
                     let event_text = buffer[..pos].to_string();
                     buffer = buffer[pos + 2..].to_string();
@@ -57,7 +53,6 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                     continue;
                 }
 
-                // Need more data.
                 match byte_stream.next().await {
                     Some(Ok(chunk)) => {
                         let text = String::from_utf8_lossy(&chunk);
@@ -74,7 +69,6 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                         ));
                     }
                     None => {
-                        // End of stream. Try to parse any remaining data.
                         if !buffer.trim().is_empty() {
                             let events = parse_sse_event(&buffer);
                             buffer.clear();
@@ -90,7 +84,6 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
     )
     .flat_map(stream::iter);
 
-    // Now map Anthropic events to rai_ai StreamEvents using stateful processing.
     let mapped = futures::stream::unfold(
         (Box::pin(event_stream), StreamState::new()),
         |(mut event_stream, mut state)| async move {
@@ -103,7 +96,6 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
                                 rai_events.into_iter().map(Ok).collect();
                             return Some((stream::iter(items), (event_stream, state)));
                         }
-                        // Event produced no output (e.g. Ping), continue.
                         continue;
                     }
                     Some(Err(e)) => {
@@ -119,8 +111,6 @@ pub(crate) fn parse_stream(response: Response) -> AiStream {
     Box::pin(mapped)
 }
 
-/// Parse a single SSE text block (lines between double-newlines) into zero or
-/// more `AnthropicEvent` results.
 fn parse_sse_event(raw: &str) -> Vec<Result<AnthropicEvent, AiError>> {
     let mut event_type: Option<&str> = None;
     let mut data_lines: Vec<&str> = Vec::new();
@@ -135,7 +125,6 @@ fn parse_sse_event(raw: &str) -> Vec<Result<AnthropicEvent, AiError>> {
         } else if let Some(rest) = line.strip_prefix("data:") {
             data_lines.push(rest.trim());
         }
-        // Ignore other SSE fields (id:, retry:, comments starting with :).
     }
 
     if data_lines.is_empty() {
@@ -143,7 +132,7 @@ fn parse_sse_event(raw: &str) -> Vec<Result<AnthropicEvent, AiError>> {
     }
 
     let data = data_lines.join("\n");
-    let _ = event_type; // The type is embedded in the JSON payload.
+    let _ = event_type;
 
     match serde_json::from_str::<AnthropicEvent>(&data) {
         Ok(event) => vec![Ok(event)],
@@ -156,7 +145,6 @@ fn parse_sse_event(raw: &str) -> Vec<Result<AnthropicEvent, AiError>> {
     }
 }
 
-/// Map a single `AnthropicEvent` into zero or more `RustyStreamEvent` values.
 fn map_event(event: AnthropicEvent, state: &mut StreamState) -> Vec<RustyStreamEvent> {
     match event {
         AnthropicEvent::MessageStart { message } => {
@@ -243,10 +231,7 @@ fn map_event(event: AnthropicEvent, state: &mut StreamState) -> Vec<RustyStreamE
                             "Malformed tool call JSON buffer; cannot reconstruct arguments"
                         );
                         vec![RustyStreamEvent::Error {
-                            error: format!(
-                                "Malformed tool call arguments for `{}`: {e}",
-                                tc.name
-                            ),
+                            error: format!("Malformed tool call arguments for `{}`: {e}", tc.name),
                         }]
                     }
                 }

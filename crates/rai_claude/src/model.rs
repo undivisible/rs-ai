@@ -80,7 +80,13 @@ impl ClaudeModel {
         options: &GenerateOptions,
         stream: bool,
     ) -> AiResult<reqwest::Response> {
-        let request = convert::build_request(&self.model_id, prompt, options, stream, self.cache_config.as_ref());
+        let request = convert::build_request(
+            &self.model_id,
+            prompt,
+            options,
+            stream,
+            self.cache_config.as_ref(),
+        );
 
         let body =
             serde_json::to_string(&request).map_err(|e| AiError::Serialization(e.to_string()))?;
@@ -112,7 +118,6 @@ impl ClaudeModel {
                 }
             };
 
-            // Try to parse structured error from Anthropic.
             let message = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&body_text)
             {
                 parsed["error"]["message"]

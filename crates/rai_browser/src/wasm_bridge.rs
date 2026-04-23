@@ -3,9 +3,9 @@
 //! Compiled only when `features = ["wasm"]` and `target_arch = "wasm32"`.
 //!
 //! **Browser support (2026):**
-//! - ✅ Chrome 138+ — `window.LanguageModel` (Gemini Nano on-device)
-//! - ✅ Edge (Copilot+ PCs) — Phi Silica backing
-//! - ❌ Firefox, Safari — not yet implemented
+//! - ✓ Chrome 138+ — `window.LanguageModel` (Gemini Nano on-device)
+//! - ✓ Edge (Copilot+ PCs) — Phi Silica backing
+//! - ✗ Firefox, Safari — not yet implemented
 //!
 //! **Building:**
 //! ```sh
@@ -27,7 +27,7 @@ use wasm_bindgen_futures::JsFuture;
 use crate::bridge::BrowserAiBridge;
 use crate::capabilities::{BackingModel, BrowserAiCapabilities, BrowserAiOptions, BrowserType};
 
-// ── Chrome Prompt API bindings (not yet in web-sys) ──────────────────────────
+// ── Chrome Prompt API bindings (not yet in web-sys) ───────────────────────────
 //
 // Chrome 138+ exposes a top-level `LanguageModel` object (not on `window`,
 // on the global itself) with static methods `availability()` and `create()`.
@@ -63,7 +63,7 @@ extern "C" {
     fn destroy(this: &LanguageModelSession);
 }
 
-// ── User-agent helpers ────────────────────────────────────────────────────────
+// ── User-agent helpers ────────────────────────────────────────────
 
 fn user_agent() -> String {
     web_sys::window()
@@ -85,7 +85,7 @@ fn language_model_exists() -> bool {
     Reflect::has(&global, &JsValue::from_str("LanguageModel")).unwrap_or(false)
 }
 
-// ── WasmBrowserBridge ─────────────────────────────────────────────────────────
+// ── WasmBrowserBridge ────────────────────────────────────────────────
 
 /// WASM bridge that calls Chrome's Prompt API (`LanguageModel` global).
 ///
@@ -143,7 +143,11 @@ impl BrowserAiBridge for WasmBrowserBridge {
         }
     }
 
-    async fn generate(&self, prompt_text: &str, options: &BrowserAiOptions) -> Result<String, String> {
+    async fn generate(
+        &self,
+        prompt_text: &str,
+        options: &BrowserAiOptions,
+    ) -> Result<String, String> {
         let session = create_session(options)
             .await
             .map_err(|e| format!("{e:?}"))?;
@@ -154,7 +158,9 @@ impl BrowserAiBridge for WasmBrowserBridge {
             .map_err(|e| format!("{e:?}"))?;
 
         session.destroy();
-        result.as_string().ok_or_else(|| "No text in response".into())
+        result
+            .as_string()
+            .ok_or_else(|| "No text in response".into())
     }
 
     async fn stream(
@@ -173,7 +179,7 @@ impl BrowserAiBridge for WasmBrowserBridge {
     }
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+// ── Internal helpers ────────────────────────────────────────────────
 
 async fn create_session(options: &BrowserAiOptions) -> Result<LanguageModelSession, JsValue> {
     let opts = Object::new();
@@ -212,14 +218,12 @@ async fn drain_readable_stream(stream: JsValue) -> Result<Vec<String>, String> {
     let mut chunks = Vec::new();
 
     loop {
-        let read_fn = Reflect::get(&reader, &read_fn_key)
-            .map_err(|e| format!("read not found: {e:?}"))?;
+        let read_fn =
+            Reflect::get(&reader, &read_fn_key).map_err(|e| format!("read not found: {e:?}"))?;
         let read = read_fn
             .dyn_ref::<Function>()
             .ok_or("read is not a function")?;
-        let promise = read
-            .call0(&reader)
-            .map_err(|e| format!("read(): {e:?}"))?;
+        let promise = read.call0(&reader).map_err(|e| format!("read(): {e:?}"))?;
         let result = JsFuture::from(Promise::from(promise))
             .await
             .map_err(|e| format!("read promise: {e:?}"))?;
