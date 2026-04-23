@@ -28,6 +28,7 @@ members = [
     "examples/realtime_voice",
     "examples/gemini_live",
     "examples/agent_with_tools",
+    "examples/streaming_tool_use",
 ]
 
 [workspace.package]
