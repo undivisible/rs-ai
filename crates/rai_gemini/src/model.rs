@@ -19,6 +19,7 @@ pub struct GeminiModel {
     capabilities: CapabilitySet,
     client: reqwest::Client,
     base_url: String,
+    cache_config: Option<rs_ai_cache::CacheConfig>,
 }
 
 impl GeminiModel {
@@ -41,6 +42,7 @@ impl GeminiModel {
             capabilities,
             client: reqwest::Client::new(),
             base_url: DEFAULT_BASE_URL.to_string(),
+            cache_config: None,
         }
     }
 
@@ -50,22 +52,52 @@ impl GeminiModel {
         self
     }
 
+    /// Set cache configuration.
+    pub fn set_cache(&mut self, config: rs_ai_cache::CacheConfig) -> &mut Self {
+        self.cache_config = Some(config);
+        self
+    }
+
+    /// Set cache configuration with a cache key.
+    pub fn with_cache_key(mut self, key: impl Into<String>) -> Self {
+        let mut config = rs_ai_cache::CacheConfig::new();
+        config = config.with_gemini_cache_key(key);
+        self.cache_config = Some(config);
+        self
+    }
+
     fn generate_url(&self) -> String {
-        format!(
+        let mut url = format!(
             "{}/{}:generateContent?key={}",
             self.base_url,
             self.model_id,
             self.api_key.expose_secret()
-        )
+        );
+
+        if let Some(config) = &self.cache_config {
+            if let Some(cache_key) = &config.gemini_cache_key {
+                url.push_str(&format!("&cacheKey={}", urlencoding::encode(cache_key)));
+            }
+        }
+
+        url
     }
 
     fn stream_url(&self) -> String {
-        format!(
+        let mut url = format!(
             "{}/{}:streamGenerateContent?key={}&alt=sse",
             self.base_url,
             self.model_id,
             self.api_key.expose_secret()
-        )
+        );
+
+        if let Some(config) = &self.cache_config {
+            if let Some(cache_key) = &config.gemini_cache_key {
+                url.push_str(&format!("&cacheKey={}", urlencoding::encode(cache_key)));
+            }
+        }
+
+        url
     }
 
     fn build_api_request(

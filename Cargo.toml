@@ -12,6 +12,9 @@ members = [
     "crates/rai_xai",
     "crates/rai_cloudflare",
     "crates/rai_observability",
+    "crates/rs_ai_cache",
+    "crates/rs_ai_portkey",
+    "crates/rs_ai_langfuse",
     "crates/rs-ai",
     "crates/rai_gemini_nano",
     "crates/rai_foundationmodels",
@@ -33,7 +36,6 @@ members = [
     "examples/agent_with_tools",
     "examples/streaming_tool_use",
     "examples/fluent_api",
-    "crates/rai_observability",
 ]
 
 [workspace.package]
@@ -58,6 +60,9 @@ rai_openai_compatible = { path = "crates/rai_openai_compatible" }
 rai_xai = { path = "crates/rai_xai" }
 rai_cloudflare = { path = "crates/rai_cloudflare" }
 rai_observability = { path = "crates/rai_observability" }
+rs_ai_cache = { path = "crates/rs_ai_cache" }
+rs_ai_portkey = { path = "crates/rs_ai_portkey" }
+rs_ai_langfuse = { path = "crates/rs_ai_langfuse" }
 rs-ai = { path = "crates/rs-ai" }
 
 # Local / platform runtimes

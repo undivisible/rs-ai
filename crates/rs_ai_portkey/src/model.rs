@@ -4,68 +4,45 @@ use rai_ai::{
     AiError, AiResult, Capability, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
     LanguageModel, Prompt, StreamEvent, Usage,
 };
-use rs_ai_cache::CacheConfig;
 
-use crate::client::{ChatCompletionRequest, Message, XaiClient};
+use crate::client::{ChatCompletionRequest, PortkeyClient, Message};
 
-/// xAI Grok model.
+/// Portkey AI Gateway model.
+///
+/// Routes requests through the Portkey gateway which provides multi-provider
+/// routing, load balancing, automatic fallback, caching, and observability.
 #[derive(Clone)]
-pub struct XaiModel {
+pub struct PortkeyModel {
     model_id: String,
-    client: std::sync::Arc<XaiClient>,
+    client: std::sync::Arc<PortkeyClient>,
     capabilities: CapabilitySet,
-    cache_config: Option<CacheConfig>,
 }
 
-impl XaiModel {
-    pub fn new(model_id: String, client: std::sync::Arc<XaiClient>) -> Self {
+impl PortkeyModel {
+    pub fn new(model_id: String, client: std::sync::Arc<PortkeyClient>) -> Self {
         let capabilities = CapabilitySet::new()
             .with(Capability::TextInput)
             .with(Capability::TextOutput)
-            .with(Capability::Streaming);
+            .with(Capability::ImageInput)
+            .with(Capability::Streaming)
+            .with(Capability::ToolCalling);
 
         Self {
             model_id,
             client,
             capabilities,
-            cache_config: None,
         }
-    }
-
-    /// Set cache configuration for this model.
-    pub fn set_cache(&mut self, config: CacheConfig) -> &mut Self {
-        self.cache_config = Some(config);
-        self
-    }
-
-    /// Set conversation ID for xAI server routing.
-    pub fn with_conv_id(mut self, conv_id: impl Into<String>) -> Self {
-        let config = self.cache_config.unwrap_or_default();
-        self.cache_config = Some(config.with_xai_conv_id(conv_id));
-        self
-    }
-
-    /// Set prompt cache key for cache reuse.
-    pub fn with_prompt_cache_key(mut self, key: impl Into<String>) -> Self {
-        let config = self.cache_config.unwrap_or_default();
-        self.cache_config = Some(config.with_prompt_cache_key(key));
-        self
-    }
-
-    /// Get the current cache configuration.
-    pub fn cache_config(&self) -> Option<&CacheConfig> {
-        self.cache_config.as_ref()
     }
 }
 
 #[async_trait]
-impl LanguageModel for XaiModel {
+impl LanguageModel for PortkeyModel {
     fn model_id(&self) -> &str {
         &self.model_id
     }
 
     fn provider_id(&self) -> &str {
-        "xai"
+        "portkey"
     }
 
     fn capabilities(&self) -> &CapabilitySet {
@@ -78,7 +55,7 @@ impl LanguageModel for XaiModel {
             _ => {
                 return Err(AiError::UnsupportedCapability {
                     capability: "non-text prompts".to_string(),
-                    provider: "xai".to_string(),
+                    provider: "portkey".to_string(),
                 })
             }
         };
@@ -90,17 +67,16 @@ impl LanguageModel for XaiModel {
                 content: text,
             }],
             stream: Some(false),
-            prompt_cache_key: self.cache_config.as_ref().and_then(|c| c.prompt_cache_key.clone()),
         };
 
-        let response = self.client.create_chat_completion(request, self.cache_config.as_ref()).await?;
+        let response = self.client.create_chat_completion(request).await?;
 
         let text = response
             .choices
             .first()
-            .and_then(|c| Some(c.message.content.clone()))
+            .map(|c| c.message.content.clone())
             .ok_or_else(|| AiError::ProviderError {
-                provider: "xai".to_string(),
+                provider: "portkey".to_string(),
                 status: None,
                 message: "No content in response".to_string(),
             })?;
@@ -129,7 +105,7 @@ impl LanguageModel for XaiModel {
             _ => {
                 return Err(AiError::UnsupportedCapability {
                     capability: "non-text prompts".to_string(),
-                    provider: "xai".to_string(),
+                    provider: "portkey".to_string(),
                 })
             }
         };
@@ -141,10 +117,9 @@ impl LanguageModel for XaiModel {
                 content: text,
             }],
             stream: Some(true),
-            prompt_cache_key: self.cache_config.as_ref().and_then(|c| c.prompt_cache_key.clone()),
         };
 
-        let response = self.client.create_chat_completion_stream(request, self.cache_config.as_ref()).await?;
+        let response = self.client.create_chat_completion_stream(request).await?;
 
         let stream = response
             .bytes_stream()

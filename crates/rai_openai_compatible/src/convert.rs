@@ -199,6 +199,8 @@ pub(crate) fn options_to_request(
         response_format,
         stream,
         stream_options,
+        prompt_cache_key: None,
+        prompt_cache_retention: None,
     }
 }
 

@@ -21,6 +21,7 @@ pub struct ClaudeModel {
     capabilities: CapabilitySet,
     client: reqwest::Client,
     base_url: String,
+    cache_config: Option<rs_ai_cache::CacheConfig>,
 }
 
 impl ClaudeModel {
@@ -44,12 +45,31 @@ impl ClaudeModel {
             capabilities,
             client: reqwest::Client::new(),
             base_url: DEFAULT_BASE_URL.to_string(),
+            cache_config: None,
         }
     }
 
     /// Override the base URL (useful for proxies or testing).
     pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
         self.base_url = base_url.into();
+        self
+    }
+
+    /// Set cache configuration.
+    pub fn set_cache(&mut self, config: rs_ai_cache::CacheConfig) -> &mut Self {
+        self.cache_config = Some(config);
+        self
+    }
+
+    /// Set cache configuration with ephemeral or persistent mode.
+    pub fn with_cache_ephemeral(mut self, ephemeral: bool) -> Self {
+        let mut config = rs_ai_cache::CacheConfig::new();
+        if ephemeral {
+            config = config.enable_anthropic_ephemeral();
+        } else {
+            config = config.enable_anthropic_persistent();
+        }
+        self.cache_config = Some(config);
         self
     }
 
@@ -60,7 +80,7 @@ impl ClaudeModel {
         options: &GenerateOptions,
         stream: bool,
     ) -> AiResult<reqwest::Response> {
-        let request = convert::build_request(&self.model_id, prompt, options, stream);
+        let request = convert::build_request(&self.model_id, prompt, options, stream, self.cache_config.as_ref());
 
         let body =
             serde_json::to_string(&request).map_err(|e| AiError::Serialization(e.to_string()))?;

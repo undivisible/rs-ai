@@ -1,13 +1,16 @@
 [package]
-name = "rai_xai"
+name = "rs_ai_portkey"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[lib]
+name = "rs_ai_portkey"
+path = "src/lib.rs"
+
 [dependencies]
 rai_ai = { workspace = true }
-rs_ai_cache = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

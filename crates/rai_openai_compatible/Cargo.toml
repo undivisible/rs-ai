@@ -7,6 +7,7 @@ description = "OpenAI-compatible API adapter for the Rusty AI SDK"
 
 [dependencies]
 rai_ai = { workspace = true }
+rs_ai_cache = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }

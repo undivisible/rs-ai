@@ -1,10 +1,10 @@
 use reqwest::Client as HttpClient;
 use serde::{Deserialize, Serialize};
-use rs_ai_cache::CacheConfig;
 
-use crate::error::{XaiError, XaiResult};
+use crate::error::{PortkeyError, PortkeyResult};
 
-const XAI_API_BASE: &str = "https://api.x.ai/v1";
+/// Default Portkey API base URL.
+const DEFAULT_BASE_URL: &str = "https://api.portkey.ai/v1";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ChatCompletionRequest {
@@ -12,8 +12,6 @@ pub struct ChatCompletionRequest {
     pub messages: Vec<Message>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub prompt_cache_key: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,33 +78,39 @@ pub struct Delta {
     pub content: Option<String>,
 }
 
-pub struct XaiClient {
+pub struct PortkeyClient {
     http_client: HttpClient,
-    _api_key: String,
+    api_key: String,
+    base_url: String,
 }
 
-impl XaiClient {
+impl PortkeyClient {
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
             http_client: HttpClient::new(),
-            _api_key: api_key.into(),
+            api_key: api_key.into(),
+            base_url: DEFAULT_BASE_URL.to_string(),
         }
     }
 
-    pub async fn create_chat_completion(&self, request: ChatCompletionRequest, cache_config: Option<&CacheConfig>) -> XaiResult<ChatCompletionResponse> {
-        let mut req_builder = self
+    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Self {
+        self.base_url = base_url.into();
+        self
+    }
+
+    pub fn get_api_key(&self) -> String {
+        self.api_key.clone()
+    }
+
+    pub async fn create_chat_completion(
+        &self,
+        request: ChatCompletionRequest,
+    ) -> PortkeyResult<ChatCompletionResponse> {
+        let url = format!("{}/chat/completions", self.base_url);
+        let response = self
             .http_client
-            .post(&format!("{}/chat/completions", XAI_API_BASE))
-            .bearer_auth(&self._api_key);
-
-        // Add conversation routing header if present
-        if let Some(config) = cache_config {
-            if let Some(conv_id) = &config.xai_conv_id {
-                req_builder = req_builder.header("x-grok-conv-id", conv_id);
-            }
-        }
-
-        let response = req_builder
+            .post(&url)
+            .bearer_auth(&self.api_key)
             .json(&request)
             .send()
             .await?;
@@ -114,7 +118,7 @@ impl XaiClient {
         if !response.status().is_success() {
             let status = response.status();
             let text = response.text().await.unwrap_or_default();
-            return Err(XaiError::ApiError {
+            return Err(PortkeyError::ApiError {
                 message: format!("HTTP {}: {}", status, text),
             });
         }
@@ -125,27 +129,17 @@ impl XaiClient {
     pub async fn create_chat_completion_stream(
         &self,
         request: ChatCompletionRequest,
-        cache_config: Option<&CacheConfig>,
-    ) -> XaiResult<reqwest::Response> {
-        let mut req = ChatCompletionRequest {
+    ) -> PortkeyResult<reqwest::Response> {
+        let req = ChatCompletionRequest {
             stream: Some(true),
             ..request
         };
-        req.stream = Some(true);
 
-        let mut req_builder = self
+        let url = format!("{}/chat/completions", self.base_url);
+        let response = self
             .http_client
-            .post(&format!("{}/chat/completions", XAI_API_BASE))
-            .bearer_auth(&self._api_key);
-
-        // Add conversation routing header if present
-        if let Some(config) = cache_config {
-            if let Some(conv_id) = &config.xai_conv_id {
-                req_builder = req_builder.header("x-grok-conv-id", conv_id);
-            }
-        }
-
-        let response = req_builder
+            .post(&url)
+            .bearer_auth(&self.api_key)
             .json(&req)
             .send()
             .await?;
@@ -153,7 +147,7 @@ impl XaiClient {
         if !response.status().is_success() {
             let status = response.status();
             let text = response.text().await.unwrap_or_default();
-            return Err(XaiError::ApiError {
+            return Err(PortkeyError::ApiError {
                 message: format!("HTTP {}: {}", status, text),
             });
         }

@@ -22,13 +22,28 @@ pub(crate) struct ConvertedPrompt {
 ///
 /// Anthropic requires the system message as a separate top-level field rather
 /// than as a message in the conversation array.
-pub(crate) fn convert_prompt(prompt: Prompt) -> ConvertedPrompt {
+pub(crate) fn convert_prompt(prompt: Prompt, cache_config: Option<&rs_ai_cache::CacheConfig>) -> ConvertedPrompt {
     let messages = prompt.into_messages();
 
     let mut system_parts: Vec<String> = Vec::new();
     let mut api_messages: Vec<ApiMessage> = Vec::new();
 
-    for msg in messages {
+    let cache_control = cache_config.and_then(|c| {
+        if c.enabled {
+            let cache_type = if c.claude_ephemeral { "ephemeral" } else { "persistent" };
+            Some(crate::api_types::CacheControl {
+                cache_type: cache_type.to_string(),
+            })
+        } else {
+            None
+        }
+    });
+
+    for (idx, msg) in messages.iter().enumerate() {
+        let is_last_message = idx == messages.len() - 1;
+        // Only apply cache_control to the last message's content
+        let msg_cache_control = if is_last_message { cache_control.as_ref() } else { None };
+
         match msg.role {
             Role::System => {
                 for part in &msg.content {
@@ -38,14 +53,14 @@ pub(crate) fn convert_prompt(prompt: Prompt) -> ConvertedPrompt {
                 }
             }
             Role::User => {
-                let content = convert_content_parts(&msg.content);
+                let content = convert_content_parts(&msg.content, msg_cache_control);
                 api_messages.push(ApiMessage {
                     role: "user".to_string(),
                     content,
                 });
             }
             Role::Assistant => {
-                let content = convert_assistant_content(&msg);
+                let content = convert_assistant_content(&msg, msg_cache_control);
                 api_messages.push(ApiMessage {
                     role: "assistant".to_string(),
                     content,
@@ -76,7 +91,7 @@ pub(crate) fn convert_prompt(prompt: Prompt) -> ConvertedPrompt {
 }
 
 /// Convert a list of `ContentPart` values into an `ApiContent`.
-fn convert_content_parts(parts: &[ContentPart]) -> ApiContent {
+fn convert_content_parts(parts: &[ContentPart], cache_control: Option<&crate::api_types::CacheControl>) -> ApiContent {
     // Fast path: single text part -> use the simple string variant.
     if parts.len() == 1 {
         if let ContentPart::Text { text } = &parts[0] {
@@ -84,25 +99,34 @@ fn convert_content_parts(parts: &[ContentPart]) -> ApiContent {
         }
     }
 
-    let blocks: Vec<ContentBlock> = parts
+    let mut blocks: Vec<ContentBlock> = parts
         .iter()
         .filter_map(|part| match part {
-            ContentPart::Text { text } => Some(ContentBlock::Text { text: text.clone() }),
+            ContentPart::Text { text } => Some(ContentBlock::Text { text: text.clone(), cache_control: None }),
             ContentPart::Image { data } => Some(convert_image(data)),
             _ => None,
         })
         .collect();
 
+    // Add cache_control to the last block if provided
+    if let (Some(cc), Some(last_block)) = (cache_control, blocks.last_mut()) {
+        match last_block {
+            ContentBlock::Text { cache_control: ref mut cc_field, .. } => *cc_field = Some(cc.clone()),
+            ContentBlock::Image { cache_control: ref mut cc_field, .. } => *cc_field = Some(cc.clone()),
+            _ => {}
+        }
+    }
+
     ApiContent::Blocks(blocks)
 }
 
 /// Convert assistant message content, which may include tool calls.
-fn convert_assistant_content(msg: &Message) -> ApiContent {
-    let blocks: Vec<ContentBlock> = msg
+fn convert_assistant_content(msg: &Message, cache_control: Option<&crate::api_types::CacheControl>) -> ApiContent {
+    let mut blocks: Vec<ContentBlock> = msg
         .content
         .iter()
         .filter_map(|part| match part {
-            ContentPart::Text { text } => Some(ContentBlock::Text { text: text.clone() }),
+            ContentPart::Text { text } => Some(ContentBlock::Text { text: text.clone(), cache_control: None }),
             ContentPart::ToolCall { call } => Some(ContentBlock::ToolUse {
                 id: call.id.clone(),
                 name: call.name.clone(),
@@ -111,6 +135,15 @@ fn convert_assistant_content(msg: &Message) -> ApiContent {
             _ => None,
         })
         .collect();
+
+    // Add cache_control to the last block if provided
+    if let (Some(cc), Some(last_block)) = (cache_control, blocks.last_mut()) {
+        match last_block {
+            ContentBlock::Text { cache_control: ref mut cc_field, .. } => *cc_field = Some(cc.clone()),
+            ContentBlock::Image { cache_control: ref mut cc_field, .. } => *cc_field = Some(cc.clone()),
+            _ => {}
+        }
+    }
 
     ApiContent::Blocks(blocks)
 }
@@ -137,9 +170,11 @@ fn convert_image(data: &ImageData) -> ContentBlock {
                 media_type: media_type.clone(),
                 data: data.clone(),
             },
+            cache_control: None,
         },
         ImageData::Url { url, .. } => ContentBlock::Image {
             source: ImageSource::Url { url: url.clone() },
+            cache_control: None,
         },
     }
 }
@@ -184,8 +219,9 @@ pub(crate) fn build_request(
     prompt: Prompt,
     options: &GenerateOptions,
     stream: bool,
+    cache_config: Option<&rs_ai_cache::CacheConfig>,
 ) -> MessagesRequest {
-    let converted = convert_prompt(prompt);
+    let converted = convert_prompt(prompt, cache_config);
     let max_tokens = options.max_tokens.unwrap_or(4096);
 
     let tools = options
@@ -272,7 +308,7 @@ pub(crate) fn convert_response(response: MessagesResponse) -> GenerateResult {
 
     for block in &response.content {
         match block {
-            ContentBlock::Text { text } => {
+            ContentBlock::Text { text, .. } => {
                 text_parts.push(text.clone());
             }
             ContentBlock::ToolUse { id, name, input } => {

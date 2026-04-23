@@ -183,7 +183,7 @@ fn map_event(event: AnthropicEvent, state: &mut StreamState) -> Vec<RustyStreamE
             index,
             content_block,
         } => match content_block {
-            ContentBlock::Text { text } => {
+            ContentBlock::Text { text, .. } => {
                 if text.is_empty() {
                     Vec::new()
                 } else {

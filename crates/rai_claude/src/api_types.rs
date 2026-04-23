@@ -43,9 +43,17 @@ pub(crate) enum ApiContent {
 #[serde(tag = "type")]
 pub(crate) enum ContentBlock {
     #[serde(rename = "text")]
-    Text { text: String },
+    Text {
+        text: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        cache_control: Option<CacheControl>,
+    },
     #[serde(rename = "image")]
-    Image { source: ImageSource },
+    Image {
+        source: ImageSource,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        cache_control: Option<CacheControl>,
+    },
     #[serde(rename = "tool_use")]
     ToolUse {
         id: String,
@@ -59,6 +67,12 @@ pub(crate) enum ContentBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         is_error: Option<bool>,
     },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub(crate) struct CacheControl {
+    #[serde(rename = "type")]
+    pub cache_type: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

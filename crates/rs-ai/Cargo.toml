@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 rai_ai = { workspace = true }
+rs_ai_cache = { workspace = true }
 rai_claude = { workspace = true }
 rai_chatgpt = { workspace = true }
 rai_gemini = { workspace = true }

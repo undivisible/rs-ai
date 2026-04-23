@@ -1,3 +1,4 @@
+use rs_ai_cache::CacheConfig;
 use crate::client::XaiClient;
 use crate::model::XaiModel;
 use crate::XaiModelId;
@@ -29,6 +30,13 @@ impl XaiProvider {
         XaiModel::new(model_id.to_string(), self.client.clone())
     }
 
+    /// Create a model instance with cache configuration.
+    pub fn model_with_cache(&self, model_id: &str, cache_config: CacheConfig) -> XaiModel {
+        let mut model = XaiModel::new(model_id.to_string(), self.client.clone());
+        model.set_cache(cache_config);
+        model
+    }
+
     /// Grok 4.20 Reasoning - Best for complex reasoning tasks.
     pub fn grok_4_20_reasoning(&self) -> XaiModel {
         self.model(XaiModelId::Grok420Reasoning.as_str())
@@ -37,5 +45,15 @@ impl XaiProvider {
     /// Grok 4 - High quality model for general use and vision.
     pub fn grok_4(&self) -> XaiModel {
         self.model(XaiModelId::Grok4.as_str())
+    }
+
+    /// Grok 4.20 Reasoning with cache configuration.
+    pub fn grok_4_20_reasoning_with_cache(&self, cache_config: CacheConfig) -> XaiModel {
+        self.model_with_cache(XaiModelId::Grok420Reasoning.as_str(), cache_config)
+    }
+
+    /// Grok 4 with cache configuration.
+    pub fn grok_4_with_cache(&self, cache_config: CacheConfig) -> XaiModel {
+        self.model_with_cache(XaiModelId::Grok4.as_str(), cache_config)
     }
 }

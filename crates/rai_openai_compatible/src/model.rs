@@ -20,6 +20,7 @@ pub struct OpenAiCompatibleModel {
     provider_id: String,
     capabilities: CapabilitySet,
     client: reqwest::Client,
+    cache_config: Option<rs_ai_cache::CacheConfig>,
 }
 
 impl OpenAiCompatibleModel {
@@ -81,12 +82,27 @@ impl OpenAiCompatibleModel {
             provider_id: provider_id.to_string(),
             capabilities: CapabilitySet::new(),
             client,
+            cache_config: None,
         })
     }
 
     /// Builder-style setter for capabilities.
     pub fn with_capabilities(mut self, caps: CapabilitySet) -> Self {
         self.capabilities = caps;
+        self
+    }
+
+    /// Set cache configuration.
+    pub fn set_cache(&mut self, config: rs_ai_cache::CacheConfig) -> &mut Self {
+        self.cache_config = Some(config);
+        self
+    }
+
+    /// Set cache configuration with a cache key.
+    pub fn with_cache_key(mut self, key: impl Into<String>) -> Self {
+        let mut config = rs_ai_cache::CacheConfig::new();
+        config = config.with_openai_cache_key(key);
+        self.cache_config = Some(config);
         self
     }
 
@@ -204,13 +220,29 @@ impl LanguageModel for OpenAiCompatibleModel {
     }
 
     async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
-        let request = convert::options_to_request(&self.model_id, &prompt, &options, false);
+        let mut request = convert::options_to_request(&self.model_id, &prompt, &options, false);
+        if let Some(config) = &self.cache_config {
+            if let Some(cache_key) = &config.openai_cache_key {
+                request.prompt_cache_key = Some(cache_key.clone());
+            }
+            if config.enabled {
+                request.prompt_cache_retention = Some("24h".to_string());
+            }
+        }
         let response = self.do_request(request).await?;
         Ok(convert::response_to_result(response, &self.provider_id))
     }
 
     async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
-        let request = convert::options_to_request(&self.model_id, &prompt, &options, true);
+        let mut request = convert::options_to_request(&self.model_id, &prompt, &options, true);
+        if let Some(config) = &self.cache_config {
+            if let Some(cache_key) = &config.openai_cache_key {
+                request.prompt_cache_key = Some(cache_key.clone());
+            }
+            if config.enabled {
+                request.prompt_cache_retention = Some("24h".to_string());
+            }
+        }
         self.do_stream_request(request).await
     }
 }

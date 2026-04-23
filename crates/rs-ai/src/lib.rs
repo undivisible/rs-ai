@@ -28,6 +28,7 @@ use rai_ai::{
     AiError, AiResult, ContentPart, FileData, GenerateOptions, ImageData, LanguageModel, Message,
     Prompt, StreamEvent,
 };
+use rs_ai_cache::CacheConfig;
 use rai_chatgpt::ChatGptProvider;
 use rai_claude::ClaudeProvider;
 use rai_gemini::GeminiProvider;
@@ -45,6 +46,8 @@ pub struct ClientBuilder {
     /// Cloudflare AI Gateway path — either `account_id/gateway_id` or a full
     /// `https://gateway.ai.cloudflare.com/v1/...` URL prefix.
     cf_gateway: Option<String>,
+    /// Cache configuration (prompt caching, conversation routing, etc.)
+    cache_config: Option<CacheConfig>,
 }
 
 enum ProviderType {
@@ -135,6 +138,56 @@ impl ClientBuilder {
     /// ```
     pub fn cf_ai_gateway(mut self, gateway: impl Into<String>) -> Self {
         self.cf_gateway = Some(gateway.into());
+        self
+    }
+
+    /// Enable prompt caching for this request.
+    ///
+    /// Enables provider-specific caching mechanisms:
+    /// - **Claude**: Explicit cache_control on message blocks
+    /// - **Gemini**: Cached content reuse
+    /// - **OpenAI**: Automatic routing-based caching
+    /// - **xAI**: Conversation routing + prompt caching
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let response = rs_ai::claude()
+    ///     .api_key("sk-ant-...")
+    ///     .model("claude-sonnet-4-6")
+    ///     .with_cache(rai_cache::CacheConfig::new())
+    ///     .generate("Long prompt with cached content...")
+    ///     .await?;
+    /// ```
+    pub fn with_cache(mut self, config: CacheConfig) -> Self {
+        self.cache_config = Some(config);
+        self
+    }
+
+    /// Enable caching with default settings.
+    ///
+    /// Equivalent to `.with_cache(CacheConfig::new())`.
+    pub fn enable_cache(self) -> Self {
+        self.with_cache(CacheConfig::new())
+    }
+
+    /// Set xAI conversation ID for server routing.
+    ///
+    /// Routes requests with the same conversation ID to the same server,
+    /// improving cache hit rates for xAI/Grok models.
+    pub fn with_xai_conv_id(mut self, conv_id: impl Into<String>) -> Self {
+        let mut cache = self.cache_config.unwrap_or_default();
+        cache.xai_conv_id = Some(conv_id.into());
+        self.cache_config = Some(cache);
+        self
+    }
+
+    /// Set a prompt cache key for improved cache locality.
+    ///
+    /// Works with OpenAI and xAI models to route requests to the same backend.
+    pub fn with_prompt_cache_key(mut self, key: impl Into<String>) -> Self {
+        let mut cache = self.cache_config.unwrap_or_default();
+        cache.prompt_cache_key = Some(key.into());
+        self.cache_config = Some(cache);
         self
     }
 
@@ -616,6 +669,7 @@ pub fn claude() -> ClientBuilder {
         model_id: None,
         images: Vec::new(),
         cf_gateway: None,
+        cache_config: None,
     }
 }
 
@@ -636,6 +690,7 @@ pub fn chatgpt() -> ClientBuilder {
         model_id: None,
         images: Vec::new(),
         cf_gateway: None,
+        cache_config: None,
     }
 }
 
@@ -656,6 +711,7 @@ pub fn gemini() -> ClientBuilder {
         model_id: None,
         images: Vec::new(),
         cf_gateway: None,
+        cache_config: None,
     }
 }
 
@@ -676,6 +732,7 @@ pub fn xai() -> ClientBuilder {
         model_id: None,
         images: Vec::new(),
         cf_gateway: None,
+        cache_config: None,
     }
 }
 
@@ -701,6 +758,7 @@ pub fn cloudflare(account_id: impl Into<String>) -> ClientBuilder {
         model_id: None,
         images: Vec::new(),
         cf_gateway: None,
+        cache_config: None,
     }
 }
 
@@ -723,5 +781,6 @@ pub fn compatible(base_url: impl Into<String>) -> ClientBuilder {
         model_id: None,
         images: Vec::new(),
         cf_gateway: None,
+        cache_config: None,
     }
 }
