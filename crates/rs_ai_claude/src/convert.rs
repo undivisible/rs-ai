@@ -71,7 +71,7 @@ pub(crate) fn convert_prompt(
                 });
             }
             Role::Assistant => {
-                let content = convert_assistant_content(&msg, msg_cache_control);
+                let content = convert_assistant_content(msg, msg_cache_control);
                 api_messages.push(ApiMessage {
                     role: "assistant".to_string(),
                     content,

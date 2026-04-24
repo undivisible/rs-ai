@@ -330,14 +330,14 @@ impl LiveSession {
         let request = url_str
             .as_str()
             .into_client_request()
-            .map_err(|e| LiveError::WebSocket(e))?;
+            .map_err(LiveError::WebSocket)?;
 
         let (ws, _) = connect_async_tls_with_config(request, None, false, None).await?;
         let (mut sink, stream) = ws.split();
 
         // Send the setup message immediately after connection.
         let setup = SetupMessage { setup: config };
-        sink.send(Message::Text(serde_json::to_string(&setup)?.into()))
+        sink.send(Message::Text(serde_json::to_string(&setup)?))
             .await?;
 
         Ok(Self {
@@ -496,7 +496,7 @@ impl LiveSession {
     async fn send_raw<T: Serialize>(&mut self, msg: &T) -> LiveResult<()> {
         let json = serde_json::to_string(msg)?;
         let mut sink = self.sink.lock().await;
-        sink.send(Message::Text(json.into())).await?;
+        sink.send(Message::Text(json)).await?;
         Ok(())
     }
 }

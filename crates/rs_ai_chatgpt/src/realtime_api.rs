@@ -419,6 +419,7 @@ impl RealtimeSession {
     }
 
     /// Decode a base64 audio delta from the server into raw PCM16 bytes.
+    #[allow(clippy::result_large_err)]
     pub fn decode_audio(base64_delta: &str) -> RealtimeResult<Vec<u8>> {
         base64::engine::general_purpose::STANDARD
             .decode(base64_delta)
