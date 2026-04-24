@@ -1,5 +1,5 @@
-use rs_ai_ai::LanguageModel;
 use rs_ai_gemini::GeminiProvider;
+use rs_ai_traits::LanguageModel;
 
 #[test]
 fn test_gemini_provider_creation() {
@@ -66,6 +66,6 @@ fn test_gemini_model_capabilities() {
     let model = provider.model("gemini-2.5-flash");
 
     let capabilities = model.capabilities();
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextInput]));
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextOutput]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::TextInput]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::TextOutput]));
 }

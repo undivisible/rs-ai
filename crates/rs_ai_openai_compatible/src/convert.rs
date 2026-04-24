@@ -1,4 +1,4 @@
-use rs_ai_ai::{
+use rs_ai_traits::{
     ContentPart, FinishReason, GenerateOptions, GenerateResult, ImageData, Message, Prompt,
     ResponseMetadata, Role, ToolCallRequest, ToolChoice, Usage,
 };
@@ -100,9 +100,9 @@ fn image_to_json(data: &ImageData) -> serde_json::Value {
             let mut image_url = serde_json::json!({ "url": url });
             if let Some(d) = detail {
                 let detail_str = match d {
-                    rs_ai_ai::ImageDetail::Auto => "auto",
-                    rs_ai_ai::ImageDetail::Low => "low",
-                    rs_ai_ai::ImageDetail::High => "high",
+                    rs_ai_traits::ImageDetail::Auto => "auto",
+                    rs_ai_traits::ImageDetail::Low => "low",
+                    rs_ai_traits::ImageDetail::High => "high",
                 };
                 image_url["detail"] = serde_json::Value::String(detail_str.to_string());
             }

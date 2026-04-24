@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "(UNSTABLE; in active development) Cache configuration and TTL policies for the Rusty AI SDK"
 
 [dependencies]
 serde = { workspace = true }

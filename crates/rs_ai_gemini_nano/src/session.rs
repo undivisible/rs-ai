@@ -26,11 +26,11 @@ impl NanoSession {
     }
 
     /// Send a message within this session and receive the model's response.
-    pub async fn send(&self, message: &str) -> Result<String, rs_ai_ai::AiError> {
+    pub async fn send(&self, message: &str) -> Result<String, rs_ai_traits::AiError> {
         self.bridge
             .send_message(&self.session_id, message)
             .await
-            .map_err(|e| rs_ai_ai::AiError::BridgeError {
+            .map_err(|e| rs_ai_traits::AiError::BridgeError {
                 bridge: "gemini_nano".into(),
                 message: e,
             })

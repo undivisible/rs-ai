@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, Capability, CapabilitySet, EmbeddingModel, LanguageModel, ModelInfo,
     Provider,
 };
@@ -15,6 +15,7 @@ pub struct BrowserAiProvider {
 }
 
 impl BrowserAiProvider {
+    /// Create a new `BrowserAiProvider` wrapping the given bridge.
     pub fn new(bridge: impl BrowserAiBridge + 'static) -> Self {
         Self {
             bridge: Arc::new(bridge),

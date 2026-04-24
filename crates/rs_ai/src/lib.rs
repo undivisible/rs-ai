@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! **rs_ai** - A fluent, ergonomic Rust SDK for AI with 15+ cloud and local providers.
 //!
 //! # Quick Start
@@ -24,7 +27,7 @@
 
 use base64::Engine as _;
 use futures::stream::BoxStream;
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, ContentPart, FileData, GenerateOptions, ImageData, LanguageModel, Message,
     Prompt, StreamEvent,
 };
@@ -359,7 +362,7 @@ impl ClientBuilder {
         };
 
         let message = Message {
-            role: rs_ai_ai::Role::User,
+            role: rs_ai_traits::Role::User,
             content: vec![instruction_part, audio_part],
             name: None,
             metadata: std::collections::HashMap::new(),
@@ -542,7 +545,7 @@ fn build_vision_message(text: String, images: Vec<String>) -> AiResult<Message> 
         content.push(ContentPart::Image { data });
     }
     Ok(Message {
-        role: rs_ai_ai::Role::User,
+        role: rs_ai_traits::Role::User,
         content,
         name: None,
         metadata: std::collections::HashMap::new(),

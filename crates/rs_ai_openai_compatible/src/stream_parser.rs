@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use futures::stream::{self, Stream, StreamExt};
-use rs_ai_ai::{AiError, FinishReason, StreamEvent, Usage};
+use rs_ai_traits::{AiError, FinishReason, StreamEvent, Usage};
 
 use crate::api_types::ChatCompletionChunk;
 use crate::convert::parse_finish_reason;

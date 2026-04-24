@@ -1,11 +1,11 @@
-use rs_ai_ai::content::{ContentPart, ImageData};
-use rs_ai_ai::message::{Message, Role};
-use rs_ai_ai::model::{GenerateOptions, ThinkingConfig};
-use rs_ai_ai::prompt::Prompt;
-use rs_ai_ai::structured::GenerateResult;
-use rs_ai_ai::tool::{ToolCallRequest, ToolChoice, ToolDefinition};
-use rs_ai_ai::types::{FinishReason, ResponseMetadata};
-use rs_ai_ai::usage::Usage;
+use rs_ai_traits::content::{ContentPart, ImageData};
+use rs_ai_traits::message::{Message, Role};
+use rs_ai_traits::model::{GenerateOptions, ThinkingConfig};
+use rs_ai_traits::prompt::Prompt;
+use rs_ai_traits::structured::GenerateResult;
+use rs_ai_traits::tool::{ToolCallRequest, ToolChoice, ToolDefinition};
+use rs_ai_traits::types::{FinishReason, ResponseMetadata};
+use rs_ai_traits::usage::Usage;
 
 use crate::api_types::{
     ApiContent, ApiMessage, ApiOutputConfig, ApiOutputFormat, ApiThinkingConfig, ApiTool,

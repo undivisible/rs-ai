@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use futures::stream::{self, StreamExt};
 
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, AiStream, Capability, CapabilitySet, EmbeddingModel, EmbeddingResult,
     FinishReason, GenerateOptions, GenerateResult, LanguageModel, ResponseMetadata, StreamEvent,
     Usage,
@@ -48,7 +48,7 @@ impl OllamaModel {
     /// Build the chat request body from a prompt and options.
     fn build_chat_request(
         &self,
-        prompt: rs_ai_ai::Prompt,
+        prompt: rs_ai_traits::Prompt,
         options: &GenerateOptions,
         stream: bool,
     ) -> OllamaChatRequest {
@@ -173,7 +173,7 @@ impl LanguageModel for OllamaModel {
 
     async fn generate(
         &self,
-        prompt: rs_ai_ai::Prompt,
+        prompt: rs_ai_traits::Prompt,
         options: GenerateOptions,
     ) -> AiResult<GenerateResult> {
         let request = self.build_chat_request(prompt, &options, false);
@@ -182,7 +182,7 @@ impl LanguageModel for OllamaModel {
 
     async fn stream(
         &self,
-        prompt: rs_ai_ai::Prompt,
+        prompt: rs_ai_traits::Prompt,
         options: GenerateOptions,
     ) -> AiResult<AiStream> {
         let request = self.build_chat_request(prompt, &options, true);

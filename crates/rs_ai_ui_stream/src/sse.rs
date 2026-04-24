@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use futures::Stream;
-use rs_ai_ai::{AiError, AiStream};
+use rs_ai_traits::{AiError, AiStream};
 use tokio_stream::StreamExt;
 
 use crate::UiStreamEvent;
@@ -104,7 +104,7 @@ mod tests {
     #[tokio::test]
     async fn test_encode_stream() {
         use futures::stream;
-        use rs_ai_ai::StreamEvent;
+        use rs_ai_traits::StreamEvent;
 
         use tokio_stream::StreamExt;
 
@@ -114,7 +114,7 @@ mod tests {
             }),
             Ok(StreamEvent::TextDelta { delta: "Hi".into() }),
             Ok(StreamEvent::MessageEnd {
-                finish_reason: rs_ai_ai::FinishReason::Stop,
+                finish_reason: rs_ai_traits::FinishReason::Stop,
                 usage: None,
             }),
         ];
@@ -136,7 +136,7 @@ mod tests {
     #[tokio::test]
     async fn test_encode_stream_with_error() {
         use futures::stream;
-        use rs_ai_ai::StreamEvent;
+        use rs_ai_traits::StreamEvent;
 
         use tokio_stream::StreamExt;
 

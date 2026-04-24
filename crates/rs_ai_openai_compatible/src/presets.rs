@@ -15,10 +15,15 @@ pub mod openrouter {
             .with_header("X-Title", "RAI SDK")
     }
 
+    /// Claude 3.5 Sonnet model identifier.
     pub const CLAUDE_SONNET: &str = "anthropic/claude-3.5-sonnet";
+    /// Claude 3 Opus model identifier.
     pub const CLAUDE_OPUS: &str = "anthropic/claude-3-opus";
+    /// GPT-4 Turbo model identifier.
     pub const GPT4_TURBO: &str = "openai/gpt-4-turbo";
+    /// Gemini 2.0 Flash model identifier.
     pub const GEMINI_2_FLASH: &str = "google/gemini-2.0-flash";
+    /// Llama 3 70B model identifier.
     pub const LLAMA_3_70B: &str = "meta-llama/llama-3-70b-instruct";
 }
 
@@ -35,8 +40,11 @@ pub mod bedrock {
         )
     }
 
+    /// Claude Sonnet 4.6 model identifier.
     pub const CLAUDE_SONNET_4_6: &str = "anthropic.claude-sonnet-4-20250514";
+    /// Claude 3 Opus model identifier.
     pub const CLAUDE_OPUS_4: &str = "anthropic.claude-3-opus-20240229";
+    /// Claude 3 Haiku model identifier.
     pub const CLAUDE_HAIKU: &str = "anthropic.claude-3-haiku-20240307";
 }
 
@@ -49,8 +57,11 @@ pub mod kilo {
         OpenAiCompatibleConfig::new("https://api.kilo.ai/api/gateway", api_key)
     }
 
+    /// Claude 3.5 Sonnet model identifier.
     pub const CLAUDE_SONNET: &str = "claude-3-5-sonnet";
+    /// GPT-4o model identifier.
     pub const GPT4O: &str = "gpt-4o";
+    /// Gemini 2.0 Flash model identifier.
     pub const GEMINI_2_FLASH: &str = "gemini-2.0-flash";
 }
 
@@ -63,7 +74,9 @@ pub mod together {
         OpenAiCompatibleConfig::new("https://api.together.xyz/v1", api_key)
     }
 
+    /// Llama 3 70B model identifier.
     pub const LLAMA_3_70B: &str = "meta-llama/Llama-3-70b-chat-hf";
+    /// Mistral 7B model identifier.
     pub const MISTRAL_7B: &str = "mistralai/Mistral-7B-Instruct-v0.2";
 }
 
@@ -76,7 +89,9 @@ pub mod octoml {
         OpenAiCompatibleConfig::new("https://text.octoml.cloud/v1", api_key)
     }
 
+    /// Llama 3 8B model identifier.
     pub const LLAMA_3_8B: &str = "meta-llama-3-8b-instruct";
+    /// Mistral 7B model identifier.
     pub const MISTRAL_7B: &str = "mistral-7b-instruct";
 }
 
@@ -95,7 +110,9 @@ pub mod azure {
             .with_header("api-key", api_key_str)
     }
 
+    /// GPT-4 Turbo model identifier.
     pub const GPT4_TURBO: &str = "gpt-4-turbo";
+    /// GPT-3.5 Turbo model identifier.
     pub const GPT35_TURBO: &str = "gpt-3.5-turbo";
 }
 
@@ -112,7 +129,9 @@ pub mod cloudflare {
         OpenAiCompatibleConfig::new(base_url, api_token)
     }
 
+    /// Llama 2 7B model identifier.
     pub const LLAMA_2_7B: &str = "@cf/meta/llama-2-7b-chat-fp16";
+    /// Mistral 7B model identifier.
     pub const MISTRAL_7B: &str = "@cf/mistral/mistral-7b-instruct-v0.1";
 }
 
@@ -127,7 +146,8 @@ pub mod vllm {
         OpenAiCompatibleConfig::new(url, "not-needed")
     }
 
-    pub const CUSTOM_MODEL: &str = "custom-model"; // Use your deployed model name
+    /// Custom model placeholder — use your deployed model name.
+    pub const CUSTOM_MODEL: &str = "custom-model";
 }
 
 /// Ollama - Run language models locally
@@ -141,8 +161,11 @@ pub mod ollama {
         OpenAiCompatibleConfig::new(url, "not-needed")
     }
 
+    /// Llama 2 model identifier.
     pub const LLAMA_2: &str = "llama2";
+    /// Mistral model identifier.
     pub const MISTRAL: &str = "mistral";
+    /// Neural Chat model identifier.
     pub const NEURAL_CHAT: &str = "neural-chat";
 }
 
@@ -157,7 +180,8 @@ pub mod lm_studio {
         OpenAiCompatibleConfig::new(url, "not-needed")
     }
 
-    pub const CUSTOM_MODEL: &str = "local-model"; // Use your loaded model name
+    /// Custom model placeholder — use your loaded model name.
+    pub const CUSTOM_MODEL: &str = "local-model";
 }
 
 /// text-generation-webui - A Gradio web UI for LLMs
@@ -171,7 +195,8 @@ pub mod text_gen_webui {
         OpenAiCompatibleConfig::new(url, "not-needed")
     }
 
-    pub const CUSTOM_MODEL: &str = "model"; // Use your loaded model name
+    /// Custom model placeholder — use your loaded model name.
+    pub const CUSTOM_MODEL: &str = "model";
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use rs_ai_ai::{AiResult, GenerateOptions, GenerateResult, Middleware, MiddlewareNext, Prompt};
+use rs_ai_traits::{AiResult, GenerateOptions, GenerateResult, Middleware, MiddlewareNext, Prompt};
 
 /// A cached generate result together with its insertion timestamp.
 struct CacheEntry {
@@ -133,9 +133,9 @@ impl Middleware for CacheMiddleware {
 mod tests {
     use std::time::Duration;
 
-    use rs_ai_ai::tool::ToolDefinition;
-    use rs_ai_ai::{GenerateOptions, Prompt};
     use rs_ai_testing::{MockLanguageModel, MockResponse};
+    use rs_ai_traits::tool::ToolDefinition;
+    use rs_ai_traits::{GenerateOptions, Prompt};
 
     use crate::chain::MiddlewareChain;
 

@@ -6,7 +6,7 @@ license.workspace = true
 
 [dependencies]
 rs_ai_claude = { workspace = true }
-rs_ai_ai = { workspace = true }
+rs_ai_traits = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }
 schemars = { workspace = true }

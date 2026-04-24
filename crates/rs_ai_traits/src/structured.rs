@@ -1,3 +1,4 @@
+//! Structured generation result types.
 use serde::{Deserialize, Serialize};
 
 use crate::tool::ToolCallRequest;
@@ -46,17 +47,24 @@ pub struct EmbeddingResult {
 /// Result of a speech-to-text transcription.
 #[derive(Debug, Clone)]
 pub struct TranscriptionResult {
+    /// Transcribed text.
     pub text: String,
+    /// Detected language, if available.
     pub language: Option<String>,
+    /// Duration of the audio in seconds.
     pub duration_seconds: Option<f64>,
+    /// Token usage information.
     pub usage: Usage,
 }
 
 /// Result of text-to-speech synthesis.
 #[derive(Debug, Clone)]
 pub struct AudioResult {
+    /// Synthesized audio bytes.
     pub audio: Vec<u8>,
+    /// MIME type of the audio.
     pub mime_type: String,
+    /// Token usage information.
     pub usage: Usage,
 }
 

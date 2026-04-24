@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
 
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, AiStream, Capability, CapabilitySet, GenerateOptions, GenerateResult,
     LanguageModel, Prompt,
 };

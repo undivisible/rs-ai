@@ -1,3 +1,4 @@
+//! Model capabilities.
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
@@ -6,26 +7,42 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Capability {
+    /// Accept text input.
     TextInput,
+    /// Produce text output.
     TextOutput,
+    /// Accept image input.
     ImageInput,
+    /// Produce image output.
     ImageOutput,
+    /// Support streaming responses.
     Streaming,
+    /// Support tool calling.
     ToolCalling,
+    /// Support structured output.
     StructuredOutput,
+    /// Support text embeddings.
     Embeddings,
+    /// Run locally on the device.
     LocalExecution,
+    /// Support persistent sessions.
     SessionSupport,
+    /// Platform-native execution.
     PlatformNative,
+    /// Support extended thinking / reasoning.
     ExtendedThinking,
+    /// Accept video input.
     VideoInput,
+    /// Accept audio input.
     AudioInput,
+    /// Produce audio output.
     AudioOutput,
 }
 
 /// An ordered set of capabilities.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CapabilitySet {
+    /// Underlying set of capabilities.
     inner: BTreeSet<Capability>,
 }
 

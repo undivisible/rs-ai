@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use futures::stream::{self, StreamExt};
 use reqwest::Response;
-use rs_ai_ai::error::AiError;
-use rs_ai_ai::stream::{AiStream, StreamEvent as RustyStreamEvent};
-use rs_ai_ai::Usage;
+use rs_ai_traits::error::AiError;
+use rs_ai_traits::stream::{AiStream, StreamEvent as RustyStreamEvent};
+use rs_ai_traits::Usage;
 
 use crate::api_types::{ContentBlock, DeltaBlock, StreamEvent as AnthropicEvent};
 use crate::convert::map_stop_reason;

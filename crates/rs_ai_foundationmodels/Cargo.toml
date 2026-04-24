@@ -2,11 +2,13 @@
 name = "rs_ai_foundationmodels"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-description = "Apple Foundation Models bridge for the Rusty AI SDK (see undivisible/rs_ai_foundationmodels)"
+repository.workspace = true
+description = "(UNSTABLE; in active development) Apple Foundation Models bridge for the Rusty AI SDK"
 
 [dependencies]
-rs_ai_ai = { workspace = true }
+rs_ai_traits = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
@@ -16,3 +18,9 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+thiserror = { workspace = true }
+futures-core = "0.3"
+futures-channel = "0.3"
+
+[dev-dependencies]
+futures-executor = "0.3"

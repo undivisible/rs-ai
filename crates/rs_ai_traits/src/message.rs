@@ -1,3 +1,4 @@
+//! Chat message types.
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -8,19 +9,27 @@ use crate::content::{ContentPart, ImageData};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Role {
+    /// System instruction message.
     System,
+    /// User message.
     User,
+    /// Assistant message.
     Assistant,
+    /// Tool result message.
     Tool,
 }
 
 /// A single message in a conversation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
+    /// Role of the message sender.
     pub role: Role,
+    /// Content parts that make up the message.
     pub content: Vec<ContentPart>,
+    /// Optional name identifier for the participant.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// Arbitrary metadata attached to the message.
     #[serde(default)]
     pub metadata: HashMap<String, serde_json::Value>,
 }

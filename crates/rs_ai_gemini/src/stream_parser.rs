@@ -2,8 +2,8 @@ use crate::api_types::*;
 use crate::convert::{map_finish_reason, map_usage};
 use futures::stream::{self, StreamExt};
 use reqwest::Response;
-use rs_ai_ai::error::AiError;
-use rs_ai_ai::stream::{AiStream, StreamEvent};
+use rs_ai_traits::error::AiError;
+use rs_ai_traits::stream::{AiStream, StreamEvent};
 
 /// Parse Gemini's Server-Sent Events streaming format into an `AiStream`.
 ///

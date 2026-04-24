@@ -1,3 +1,4 @@
+//! Tool definitions and tool calling types.
 use std::collections::HashMap;
 
 use async_trait::async_trait;
@@ -9,7 +10,9 @@ use crate::error::AiResult;
 /// JSON-Schema based definition of a tool that a model can call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolDefinition {
+    /// Name of the tool.
     pub name: String,
+    /// Description of what the tool does.
     pub description: String,
     /// JSON Schema describing the parameters object.
     pub parameters: serde_json::Value,
@@ -18,16 +21,22 @@ pub struct ToolDefinition {
 /// A request from the model to invoke a tool.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCallRequest {
+    /// Unique identifier for this tool call.
     pub id: String,
+    /// Name of the tool to invoke.
     pub name: String,
+    /// Arguments to pass to the tool, as a JSON object.
     pub arguments: serde_json::Value,
 }
 
 /// The result of executing a tool call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCallResult {
+    /// Identifier of the corresponding tool call.
     pub call_id: String,
+    /// Result content from the tool.
     pub content: String,
+    /// Whether the tool returned an error.
     pub is_error: bool,
 }
 
@@ -35,9 +44,13 @@ pub struct ToolCallResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolChoice {
+    /// Let the model decide whether to call a tool.
     Auto,
+    /// Do not call any tools.
     None,
+    /// The model must call a tool.
     Required,
+    /// The model must call the named tool.
     Specific(String),
 }
 
@@ -52,6 +65,7 @@ pub trait Tool: Send + Sync {
 
 /// A named collection of tools.
 pub struct ToolSet {
+    /// Map of tool names to tool implementations.
     tools: HashMap<String, Box<dyn Tool>>,
 }
 

@@ -5,6 +5,8 @@
 //!
 //! Reference: <https://platform.openai.com/docs/api-reference/realtime>
 
+#![deny(missing_docs)]
+
 use std::sync::Arc;
 
 use base64::Engine;
@@ -22,20 +24,32 @@ const BETA_HEADER: &str = "realtime=v1";
 
 // ── Error ─────────────────────────────────────────────────────────────────────
 
+/// Errors that can occur during a Realtime API session.
 #[derive(Debug, Error)]
 pub enum RealtimeError {
+    /// A WebSocket transport error.
     #[error("WebSocket error: {0}")]
     WebSocket(#[from] tokio_tungstenite::tungstenite::Error),
+    /// A JSON serialization or deserialization error.
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+    /// A URL parsing error.
     #[error("URL parse error: {0}")]
     Url(#[from] url::ParseError),
+    /// The communication channel was closed.
     #[error("Channel closed")]
     ChannelClosed,
+    /// An API error returned by the server.
     #[error("API error: {code} — {message}")]
-    ApiError { code: String, message: String },
+    ApiError {
+        /// Error code returned by the API.
+        code: String,
+        /// Human-readable error message.
+        message: String,
+    },
 }
 
+/// Shorthand result type for Realtime API operations.
 pub type RealtimeResult<T> = Result<T, RealtimeError>;
 
 // ── Events sent TO the API ────────────────────────────────────────────────────
@@ -44,7 +58,9 @@ pub type RealtimeResult<T> = Result<T, RealtimeError>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Modality {
+    /// Text modality.
     Text,
+    /// Audio modality.
     Audio,
 }
 
@@ -52,14 +68,22 @@ pub enum Modality {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Voice {
+    /// Alloy voice.
     #[default]
     Alloy,
+    /// Ash voice.
     Ash,
+    /// Ballad voice.
     Ballad,
+    /// Coral voice.
     Coral,
+    /// Echo voice.
     Echo,
+    /// Sage voice.
     Sage,
+    /// Shimmer voice.
     Shimmer,
+    /// Verse voice.
     Verse,
 }
 
@@ -67,28 +91,37 @@ pub enum Voice {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AudioFormat {
+    /// 16-bit PCM.
     #[default]
     Pcm16,
+    /// G.711 μ-law.
     G711Ulaw,
+    /// G.711 A-law.
     G711Alaw,
 }
 
 /// Turn detection configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TurnDetection {
+    /// Turn detection type (e.g. "server_vad").
     #[serde(rename = "type")]
     pub kind: String,
+    /// Activation threshold.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub threshold: Option<f32>,
+    /// Padding before speech in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prefix_padding_ms: Option<u32>,
+    /// Silence duration to trigger end of turn in milliseconds.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub silence_duration_ms: Option<u32>,
+    /// Whether to create a response after detecting the end of a turn.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub create_response: Option<bool>,
 }
 
 impl TurnDetection {
+    /// Create a default server-side VAD configuration.
     pub fn server_vad() -> Self {
         Self {
             kind: "server_vad".into(),
@@ -103,34 +136,48 @@ impl TurnDetection {
 /// A function/tool definition for the Realtime session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RealtimeTool {
+    /// Tool type (e.g. "function").
     #[serde(rename = "type")]
     pub kind: String,
+    /// Tool name.
     pub name: String,
+    /// Tool description.
     pub description: String,
+    /// JSON Schema parameters.
     pub parameters: serde_json::Value,
 }
 
 /// Session configuration update.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SessionConfig {
+    /// Desired modalities.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modalities: Option<Vec<Modality>>,
+    /// System instructions.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<String>,
+    /// Voice for audio output.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub voice: Option<Voice>,
+    /// Input audio format.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input_audio_format: Option<AudioFormat>,
+    /// Output audio format.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output_audio_format: Option<AudioFormat>,
+    /// Turn detection settings.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub turn_detection: Option<TurnDetection>,
+    /// Tools available to the model.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<Vec<RealtimeTool>>,
+    /// Tool choice strategy.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<String>,
+    /// Sampling temperature.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
+    /// Maximum response output tokens.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_response_output_tokens: Option<serde_json::Value>,
 }
@@ -139,65 +186,104 @@ pub struct SessionConfig {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientEvent {
+    /// Update the session configuration.
     #[serde(rename = "session.update")]
-    SessionUpdate { session: SessionConfig },
+    SessionUpdate {
+        /// New session configuration.
+        session: SessionConfig,
+    },
+    /// Append audio data to the input buffer.
     #[serde(rename = "input_audio_buffer.append")]
-    InputAudioBufferAppend { audio: String },
+    InputAudioBufferAppend {
+        /// Base64-encoded audio data.
+        audio: String,
+    },
+    /// Commit the current audio buffer.
     #[serde(rename = "input_audio_buffer.commit")]
     InputAudioBufferCommit,
+    /// Clear the audio buffer.
     #[serde(rename = "input_audio_buffer.clear")]
     InputAudioBufferClear,
+    /// Create a conversation item.
     #[serde(rename = "conversation.item.create")]
-    ConversationItemCreate { item: ConversationItem },
+    ConversationItemCreate {
+        /// The item to create.
+        item: ConversationItem,
+    },
+    /// Truncate a conversation item.
     #[serde(rename = "conversation.item.truncate")]
     ConversationItemTruncate {
+        /// ID of the item to truncate.
         item_id: String,
+        /// Content index.
         content_index: u32,
+        /// Audio end position in milliseconds.
         audio_end_ms: u32,
     },
+    /// Delete a conversation item.
     #[serde(rename = "conversation.item.delete")]
-    ConversationItemDelete { item_id: String },
+    ConversationItemDelete {
+        /// ID of the item to delete.
+        item_id: String,
+    },
+    /// Create a response.
     #[serde(rename = "response.create")]
     ResponseCreate {
-        #[serde(skip_serializing_if = "Option::is_none")]
+        /// Optional response configuration.
         response: Option<ResponseConfig>,
     },
+    /// Cancel the current response.
     #[serde(rename = "response.cancel")]
     ResponseCancel,
 }
 
+/// A conversation item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConversationItem {
+    /// Item type (e.g. "message").
     #[serde(rename = "type")]
     pub kind: String,
+    /// Optional item ID.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
+    /// Role (e.g. "user" or "assistant").
     #[serde(skip_serializing_if = "Option::is_none")]
     pub role: Option<String>,
+    /// Item content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<Vec<ItemContent>>,
+    /// Call ID for function call output.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub call_id: Option<String>,
+    /// Function call output.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
 }
 
+/// Content within a conversation item.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemContent {
+    /// Content type.
     #[serde(rename = "type")]
     pub kind: String,
+    /// Text content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    /// Base64-encoded audio content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub audio: Option<String>,
+    /// Transcript content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transcript: Option<String>,
 }
 
+/// Configuration for a response.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ResponseConfig {
+    /// Desired modalities.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub modalities: Option<Vec<Modality>>,
+    /// Response instructions.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<String>,
 }
@@ -208,69 +294,153 @@ pub struct ResponseConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ServerEvent {
+    /// Session was created.
     #[serde(rename = "session.created")]
-    SessionCreated { session: serde_json::Value },
+    SessionCreated {
+        /// Session data.
+        session: serde_json::Value,
+    },
+    /// Session was updated.
     #[serde(rename = "session.updated")]
-    SessionUpdated { session: serde_json::Value },
+    SessionUpdated {
+        /// Session data.
+        session: serde_json::Value,
+    },
+    /// Speech started in the input audio buffer.
     #[serde(rename = "input_audio_buffer.speech_started")]
     SpeechStarted {
+        /// Start time in milliseconds.
         audio_start_ms: u64,
+        /// Associated item ID.
         item_id: String,
     },
+    /// Speech stopped in the input audio buffer.
     #[serde(rename = "input_audio_buffer.speech_stopped")]
-    SpeechStopped { audio_end_ms: u64, item_id: String },
+    SpeechStopped {
+        /// End time in milliseconds.
+        audio_end_ms: u64,
+        /// Associated item ID.
+        item_id: String,
+    },
+    /// Audio buffer was committed.
     #[serde(rename = "input_audio_buffer.committed")]
-    AudioBufferCommitted { item_id: String },
+    AudioBufferCommitted {
+        /// Associated item ID.
+        item_id: String,
+    },
+    /// A conversation item was created.
     #[serde(rename = "conversation.item.created")]
-    ConversationItemCreated { item: serde_json::Value },
+    ConversationItemCreated {
+        /// Item data.
+        item: serde_json::Value,
+    },
+    /// Input audio transcription completed.
     #[serde(rename = "conversation.item.input_audio_transcription.completed")]
     TranscriptionCompleted {
+        /// Item ID.
         item_id: String,
+        /// Content index.
         content_index: u32,
+        /// Transcript text.
         transcript: String,
     },
+    /// A response was created.
     #[serde(rename = "response.created")]
-    ResponseCreated { response: serde_json::Value },
-    #[serde(rename = "response.output_item.added")]
-    ResponseOutputItemAdded { item: serde_json::Value },
-    #[serde(rename = "response.audio_transcript.delta")]
-    AudioTranscriptDelta { item_id: String, delta: String },
-    #[serde(rename = "response.audio.delta")]
-    AudioDelta {
-        item_id: String,
-        delta: String, // base64-encoded PCM16
+    ResponseCreated {
+        /// Response data.
+        response: serde_json::Value,
     },
-    #[serde(rename = "response.audio.done")]
-    AudioDone { item_id: String },
-    #[serde(rename = "response.text.delta")]
-    TextDelta { item_id: String, delta: String },
-    #[serde(rename = "response.text.done")]
-    TextDone { item_id: String, text: String },
-    #[serde(rename = "response.function_call_arguments.delta")]
-    FunctionCallArgumentsDelta {
+    /// An output item was added to the response.
+    #[serde(rename = "response.output_item.added")]
+    ResponseOutputItemAdded {
+        /// Item data.
+        item: serde_json::Value,
+    },
+    /// Audio transcript delta.
+    #[serde(rename = "response.audio_transcript.delta")]
+    AudioTranscriptDelta {
+        /// Item ID.
         item_id: String,
-        call_id: String,
+        /// Delta text.
         delta: String,
     },
+    /// Audio delta (base64-encoded PCM16).
+    #[serde(rename = "response.audio.delta")]
+    AudioDelta {
+        /// Item ID.
+        item_id: String,
+        /// Base64-encoded audio delta.
+        delta: String,
+    },
+    /// Audio generation completed.
+    #[serde(rename = "response.audio.done")]
+    AudioDone {
+        /// Item ID.
+        item_id: String,
+    },
+    /// Text delta.
+    #[serde(rename = "response.text.delta")]
+    TextDelta {
+        /// Item ID.
+        item_id: String,
+        /// Delta text.
+        delta: String,
+    },
+    /// Text generation completed.
+    #[serde(rename = "response.text.done")]
+    TextDone {
+        /// Item ID.
+        item_id: String,
+        /// Final text.
+        text: String,
+    },
+    /// Function call arguments delta.
+    #[serde(rename = "response.function_call_arguments.delta")]
+    FunctionCallArgumentsDelta {
+        /// Item ID.
+        item_id: String,
+        /// Call ID.
+        call_id: String,
+        /// Delta arguments.
+        delta: String,
+    },
+    /// Function call arguments completed.
     #[serde(rename = "response.function_call_arguments.done")]
     FunctionCallArgumentsDone {
+        /// Item ID.
         item_id: String,
+        /// Call ID.
         call_id: String,
+        /// Function name.
         name: String,
+        /// Final arguments.
         arguments: String,
     },
+    /// Response generation completed.
     #[serde(rename = "response.done")]
-    ResponseDone { response: serde_json::Value },
+    ResponseDone {
+        /// Response data.
+        response: serde_json::Value,
+    },
+    /// An error occurred.
     #[serde(rename = "error")]
-    Error { error: RealtimeApiError },
+    Error {
+        /// Error details.
+        error: RealtimeApiError,
+    },
+    /// An unrecognised event type.
     #[serde(other)]
     Unknown,
 }
 
+/// Error details returned by the Realtime API.
 #[derive(Debug, Clone, Deserialize)]
 pub struct RealtimeApiError {
+    /// Error type.
     pub r#type: String,
+    /// Error code.
     pub code: String,
+    /// Error message.
     pub message: String,
 }
 

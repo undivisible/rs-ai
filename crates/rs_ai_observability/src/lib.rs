@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Observability wrapper for RAI language models.
 //!
 //! Wraps any [`LanguageModel`] to automatically record tracing spans with:
@@ -27,7 +30,7 @@ use futures::Stream;
 use pin_project_lite::pin_project;
 use tracing::Span;
 
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, AiStream, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
     LanguageModel, Prompt, StreamEvent, Usage,
 };
@@ -234,7 +237,7 @@ pub fn with_observability(model: Box<dyn LanguageModel>) -> ObservableModel {
 mod tests {
     use super::*;
     use futures::StreamExt;
-    use rs_ai_ai::{
+    use rs_ai_traits::{
         Capability, CapabilitySet, FinishReason, GenerateResult, ResponseMetadata, Usage,
     };
 

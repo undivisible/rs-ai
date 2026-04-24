@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Core traits, types, and abstractions for the Rust AI SDK (RAI).
 
 pub mod capability;

@@ -1,4 +1,4 @@
-# rs-ai — Rust AI SDK
+# rs_ai — Rust AI SDK
 
 A comprehensive Rust SDK for building AI applications with 15+ cloud and local providers, real-time streaming, and a clean async-first API.
 
@@ -8,7 +8,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs-ai = { path = "crates/rs-ai" }
+rs_ai = { path = "crates/rs_ai" }
 ```
 
 ```rust
@@ -159,7 +159,7 @@ let result = observable.generate(prompt, options).await?;
 
 ```
 crates/
-├── rs-ai/                   # Top-level fluent API (rs_ai_claude, rs_ai_gemini, …)
+├── rs_ai/                   # Top-level fluent API (rs_ai_claude, rs_ai_gemini, …)
 ├── rs_ai_cache/             # Unified cache configuration
 ├── rs_ai_langfuse/          # LangFuse observability integration
 ├── rs_ai_portkey/           # Portkey AI Gateway provider

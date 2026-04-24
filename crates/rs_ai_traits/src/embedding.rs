@@ -1,3 +1,5 @@
+//! Embedding utilities.
+
 /// Compute the cosine similarity between two embedding vectors.
 ///
 /// Returns 0.0 if either vector has zero magnitude.

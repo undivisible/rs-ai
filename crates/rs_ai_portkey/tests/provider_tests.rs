@@ -1,5 +1,5 @@
-use rs_ai_ai::LanguageModel;
 use rs_ai_portkey::PortkeyProvider;
+use rs_ai_traits::LanguageModel;
 
 #[test]
 fn test_provider_creation() {
@@ -24,10 +24,10 @@ fn test_model_capabilities() {
     let model = provider.model("gpt-4");
 
     let capabilities = model.capabilities();
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextInput]));
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextOutput]));
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::Streaming]));
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::ToolCalling]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::TextInput]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::TextOutput]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::Streaming]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::ToolCalling]));
 }
 
 #[test]

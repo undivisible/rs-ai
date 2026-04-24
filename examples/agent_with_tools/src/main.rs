@@ -3,8 +3,10 @@
 //! Run: `ANTHROPIC_API_KEY=... cargo run --example agent_with_tools`
 
 use futures::StreamExt;
-use rs_ai_ai::{GenerateOptions, LanguageModel, Prompt, StreamEvent, ToolChoice, ToolDefinition};
 use rs_ai_claude::ClaudeProvider;
+use rs_ai_traits::{
+    GenerateOptions, LanguageModel, Prompt, StreamEvent, ToolChoice, ToolDefinition,
+};
 use schemars::schema_for;
 use serde::{Deserialize, Serialize};
 

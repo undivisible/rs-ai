@@ -3,7 +3,7 @@ use futures::StreamExt;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use secrecy::ExposeSecret;
 
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, AiStream, CapabilitySet, GenerateOptions, GenerateResult, LanguageModel,
     Prompt,
 };

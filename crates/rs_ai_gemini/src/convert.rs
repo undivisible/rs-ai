@@ -1,4 +1,4 @@
-use rs_ai_ai::{
+use rs_ai_traits::{
     ContentPart, FinishReason, GenerateOptions, GenerateResult, ImageData, Prompt,
     ResponseMetadata, Role, ThinkingConfig as CoreThinkingConfig, ToolCallRequest, ToolChoice,
     Usage,

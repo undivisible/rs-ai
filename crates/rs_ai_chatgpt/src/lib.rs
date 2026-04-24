@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! OpenAI ChatGPT provider for the Rusty AI SDK.
 //!
 //! This is a thin wrapper around [`rs_ai_openai_compatible`] that pre-configures
@@ -7,7 +10,7 @@
 //!
 //! ```rust,no_run
 //! use rs_ai_chatgpt::ChatGptProvider;
-//! use rs_ai_ai::Provider;
+//! use rs_ai_traits::Provider;
 //!
 //! let provider = ChatGptProvider::new("sk-...");
 //! let model = provider.language_model("gpt-4o").unwrap();
@@ -16,11 +19,11 @@
 pub mod realtime_api;
 pub use realtime_api::RealtimeSession;
 
-use rs_ai_ai::capability::{Capability, CapabilitySet};
-use rs_ai_ai::error::AiResult;
-use rs_ai_ai::model::{EmbeddingModel, LanguageModel};
-use rs_ai_ai::provider::Provider;
-use rs_ai_ai::types::ModelInfo;
+use rs_ai_traits::capability::{Capability, CapabilitySet};
+use rs_ai_traits::error::AiResult;
+use rs_ai_traits::model::{EmbeddingModel, LanguageModel};
+use rs_ai_traits::provider::Provider;
+use rs_ai_traits::types::ModelInfo;
 use rs_ai_openai_compatible::{
     OpenAiCompatibleConfig, OpenAiCompatibleModel, OpenAiCompatibleProvider,
 };
@@ -273,7 +276,7 @@ impl ChatGptProvider {
     }
 
     /// Fetch the list of models from the OpenAI API.
-    pub async fn list_remote_models(&self) -> rs_ai_ai::AiResult<Vec<String>> {
+    pub async fn list_remote_models(&self) -> rs_ai_traits::AiResult<Vec<String>> {
         use secrecy::ExposeSecret;
         let client = reqwest::Client::new();
         let resp = client
@@ -284,7 +287,7 @@ impl ChatGptProvider {
             )
             .send()
             .await
-            .map_err(|e| rs_ai_ai::AiError::Transport {
+            .map_err(|e| rs_ai_traits::AiError::Transport {
                 message: e.to_string(),
                 source: Some(Box::new(e)),
             })?;
@@ -299,7 +302,7 @@ impl ChatGptProvider {
                     format!("<failed to read response body: {e}>")
                 }
             };
-            return Err(rs_ai_ai::AiError::ProviderError {
+            return Err(rs_ai_traits::AiError::ProviderError {
                 provider: "chatgpt".into(),
                 status: Some(status_code),
                 message: body,
@@ -318,7 +321,7 @@ impl ChatGptProvider {
         let list: ListModelsResponse = resp
             .json()
             .await
-            .map_err(|e| rs_ai_ai::AiError::Serialization(e.to_string()))?;
+            .map_err(|e| rs_ai_traits::AiError::Serialization(e.to_string()))?;
 
         Ok(list.data.into_iter().map(|m| m.id).collect())
     }
@@ -338,7 +341,7 @@ impl Provider for ChatGptProvider {
     }
 
     fn embedding_model(&self, _model_id: &str) -> AiResult<Box<dyn EmbeddingModel>> {
-        Err(rs_ai_ai::AiError::ModelUnavailable {
+        Err(rs_ai_traits::AiError::ModelUnavailable {
             model: "ChatGPT does not support embedding models".into(),
         })
     }

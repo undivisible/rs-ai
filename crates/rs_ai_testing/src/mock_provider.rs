@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use rs_ai_ai::error::{AiError, AiResult};
-use rs_ai_ai::model::{EmbeddingModel, LanguageModel};
-use rs_ai_ai::provider::Provider;
-use rs_ai_ai::types::ModelInfo;
+use rs_ai_traits::error::{AiError, AiResult};
+use rs_ai_traits::model::{EmbeddingModel, LanguageModel};
+use rs_ai_traits::provider::Provider;
+use rs_ai_traits::types::ModelInfo;
 
 use crate::mock_model::{MockEmbeddingModel, MockLanguageModel};
 
@@ -100,9 +100,9 @@ impl Provider for MockProvider {
                 id: model.id().to_owned(),
                 provider: model.provider().to_owned(),
                 display_name: format!("Mock {}", model.id()),
-                capabilities: rs_ai_ai::CapabilitySet::new()
-                    .with(rs_ai_ai::Capability::TextInput)
-                    .with(rs_ai_ai::Capability::TextOutput),
+                capabilities: rs_ai_traits::CapabilitySet::new()
+                    .with(rs_ai_traits::Capability::TextInput)
+                    .with(rs_ai_traits::Capability::TextOutput),
             });
         }
         for model in self.embedding_models.values() {
@@ -110,7 +110,8 @@ impl Provider for MockProvider {
                 id: model.id().to_owned(),
                 provider: model.provider().to_owned(),
                 display_name: format!("Mock Embedding {}", model.id()),
-                capabilities: rs_ai_ai::CapabilitySet::new().with(rs_ai_ai::Capability::Embeddings),
+                capabilities: rs_ai_traits::CapabilitySet::new()
+                    .with(rs_ai_traits::Capability::Embeddings),
             });
         }
         infos

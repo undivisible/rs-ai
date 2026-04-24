@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, Capability, CapabilitySet, EmbeddingModel, LanguageModel, ModelInfo,
     Provider,
 };
@@ -15,6 +15,7 @@ pub struct PhiSilicaProvider {
 }
 
 impl PhiSilicaProvider {
+    /// Create a new `PhiSilicaProvider` wrapping the given bridge.
     pub fn new(bridge: impl PhiSilicaBridge + 'static) -> Self {
         Self {
             bridge: Arc::new(bridge),

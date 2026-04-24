@@ -2,11 +2,13 @@
 name = "rs_ai_testing"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-description = "Testing utilities and mock providers for the Rusty AI SDK"
+repository.workspace = true
+description = "(UNSTABLE; in active development) Testing utilities and mock providers for the Rusty AI SDK"
 
 [dependencies]
-rs_ai_ai = { workspace = true }
+rs_ai_traits = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }

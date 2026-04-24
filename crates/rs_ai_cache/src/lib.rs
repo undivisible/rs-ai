@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Unified caching configuration for RAI language models.
 //!
 //! Provides a provider-agnostic caching interface that adapts to each provider's

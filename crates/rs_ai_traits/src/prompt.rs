@@ -1,3 +1,4 @@
+//! Prompt types.
 use serde::{Deserialize, Serialize};
 
 use crate::message::Message;
@@ -6,7 +7,9 @@ use crate::message::Message;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Prompt {
+    /// A plain text prompt.
     Text(String),
+    /// A list of conversation messages.
     Messages(Vec<Message>),
 }
 

@@ -1,23 +1,36 @@
-use rs_ai_ai::AiError;
+use rs_ai_traits::AiError;
 
+/// Errors that can occur when calling the xAI API.
 #[derive(Debug, thiserror::Error)]
 pub enum XaiError {
+    /// HTTP transport error.
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
 
+    /// JSON serialization or deserialization error.
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
+    /// Error returned by the xAI API.
     #[error("xAI API error: {message}")]
-    ApiError { message: String },
+    ApiError {
+        /// Human-readable error message.
+        message: String,
+    },
 
+    /// Authentication error.
     #[error("Authentication error: {message}")]
-    AuthError { message: String },
+    AuthError {
+        /// Human-readable error message.
+        message: String,
+    },
 
+    /// Streaming error.
     #[error("Streaming error: {0}")]
     StreamError(String),
 }
 
+/// Shorthand result type for xAI operations.
 pub type XaiResult<T> = Result<T, XaiError>;
 
 impl From<XaiError> for AiError {

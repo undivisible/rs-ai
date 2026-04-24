@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Google Gemini provider for the Rusty AI SDK.
 
 mod api_types;

@@ -1,4 +1,4 @@
-use rs_ai_ai::{CapabilitySet, LanguageModel, ModelInfo};
+use rs_ai_traits::{CapabilitySet, LanguageModel, ModelInfo};
 
 use crate::config::OpenAiCompatibleConfig;
 use crate::model::OpenAiCompatibleModel;

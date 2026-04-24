@@ -1,51 +1,15 @@
-use async_trait::async_trait;
-use rs_ai_ai::*;
+//! Example: Gemini Nano on Android.
+//!
+//! This example demonstrates how to use the Gemini Nano provider with the
+//! built-in mock bridge. In a real Android app, you would use `JniGeminiNanoBridge`
+//! to call into Kotlin.
+
 use rs_ai_gemini_nano::*;
-
-/// Example bridge implementation (in a real app, this would call JNI)
-struct MockNanoBridge;
-
-#[async_trait]
-impl GeminiNanoBridge for MockNanoBridge {
-    async fn is_available(&self) -> bool {
-        true
-    }
-
-    async fn download_state(&self) -> ModelDownloadState {
-        ModelDownloadState::Downloaded
-    }
-
-    async fn request_download(&self) -> Result<(), String> {
-        Ok(())
-    }
-
-    async fn capabilities(&self) -> NanoCapabilities {
-        NanoCapabilities {
-            text_generation: true,
-            summarization: true,
-            rewriting: true,
-        }
-    }
-
-    async fn generate(&self, prompt: &str, _config: &NanoSessionConfig) -> Result<String, String> {
-        Ok(format!("[Gemini Nano mock response to: {prompt}]"))
-    }
-
-    async fn create_session(&self, _config: &NanoSessionConfig) -> Result<String, String> {
-        Ok("mock-session-1".into())
-    }
-
-    async fn send_message(&self, _session_id: &str, message: &str) -> Result<String, String> {
-        Ok(format!("[Session reply to: {message}]"))
-    }
-
-    async fn close_session(&self, _session_id: &str) -> Result<(), String> {
-        Ok(())
-    }
-}
+use rs_ai_traits::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Use the built-in mock bridge for testing
     let provider = GeminiNanoProvider::new(MockNanoBridge);
 
     // Check availability

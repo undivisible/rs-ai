@@ -1,7 +1,10 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Middleware components for the Rusty AI SDK.
 //!
 //! Provides reusable middleware implementations that can be composed into
-//! chains around any [`rs_ai_ai::LanguageModel`].
+//! chains around any [`rs_ai_traits::LanguageModel`].
 
 mod cache;
 mod chain;

@@ -1,3 +1,4 @@
+//! Model router for dispatching requests.
 use async_trait::async_trait;
 use std::cmp::Reverse;
 
@@ -13,14 +14,19 @@ pub type RouteCondition = Box<dyn Fn(&Prompt, &GenerateOptions) -> bool + Send +
 
 /// A single route that maps a condition to a model.
 pub struct Route {
+    /// The language model to use when this route matches.
     pub model: Box<dyn LanguageModel>,
+    /// Function that decides if the route matches a given request.
     pub condition: RouteCondition,
+    /// Higher values are checked first.
     pub priority: i32,
 }
 
 /// A router that dispatches generation requests to different models based on conditions.
 pub struct Router {
+    /// Registered routes.
     routes: Vec<Route>,
+    /// Fallback model when no route matches.
     fallback: Option<Box<dyn LanguageModel>>,
 }
 

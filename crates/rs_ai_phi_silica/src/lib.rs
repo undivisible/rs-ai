@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Windows Phi Silica local runtime for the Rusty AI SDK.
 //!
 //! This crate provides integration with Microsoft's Phi Silica model

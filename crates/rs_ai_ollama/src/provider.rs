@@ -1,4 +1,4 @@
-use rs_ai_ai::{AiError, AiResult, ModelInfo, Provider};
+use rs_ai_traits::{AiError, AiResult, ModelInfo, Provider};
 
 use crate::api_types::OllamaListResponse;
 use crate::model::OllamaModel;
@@ -81,11 +81,11 @@ impl Provider for OllamaProvider {
         "Ollama"
     }
 
-    fn language_model(&self, model_id: &str) -> AiResult<Box<dyn rs_ai_ai::LanguageModel>> {
+    fn language_model(&self, model_id: &str) -> AiResult<Box<dyn rs_ai_traits::LanguageModel>> {
         Ok(Box::new(self.model(model_id)))
     }
 
-    fn embedding_model(&self, model_id: &str) -> AiResult<Box<dyn rs_ai_ai::EmbeddingModel>> {
+    fn embedding_model(&self, model_id: &str) -> AiResult<Box<dyn rs_ai_traits::EmbeddingModel>> {
         Ok(Box::new(self.model(model_id)))
     }
 

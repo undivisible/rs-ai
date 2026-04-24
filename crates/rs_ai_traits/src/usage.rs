@@ -1,10 +1,14 @@
+//! Token usage tracking.
 use serde::{Deserialize, Serialize};
 
 /// Token usage information returned by providers.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Usage {
+    /// Tokens in the prompt.
     pub prompt_tokens: Option<u64>,
+    /// Tokens in the completion.
     pub completion_tokens: Option<u64>,
+    /// Total tokens consumed.
     pub total_tokens: Option<u64>,
 }
 

@@ -1,5 +1,5 @@
-use rs_ai_ai::*;
 use rs_ai_testing::*;
+use rs_ai_traits::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let router = Router::new()
         .add_route(Box::new(tool_model), |_prompt, options| {
-            options.tools.is_some() && !options.tools.as_ref().unwrap().is_empty()
+            options.tools.as_ref().is_some_and(|t| !t.is_empty())
         })
         .with_fallback(Box::new(text_model));
 

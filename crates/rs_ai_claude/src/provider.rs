@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
 
-use rs_ai_ai::capability::{Capability, CapabilitySet};
-use rs_ai_ai::error::{AiError, AiResult};
-use rs_ai_ai::model::{EmbeddingModel, LanguageModel};
-use rs_ai_ai::provider::Provider;
-use rs_ai_ai::types::ModelInfo;
+use rs_ai_traits::capability::{Capability, CapabilitySet};
+use rs_ai_traits::error::{AiError, AiResult};
+use rs_ai_traits::model::{EmbeddingModel, LanguageModel};
+use rs_ai_traits::provider::Provider;
+use rs_ai_traits::types::ModelInfo;
 
 use crate::model::ClaudeModel;
 

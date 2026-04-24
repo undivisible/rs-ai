@@ -4,9 +4,11 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "(UNSTABLE; in active development) Cloudflare Workers AI provider for the Rusty AI SDK"
 
 [dependencies]
-rs_ai_ai = { workspace = true }
+rs_ai_traits = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

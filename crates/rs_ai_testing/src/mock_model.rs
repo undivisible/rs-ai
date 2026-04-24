@@ -3,15 +3,15 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use futures::stream;
 
-use rs_ai_ai::capability::{Capability, CapabilitySet};
-use rs_ai_ai::error::{AiError, AiResult};
-use rs_ai_ai::model::{EmbeddingModel, GenerateOptions, LanguageModel};
-use rs_ai_ai::prompt::Prompt;
-use rs_ai_ai::stream::{AiStream, StreamEvent, SyntheticStreamer};
-use rs_ai_ai::structured::{EmbeddingResult, GenerateResult};
-use rs_ai_ai::tool::ToolCallRequest;
-use rs_ai_ai::types::{FinishReason, ResponseMetadata};
-use rs_ai_ai::usage::Usage;
+use rs_ai_traits::capability::{Capability, CapabilitySet};
+use rs_ai_traits::error::{AiError, AiResult};
+use rs_ai_traits::model::{EmbeddingModel, GenerateOptions, LanguageModel};
+use rs_ai_traits::prompt::Prompt;
+use rs_ai_traits::stream::{AiStream, StreamEvent, SyntheticStreamer};
+use rs_ai_traits::structured::{EmbeddingResult, GenerateResult};
+use rs_ai_traits::tool::ToolCallRequest;
+use rs_ai_traits::types::{FinishReason, ResponseMetadata};
+use rs_ai_traits::usage::Usage;
 
 /// A pre-configured response for the mock model to return.
 pub enum MockResponse {

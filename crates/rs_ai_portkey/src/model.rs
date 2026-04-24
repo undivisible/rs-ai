@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use futures::stream::StreamExt;
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, Capability, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
     LanguageModel, Prompt, StreamEvent, Usage,
 };
@@ -19,6 +19,7 @@ pub struct PortkeyModel {
 }
 
 impl PortkeyModel {
+    /// Create a new Portkey model instance.
     pub fn new(model_id: String, client: std::sync::Arc<PortkeyClient>) -> Self {
         let capabilities = CapabilitySet::new()
             .with(Capability::TextInput)
@@ -106,7 +107,7 @@ impl LanguageModel for PortkeyModel {
         &self,
         prompt: Prompt,
         _options: GenerateOptions,
-    ) -> AiResult<rs_ai_ai::AiStream> {
+    ) -> AiResult<rs_ai_traits::AiStream> {
         let text = match prompt {
             Prompt::Text(t) => t,
             _ => {

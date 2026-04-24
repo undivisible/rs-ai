@@ -1,12 +1,12 @@
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
 
-use rs_ai_ai::capability::{Capability, CapabilitySet};
-use rs_ai_ai::error::{AiError, AiResult};
-use rs_ai_ai::model::{GenerateOptions, LanguageModel};
-use rs_ai_ai::prompt::Prompt;
-use rs_ai_ai::stream::AiStream;
-use rs_ai_ai::structured::GenerateResult;
+use rs_ai_traits::capability::{Capability, CapabilitySet};
+use rs_ai_traits::error::{AiError, AiResult};
+use rs_ai_traits::model::{GenerateOptions, LanguageModel};
+use rs_ai_traits::prompt::Prompt;
+use rs_ai_traits::stream::AiStream;
+use rs_ai_traits::structured::GenerateResult;
 
 use crate::convert;
 use crate::stream_parser;

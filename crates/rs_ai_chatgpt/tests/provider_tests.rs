@@ -1,5 +1,5 @@
-use rs_ai_ai::LanguageModel;
 use rs_ai_chatgpt::ChatGptProvider;
+use rs_ai_traits::LanguageModel;
 
 #[test]
 fn test_chatgpt_provider_creation() {
@@ -66,7 +66,7 @@ fn test_chatgpt_model_capabilities() {
     let model = provider.gpt4o();
 
     let capabilities = model.capabilities();
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextInput]));
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextOutput]));
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::Streaming]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::TextInput]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::TextOutput]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::Streaming]));
 }

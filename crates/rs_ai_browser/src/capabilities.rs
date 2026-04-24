@@ -34,9 +34,13 @@ impl Default for BrowserAiCapabilities {
 /// Detected browser type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BrowserType {
+    /// Google Chrome browser.
     Chrome,
+    /// Microsoft Edge browser.
     Edge,
+    /// Another browser with the given name.
     Other(String),
+    /// Browser could not be detected.
     Unknown,
 }
 
@@ -47,6 +51,7 @@ pub enum BackingModel {
     GeminiNano,
     /// Phi Silica (Microsoft Edge Copilot+ PCs).
     PhiSilica,
+    /// The backing model could not be determined.
     #[default]
     Unknown,
 }
@@ -54,8 +59,11 @@ pub enum BackingModel {
 /// Options for browser AI generation.
 #[derive(Debug, Clone, Default)]
 pub struct BrowserAiOptions {
+    /// Optional system prompt to guide the model's behavior.
     pub system_prompt: Option<String>,
+    /// Sampling temperature (0.0 – 1.0).
     pub temperature: Option<f64>,
+    /// Top-k sampling parameter.
     pub top_k: Option<u32>,
     /// Constrained JSON schema output (Chrome Prompt API responseConstraint).
     pub response_constraint: Option<serde_json::Value>,

@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use futures::stream::StreamExt;
-use rs_ai_ai::{
+use rs_ai_cache::CacheConfig;
+use rs_ai_traits::{
     AiError, AiResult, Capability, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
     LanguageModel, Prompt, StreamEvent, Usage,
 };
-use rs_ai_cache::CacheConfig;
 
 use crate::client::{ChatCompletionRequest, Message, XaiClient};
 
@@ -18,6 +18,7 @@ pub struct XaiModel {
 }
 
 impl XaiModel {
+    /// Create a new xAI model instance.
     pub fn new(model_id: String, client: std::sync::Arc<XaiClient>) -> Self {
         let capabilities = CapabilitySet::new()
             .with(Capability::TextInput)
@@ -137,7 +138,7 @@ impl LanguageModel for XaiModel {
         &self,
         prompt: Prompt,
         _options: GenerateOptions,
-    ) -> AiResult<rs_ai_ai::AiStream> {
+    ) -> AiResult<rs_ai_traits::AiStream> {
         let text = match prompt {
             Prompt::Text(t) => t,
             _ => {

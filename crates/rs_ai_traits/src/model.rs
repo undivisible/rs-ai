@@ -20,7 +20,10 @@ pub enum ThinkingConfig {
     /// Enable thinking with adaptive budget (Anthropic claude-3-7-sonnet and later).
     Adaptive,
     /// Enable thinking with a fixed token budget (Gemini 2.5+).
-    Budget { tokens: u32 },
+    Budget {
+        /// Maximum thinking tokens.
+        tokens: u32,
+    },
     /// Simple on/off flag (Ollama, Gemini 3 Flash `think: true`).
     Enabled,
 }
@@ -28,31 +31,48 @@ pub enum ThinkingConfig {
 /// Reasoning effort level for models that support it (OpenAI Responses API).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReasoningEffort {
+    /// No reasoning.
     None,
+    /// Low reasoning effort.
     Low,
+    /// Medium reasoning effort.
     Medium,
+    /// High reasoning effort.
     High,
+    /// Very high reasoning effort.
     XHigh,
 }
 
 /// Options that control generation behaviour.
 #[derive(Debug, Clone, Default)]
 pub struct GenerateOptions {
+    /// Sampling temperature.
     pub temperature: Option<f64>,
+    /// Maximum tokens to generate.
     pub max_tokens: Option<u32>,
+    /// Nucleus sampling threshold.
     pub top_p: Option<f64>,
+    /// Top-k sampling threshold.
     pub top_k: Option<u32>,
+    /// Sequences that stop generation.
     pub stop_sequences: Vec<String>,
+    /// Frequency penalty.
     pub frequency_penalty: Option<f64>,
+    /// Presence penalty.
     pub presence_penalty: Option<f64>,
+    /// Random seed for reproducibility.
     pub seed: Option<u64>,
+    /// Tool definitions available to the model.
     pub tools: Option<Vec<ToolDefinition>>,
+    /// Strategy for choosing tools.
     pub tool_choice: Option<ToolChoice>,
+    /// JSON schema for structured output.
     pub output_schema: Option<OutputSchema>,
     /// Extended thinking / reasoning configuration.
     pub thinking: Option<ThinkingConfig>,
     /// Reasoning effort (OpenAI Responses API).
     pub reasoning_effort: Option<ReasoningEffort>,
+    /// Request metadata.
     pub metadata: RequestMetadata,
 }
 
@@ -145,7 +165,9 @@ impl GenerateOptions {
 /// Describes a provider backend.
 #[derive(Debug, Clone)]
 pub struct ProviderInfo {
+    /// Human-readable provider name.
     pub name: String,
+    /// Default base URL for API requests.
     pub default_base_url: Option<String>,
 }
 
@@ -229,7 +251,9 @@ pub trait Middleware: Send + Sync {
 ///
 /// Calling `run` will invoke either the next middleware or the final model.
 pub struct MiddlewareNext<'a> {
+    /// Remaining middlewares in the chain.
     pub middlewares: &'a [Box<dyn Middleware>],
+    /// The underlying language model.
     pub model: &'a dyn LanguageModel,
 }
 
@@ -251,7 +275,10 @@ impl<'a> MiddlewareNext<'a> {
 /// A model that converts speech audio to text (e.g. OpenAI Whisper).
 #[async_trait]
 pub trait SpeechToTextModel: Send + Sync {
+    /// Return the model identifier.
     fn model_id(&self) -> &str;
+
+    /// Return the provider identifier.
     fn provider_id(&self) -> &str;
 
     /// Transcribe audio bytes into text.
@@ -266,7 +293,10 @@ pub trait SpeechToTextModel: Send + Sync {
 /// A model that converts text to speech audio (e.g. OpenAI TTS).
 #[async_trait]
 pub trait TextToSpeechModel: Send + Sync {
+    /// Return the model identifier.
     fn model_id(&self) -> &str;
+
+    /// Return the provider identifier.
     fn provider_id(&self) -> &str;
 
     /// Synthesize speech from text.  Returns audio bytes.

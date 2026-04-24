@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Browser-based local AI model detection for WASM targets.
 //!
 //! This crate detects and bridges to browser-based AI APIs:

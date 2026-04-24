@@ -1,4 +1,4 @@
-use rs_ai_ai::StreamEvent;
+use rs_ai_traits::StreamEvent;
 use serde::{Deserialize, Serialize};
 
 /// The protocol version for the UI stream format.
@@ -14,57 +14,95 @@ pub enum UiStreamEvent {
     /// Signals that generation has started.
     #[serde(rename = "start")]
     Start {
+        /// Unique message identifier.
         message_id: String,
+        /// Model identifier.
         model: String,
+        /// Protocol version.
         version: String,
     },
 
     /// A chunk of generated text.
     #[serde(rename = "text")]
-    Text { delta: String },
+    Text {
+        /// Text delta.
+        delta: String,
+    },
 
     /// A tool call has begun.
     #[serde(rename = "tool_call_start")]
-    ToolCallStart { call_id: String, tool_name: String },
+    ToolCallStart {
+        /// Call identifier.
+        call_id: String,
+        /// Tool name.
+        tool_name: String,
+    },
 
     /// A chunk of tool call arguments (partial JSON).
     #[serde(rename = "tool_call_args")]
-    ToolCallArgs { call_id: String, delta: String },
+    ToolCallArgs {
+        /// Call identifier.
+        call_id: String,
+        /// Argument JSON delta.
+        delta: String,
+    },
 
     /// A tool call has finished accumulating arguments.
     #[serde(rename = "tool_call_end")]
-    ToolCallEnd { call_id: String },
+    ToolCallEnd {
+        /// Call identifier.
+        call_id: String,
+    },
 
     /// Result from executing a tool.
     #[serde(rename = "tool_result")]
     ToolResult {
+        /// Call identifier.
         call_id: String,
+        /// Tool result content.
         content: String,
+        /// Whether the result is an error.
         is_error: bool,
     },
 
     /// A partial structured-output object.
     #[serde(rename = "object")]
-    Object { delta: serde_json::Value },
+    Object {
+        /// Object delta.
+        delta: serde_json::Value,
+    },
 
     /// Token usage information.
     #[serde(rename = "usage")]
     Usage {
+        /// Prompt token count.
         prompt_tokens: Option<u64>,
+        /// Completion token count.
         completion_tokens: Option<u64>,
     },
 
     /// An error occurred during generation.
     #[serde(rename = "error")]
-    Error { code: String, message: String },
+    Error {
+        /// Error code.
+        code: String,
+        /// Error message.
+        message: String,
+    },
 
     /// Intermediate thinking / reasoning tokens from a reasoning model.
     #[serde(rename = "thinking")]
-    Thinking { delta: String },
+    Thinking {
+        /// Thinking delta.
+        delta: String,
+    },
 
     /// Generation is complete.
     #[serde(rename = "done")]
-    Done { finish_reason: String },
+    Done {
+        /// Finish reason.
+        finish_reason: String,
+    },
 }
 
 impl From<StreamEvent> for UiStreamEvent {
@@ -126,7 +164,7 @@ impl From<StreamEvent> for UiStreamEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rs_ai_ai::types::FinishReason;
+    use rs_ai_traits::types::FinishReason;
 
     #[test]
     fn test_start_conversion() {

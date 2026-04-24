@@ -1,3 +1,4 @@
+//! Common types for model metadata and finish reasons.
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
@@ -10,28 +11,41 @@ use crate::capability::{Capability, CapabilitySet};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FinishReason {
+    /// Generation completed naturally.
     Stop,
+    /// Maximum token limit reached.
     Length,
+    /// Stopped because a tool call was requested.
     ToolCall,
+    /// Content was filtered.
     ContentFilter,
+    /// An error occurred during generation.
     Error,
+    /// Finish reason is unknown or unspecified.
     Unknown,
 }
 
 /// Metadata describing a model exposed by a provider.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelInfo {
+    /// Model identifier.
     pub id: String,
+    /// Provider identifier.
     pub provider: String,
+    /// Human-readable display name.
     pub display_name: String,
+    /// Capabilities supported by this model.
     pub capabilities: CapabilitySet,
 }
 
 /// Metadata attached to an outgoing request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RequestMetadata {
+    /// Unique request identifier.
     pub request_id: Uuid,
+    /// Timestamp when the request was created.
     pub timestamp: DateTime<Utc>,
+    /// Arbitrary extra metadata.
     #[serde(default)]
     pub extra: HashMap<String, serde_json::Value>,
 }
@@ -49,10 +63,15 @@ impl Default for RequestMetadata {
 /// Metadata returned alongside a provider response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseMetadata {
+    /// Unique request identifier.
     pub request_id: Uuid,
+    /// Provider that handled the request.
     pub provider: String,
+    /// Model used for generation.
     pub model: String,
+    /// Response latency in milliseconds.
     pub latency_ms: Option<u64>,
+    /// Arbitrary extra metadata.
     #[serde(default)]
     pub extra: HashMap<String, serde_json::Value>,
 }
@@ -88,10 +107,12 @@ impl Default for ResponseMetadata {
 /// to populate the registry, then look up models by ID.
 #[derive(Debug, Clone, Default)]
 pub struct ModelRegistry {
+    /// Internal list of registered models.
     models: Vec<ModelInfo>,
 }
 
 impl ModelRegistry {
+    /// Create an empty registry.
     pub fn new() -> Self {
         Self { models: Vec::new() }
     }

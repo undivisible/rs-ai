@@ -2,11 +2,13 @@
 name = "rs_ai_gemini_nano"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
-description = "Gemini Nano (Android Prompt API) local runtime for the Rusty AI SDK"
+repository.workspace = true
+description = "(UNSTABLE; in active development) Gemini Nano (Android Prompt API) local runtime for the Rusty AI SDK"
 
 [dependencies]
-rs_ai_ai = { workspace = true }
+rs_ai_traits = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }
@@ -16,7 +18,10 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+thiserror = { workspace = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
-# JNI bridge would go here in a real build
-# jni = "0.21"
+jni = { version = "0.21", features = ["invocation"] }
+
+[dev-dependencies]
+tokio-test = "0.4"

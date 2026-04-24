@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use futures::stream::StreamExt;
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, Capability, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
     LanguageModel, Prompt, StreamEvent, Usage,
 };
@@ -16,6 +16,7 @@ pub struct CloudflareModel {
 }
 
 impl CloudflareModel {
+    /// Create a new Cloudflare model instance.
     pub fn new(model_id: String, client: std::sync::Arc<CloudflareClient>) -> Self {
         let capabilities = CapabilitySet::new()
             .with(Capability::TextInput)
@@ -102,7 +103,7 @@ impl LanguageModel for CloudflareModel {
         &self,
         prompt: Prompt,
         _options: GenerateOptions,
-    ) -> AiResult<rs_ai_ai::AiStream> {
+    ) -> AiResult<rs_ai_traits::AiStream> {
         let text = match prompt {
             Prompt::Text(t) => t,
             _ => {

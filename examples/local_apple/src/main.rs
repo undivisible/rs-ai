@@ -8,15 +8,15 @@
 //! pattern with a mock bridge that mirrors the Gemini Nano example.
 
 use async_trait::async_trait;
-use rs_ai_ai::capability::{Capability, CapabilitySet};
-use rs_ai_ai::error::{AiError, AiResult};
-use rs_ai_ai::model::{GenerateOptions, LanguageModel};
-use rs_ai_ai::prompt::Prompt;
-use rs_ai_ai::stream::{AiStream, SyntheticStreamer};
-use rs_ai_ai::structured::GenerateResult;
-use rs_ai_ai::types::{FinishReason, ResponseMetadata};
-use rs_ai_ai::usage::Usage;
-use rs_ai_ai::*;
+use rs_ai_traits::capability::{Capability, CapabilitySet};
+use rs_ai_traits::error::{AiError, AiResult};
+use rs_ai_traits::model::{GenerateOptions, LanguageModel};
+use rs_ai_traits::prompt::Prompt;
+use rs_ai_traits::stream::{AiStream, SyntheticStreamer};
+use rs_ai_traits::structured::GenerateResult;
+use rs_ai_traits::types::{FinishReason, ResponseMetadata};
+use rs_ai_traits::usage::Usage;
+use rs_ai_traits::*;
 
 /// Trait representing the bridge to Apple Foundation Models on-device runtime.
 #[async_trait]

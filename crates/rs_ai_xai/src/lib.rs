@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! xAI Grok provider for RAI.
 //!
 //! Provides access to xAI's Grok models through the unified RAI interface.
@@ -22,8 +25,8 @@
 //! let model = provider.grok_4_20_reasoning();
 //!
 //! let response = model.generate(
-//!     rs_ai_ai::Prompt::Text("What is 2+2?".into()),
-//!     rs_ai_ai::GenerateOptions::default(),
+//!     rs_ai_traits::Prompt::Text("What is 2+2?".into()),
+//!     rs_ai_traits::GenerateOptions::default(),
 //! ).await?;
 //! ```
 

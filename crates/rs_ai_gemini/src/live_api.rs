@@ -5,6 +5,8 @@
 //!
 //! Reference: <https://ai.google.dev/gemini-api/docs/live-api>
 
+#![deny(missing_docs)]
+
 use base64::Engine;
 use futures::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -21,20 +23,30 @@ const LIVE_URL: &str =
 
 // ── Error ─────────────────────────────────────────────────────────────────────
 
+/// Errors that can occur during a Gemini Live API session.
 #[derive(Debug, Error)]
 pub enum LiveError {
+    /// A WebSocket transport error.
     #[error("WebSocket error: {0}")]
     WebSocket(#[from] tokio_tungstenite::tungstenite::Error),
+    /// A JSON serialization or deserialization error.
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+    /// A URL parsing error.
     #[error("URL parse error: {0}")]
     Url(#[from] url::ParseError),
+    /// An API error returned by the server.
     #[error("API error: {message}")]
-    ApiError { message: String },
+    ApiError {
+        /// Human-readable error message.
+        message: String,
+    },
+    /// The session was closed.
     #[error("Session closed")]
     SessionClosed,
 }
 
+/// Shorthand result type for Live API operations.
 pub type LiveResult<T> = Result<T, LiveError>;
 
 // ── Voice / audio options ─────────────────────────────────────────────────────
@@ -43,16 +55,23 @@ pub type LiveResult<T> = Result<T, LiveError>;
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LiveVoice {
+    /// Aoede voice.
     #[default]
     Aoede,
+    /// Charon voice.
     Charon,
+    /// Fenrir voice.
     Fenrir,
+    /// Kore voice.
     Kore,
+    /// Puck voice.
     Puck,
+    /// Custom voice ID.
     Custom(String),
 }
 
 impl LiveVoice {
+    /// Return the voice identifier as a string slice.
     pub fn as_str(&self) -> &str {
         match self {
             Self::Aoede => "Aoede",
@@ -69,27 +88,36 @@ impl LiveVoice {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AudioEncoding {
+    /// 16-bit linear PCM.
     Linear16,
+    /// μ-law encoding.
     Mulaw,
+    /// A-law encoding.
     Alaw,
 }
 
 /// Speech generation config.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpeechConfig {
+    /// Voice configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub voice_config: Option<VoiceConfig>,
+    /// BCP-47 language code.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language_code: Option<String>,
 }
 
+/// Voice configuration wrapper.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoiceConfig {
+    /// Prebuilt voice configuration.
     pub prebuilt_voice_config: PrebuiltVoiceConfig,
 }
 
+/// Prebuilt voice configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrebuiltVoiceConfig {
+    /// Name of the prebuilt voice.
     pub voice_name: String,
 }
 
@@ -98,173 +126,242 @@ pub struct PrebuiltVoiceConfig {
 /// Tool / function definition for the live session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiveTool {
+    /// Function declarations available to the model.
     pub function_declarations: Vec<FunctionDeclaration>,
 }
 
+/// A single function declaration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionDeclaration {
+    /// Function name.
     pub name: String,
+    /// Function description.
     pub description: String,
+    /// JSON Schema parameters.
     pub parameters: serde_json::Value,
 }
 
 /// Session configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LiveGenerationConfig {
+    /// Desired response modalities (e.g. "AUDIO", "TEXT").
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_modalities: Option<Vec<String>>,
+    /// Speech generation configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub speech_config: Option<SpeechConfig>,
+    /// Sampling temperature.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
+    /// Maximum output tokens.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_output_tokens: Option<u32>,
 }
 
 // ── Client → Server messages ──────────────────────────────────────────────────
 
+/// Setup message sent when opening a Live session.
 #[derive(Debug, Clone, Serialize)]
 pub struct SetupMessage {
+    /// Bidi setup configuration.
     pub setup: BidiSetup,
 }
 
+/// Bidirectional setup configuration.
 #[derive(Debug, Clone, Serialize)]
 pub struct BidiSetup {
+    /// Model identifier (prefixed with "models/").
     pub model: String,
+    /// Optional system instruction.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_instruction: Option<SystemInstruction>,
+    /// Optional generation configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub generation_config: Option<LiveGenerationConfig>,
+    /// Optional tools.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<Vec<LiveTool>>,
 }
 
+/// System instruction for the Live session.
 #[derive(Debug, Clone, Serialize)]
 pub struct SystemInstruction {
+    /// Text parts of the instruction.
     pub parts: Vec<TextPart>,
 }
 
+/// A plain text part.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TextPart {
+    /// Text content.
     pub text: String,
 }
 
 /// Real-time audio/video input chunk.
 #[derive(Debug, Clone, Serialize)]
 pub struct RealtimeInputMessage {
+    /// Real-time input payload.
     #[serde(rename = "realtimeInput")]
     pub realtime_input: RealtimeInput,
 }
 
+/// Real-time input payload.
 #[derive(Debug, Clone, Serialize)]
 pub struct RealtimeInput {
+    /// Media chunks (audio/video frames).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub media_chunks: Option<Vec<MediaChunk>>,
+    /// Optional text input.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    /// Signal end of audio stream.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub audio_stream_end: Option<bool>,
 }
 
+/// A single media chunk.
 #[derive(Debug, Clone, Serialize)]
 pub struct MediaChunk {
+    /// MIME type of the chunk (e.g. "audio/pcm" or "image/jpeg").
     pub mime_type: String,
-    pub data: String, // base64-encoded
+    /// Base64-encoded data.
+    pub data: String,
 }
 
 /// Turn-based text/multi-turn content.
 #[derive(Debug, Clone, Serialize)]
 pub struct ClientContentMessage {
+    /// Client content payload.
     #[serde(rename = "clientContent")]
     pub client_content: ClientContent,
 }
 
+/// Client content payload.
 #[derive(Debug, Clone, Serialize)]
 pub struct ClientContent {
+    /// Conversation turns.
     pub turns: Vec<ContentTurn>,
+    /// Whether the turn is complete.
     pub turn_complete: bool,
 }
 
+/// A single conversation turn.
 #[derive(Debug, Clone, Serialize)]
 pub struct ContentTurn {
+    /// Role (e.g. "user").
     pub role: String,
+    /// Turn parts.
     pub parts: Vec<serde_json::Value>,
 }
 
 /// Tool call result back to the model.
 #[derive(Debug, Clone, Serialize)]
 pub struct ToolResponseMessage {
+    /// Tool response payload.
     pub tool_response: ToolResponse,
 }
 
+/// Tool response payload.
 #[derive(Debug, Clone, Serialize)]
 pub struct ToolResponse {
+    /// Individual function responses.
     pub function_responses: Vec<FunctionResponse>,
 }
 
+/// A single function response.
 #[derive(Debug, Clone, Serialize)]
 pub struct FunctionResponse {
+    /// Response ID.
     pub id: String,
+    /// Function name.
     pub name: String,
+    /// Response data.
     pub response: serde_json::Value,
 }
 
 // ── Server → Client messages ──────────────────────────────────────────────────
 
+/// A message received from the server.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerMessage {
+    /// Setup complete marker.
     pub setup_complete: Option<serde_json::Value>,
+    /// Server content payload.
     pub server_content: Option<ServerContent>,
+    /// Tool call event.
     pub tool_call: Option<ToolCallEvent>,
+    /// Tool call cancellation.
     pub tool_call_cancellation: Option<ToolCallCancellation>,
 }
 
+/// Server content payload.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerContent {
+    /// Model turn data.
     pub model_turn: Option<ModelTurn>,
+    /// Whether the turn is complete.
     pub turn_complete: Option<bool>,
+    /// Whether the generation was interrupted.
     pub interrupted: Option<bool>,
+    /// Whether generation is complete.
     pub generation_complete: Option<bool>,
 }
 
+/// A turn produced by the model.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ModelTurn {
+    /// Parts of the model turn.
     pub parts: Vec<ModelPart>,
 }
 
+/// A single part within a model turn.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelPart {
+    /// Text content.
     pub text: Option<String>,
+    /// Inline binary data (audio/image).
     pub inline_data: Option<InlineData>,
+    /// Function call.
     pub function_call: Option<FunctionCallPart>,
 }
 
+/// Inline binary data.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InlineData {
+    /// MIME type.
     pub mime_type: String,
-    pub data: String, // base64-encoded audio/image
+    /// Base64-encoded data.
+    pub data: String,
 }
 
+/// A function call from the model.
 #[derive(Debug, Clone, Deserialize)]
 pub struct FunctionCallPart {
+    /// Call ID.
     pub id: String,
+    /// Function name.
     pub name: String,
+    /// Function arguments.
     pub args: serde_json::Value,
 }
 
+/// Tool call event wrapper.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolCallEvent {
+    /// Individual function calls.
     pub function_calls: Vec<FunctionCallPart>,
 }
 
+/// Tool call cancellation event.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolCallCancellation {
+    /// IDs of cancelled calls.
     pub ids: Vec<String>,
 }
 
@@ -273,12 +370,19 @@ pub struct ToolCallCancellation {
 /// High-level decoded event from the Live API.
 #[derive(Debug, Clone)]
 pub enum LiveEvent {
+    /// Session setup is complete.
     SetupComplete,
+    /// Text delta from the model.
     TextDelta(String),
-    AudioDelta(Vec<u8>), // raw PCM bytes
+    /// Audio delta (raw PCM bytes).
+    AudioDelta(Vec<u8>),
+    /// The model's turn is complete.
     TurnComplete,
+    /// The generation was interrupted.
     Interrupted,
+    /// The model requested tool calls.
     ToolCall(Vec<FunctionCallPart>),
+    /// Tool calls were cancelled.
     ToolCallCancelled(Vec<String>),
 }
 
@@ -325,6 +429,7 @@ pub struct LiveSession {
 }
 
 impl LiveSession {
+    /// Open a WebSocket connection to the Live API and send the setup message.
     pub async fn connect(api_key: &str, _model: &str, config: BidiSetup) -> LiveResult<Self> {
         let url_str = format!("{LIVE_URL}?key={api_key}");
         let request = url_str

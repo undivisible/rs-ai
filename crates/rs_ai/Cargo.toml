@@ -4,9 +4,11 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+description = "(UNSTABLE; in active development) Fluent top-level API for the Rusty AI SDK — unified interface to Claude, ChatGPT, Gemini, xAI, and more"
 
 [dependencies]
-rs_ai_ai = { workspace = true }
+rs_ai_traits = { workspace = true }
 rs_ai_cache = { workspace = true }
 rs_ai_claude = { workspace = true }
 rs_ai_chatgpt = { workspace = true }

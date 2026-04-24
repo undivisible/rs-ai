@@ -1,3 +1,4 @@
+//! Streaming response types and utilities.
 use std::pin::Pin;
 
 use futures::stream::{self, Stream, StreamExt};
@@ -11,48 +12,77 @@ use crate::usage::Usage;
 /// Events emitted by a streaming response.
 #[derive(Debug, Clone)]
 pub enum StreamEvent {
+    /// Start of a new message.
     MessageStart {
+        /// Unique message identifier.
         message_id: String,
     },
+    /// Incremental text content.
     TextDelta {
+        /// The text chunk.
         delta: String,
     },
+    /// Start of a tool call.
     ToolCallStart {
+        /// Tool call identifier.
         call_id: String,
+        /// Name of the tool being called.
         tool_name: String,
     },
+    /// Incremental tool call arguments.
     ToolCallDelta {
+        /// Tool call identifier.
         call_id: String,
+        /// The argument chunk.
         delta: String,
     },
+    /// End of a tool call.
     ToolCallEnd {
+        /// Tool call identifier.
         call_id: String,
+        /// Final parsed arguments.
         arguments: serde_json::Value,
     },
+    /// Result of a tool execution.
     ToolResult {
+        /// Tool call identifier.
         call_id: String,
+        /// Result content.
         content: String,
+        /// Whether the tool returned an error.
         is_error: bool,
     },
+    /// Incremental structured object content.
     ObjectDelta {
+        /// The JSON fragment.
         delta: serde_json::Value,
     },
     /// Emitted when an extended-thinking / reasoning model produces
     /// intermediate "thinking" tokens (Anthropic, Gemini 2.5+, Ollama think).
     ThinkingDelta {
+        /// The thinking token chunk.
         delta: String,
     },
+    /// Incremental usage update.
     UsageDelta {
+        /// Token usage so far.
         usage: Usage,
     },
+    /// A non-fatal warning.
     Warning {
+        /// Warning message.
         message: String,
     },
+    /// End of the message stream.
     MessageEnd {
+        /// Why generation stopped.
         finish_reason: FinishReason,
+        /// Final usage, if provided.
         usage: Option<Usage>,
     },
+    /// A fatal stream error.
     Error {
+        /// Error description.
         error: String,
     },
     /// Emitted once when a local runtime falls back to non-native streaming.
@@ -66,6 +96,7 @@ pub type AiStream = Pin<Box<dyn Stream<Item = Result<StreamEvent, AiError>> + Se
 pub struct StreamCollector;
 
 impl StreamCollector {
+    /// Consume a stream and assemble a complete `GenerateResult`.
     pub async fn collect(mut stream: AiStream) -> AiResult<GenerateResult> {
         let mut text = String::new();
         let mut tool_calls: Vec<ToolCallRequest> = Vec::new();
@@ -134,6 +165,7 @@ impl StreamCollector {
 pub struct SyntheticStreamer;
 
 impl SyntheticStreamer {
+    /// Create a synthetic stream by chunking the given text.
     pub fn stream(text: String, chunk_size: usize) -> AiStream {
         let chunk_size = chunk_size.max(1);
         let chunks: Vec<Result<StreamEvent, AiError>> = {

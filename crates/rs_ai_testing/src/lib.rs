@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Testing utilities and mock providers for the Rusty AI SDK.
 
 mod assertions;

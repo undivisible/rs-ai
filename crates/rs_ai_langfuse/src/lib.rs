@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! LangFuse observability integration for RAI language models.
 //!
 //! LangFuse is an LLM observability platform that tracks:
@@ -36,7 +39,7 @@ use futures::Stream;
 use pin_project_lite::pin_project;
 use uuid::Uuid;
 
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, AiStream, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
     LanguageModel, Prompt, StreamEvent, Usage,
 };
@@ -317,7 +320,7 @@ pub async fn with_langfuse_from_env(
 mod tests {
     use super::*;
     use futures::StreamExt;
-    use rs_ai_ai::{Capability, CapabilitySet, FinishReason, ResponseMetadata};
+    use rs_ai_traits::{Capability, CapabilitySet, FinishReason, ResponseMetadata};
     use std::sync::Arc;
 
     struct MockModel {

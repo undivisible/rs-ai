@@ -1,5 +1,5 @@
-use rs_ai_ai::{LanguageModel, Provider};
 use rs_ai_ollama::OllamaProvider;
+use rs_ai_traits::{LanguageModel, Provider};
 
 #[test]
 fn test_ollama_provider_creation() {

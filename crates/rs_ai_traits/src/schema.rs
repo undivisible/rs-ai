@@ -1,3 +1,4 @@
+//! Output schema for structured generation.
 use serde::{Deserialize, Serialize};
 
 /// A JSON schema describing the expected output format.

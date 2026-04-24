@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, Capability, CapabilitySet, EmbeddingModel, LanguageModel, ModelInfo,
     Provider,
 };
@@ -16,6 +16,7 @@ pub struct GeminiNanoProvider {
 }
 
 impl GeminiNanoProvider {
+    /// Create a new `GeminiNanoProvider` wrapping the given bridge.
     pub fn new(bridge: impl GeminiNanoBridge + 'static) -> Self {
         Self {
             bridge: Arc::new(bridge),

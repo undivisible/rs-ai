@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use async_trait::async_trait;
-use rs_ai_ai::{AiResult, GenerateOptions, GenerateResult, Middleware, MiddlewareNext, Prompt};
+use rs_ai_traits::{AiResult, GenerateOptions, GenerateResult, Middleware, MiddlewareNext, Prompt};
 
 /// Middleware that logs request and response details using the `tracing` crate.
 pub struct LoggingMiddleware {

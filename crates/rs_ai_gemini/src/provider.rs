@@ -114,7 +114,7 @@ impl GeminiProvider {
     /// Fetch the list of models from the Gemini API.
     ///
     /// Calls `GET /v1beta/models?key=...` and returns model names.
-    pub async fn list_remote_models(&self) -> rs_ai_ai::AiResult<Vec<String>> {
+    pub async fn list_remote_models(&self) -> rs_ai_traits::AiResult<Vec<String>> {
         use secrecy::ExposeSecret;
         let url = format!(
             "https://generativelanguage.googleapis.com/v1beta/models?key={}",
@@ -125,7 +125,7 @@ impl GeminiProvider {
             .get(&url)
             .send()
             .await
-            .map_err(|e| rs_ai_ai::AiError::Transport {
+            .map_err(|e| rs_ai_traits::AiError::Transport {
                 message: e.to_string(),
                 source: Some(Box::new(e)),
             })?;
@@ -140,7 +140,7 @@ impl GeminiProvider {
                     format!("<failed to read response body: {e}>")
                 }
             };
-            return Err(rs_ai_ai::AiError::ProviderError {
+            return Err(rs_ai_traits::AiError::ProviderError {
                 provider: "gemini".into(),
                 status: Some(status_code),
                 message: body,
@@ -159,7 +159,7 @@ impl GeminiProvider {
         let list: ListModelsResponse = resp
             .json()
             .await
-            .map_err(|e| rs_ai_ai::AiError::Serialization(e.to_string()))?;
+            .map_err(|e| rs_ai_traits::AiError::Serialization(e.to_string()))?;
 
         Ok(list
             .models

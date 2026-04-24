@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiError, AiResult, GenerateOptions, GenerateResult, Middleware, MiddlewareNext, Prompt,
 };
 

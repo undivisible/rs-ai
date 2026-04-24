@@ -1,8 +1,8 @@
-# rs-ai — Codebase Guide
+# rs_ai — Codebase Guide
 
 ## Overview
 
-`rs-ai` is a Rust workspace SDK for AI applications. The top-level `rs-ai` crate exposes a fluent builder API (`rs_ai_claude()`, `rs_ai_gemini()`, etc.) over a set of provider crates (`rai_claude`, `rai_gemini`, …) built on the `rai_ai` core traits.
+`rs_ai` is a Rust workspace SDK for AI applications. The top-level `rs_ai` crate exposes a fluent builder API (`rs_ai_claude()`, `rs_ai_gemini()`, etc.) over a set of provider crates (`rai_claude`, `rai_gemini`, …) built on the `rai_ai` core traits.
 
 ## Workspace Layout
 
@@ -10,7 +10,7 @@
 rusty_ai/
 ├── Cargo.toml
 ├── crates/
-│   ├── rs-ai/               # Fluent top-level API
+│   ├── rs_ai/               # Fluent top-level API
 │   ├── rs_ai_cache/         # CacheConfig / CacheTTL
 │   ├── rs_ai_langfuse/      # LangFuse observability wrapper
 │   ├── rs_ai_portkey/       # Portkey gateway provider
@@ -72,9 +72,9 @@ pub trait Provider {
 
 Key types: `Prompt`, `GenerateResult`, `StreamEvent`, `AiError`, `Usage`, `FinishReason`, `CapabilitySet`, `ToolDefinition`.
 
-## Top-Level API: `rs-ai`
+## Top-Level API: `rs_ai`
 
-### Entry points (all in `crates/rs-ai/src/lib.rs`)
+### Entry points (all in `crates/rs_ai/src/lib.rs`)
 
 | Function | Provider | Default env var |
 |---|---|---|
@@ -230,7 +230,7 @@ cargo test -p rai_ollama           # 7 integration tests
 1. Create `crates/rai_newprovider/` with `Cargo.toml`, `src/{lib,provider,model,client,error}.rs`
 2. Implement `LanguageModel` (and optionally `Provider`) from `rai_ai`
 3. Add to workspace `Cargo.toml` `members`
-4. Add an entry point function in `crates/rs-ai/src/lib.rs`
+4. Add an entry point function in `crates/rs_ai/src/lib.rs`
 5. Add integration tests in `crates/rai_newprovider/tests/`
 
 ## Key Dependencies

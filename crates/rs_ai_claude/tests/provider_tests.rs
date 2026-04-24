@@ -1,5 +1,5 @@
-use rs_ai_ai::{LanguageModel, Provider};
 use rs_ai_claude::ClaudeProvider;
+use rs_ai_traits::{LanguageModel, Provider};
 
 #[test]
 fn test_claude_provider_creation() {
@@ -68,7 +68,7 @@ fn test_claude_model_capabilities() {
     let model = provider.claude_sonnet();
 
     let capabilities = model.capabilities();
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextInput]));
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextOutput]));
-    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::Streaming]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::TextInput]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::TextOutput]));
+    assert!(capabilities.supports_all(&[rs_ai_traits::Capability::Streaming]));
 }

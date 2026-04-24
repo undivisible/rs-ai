@@ -1,5 +1,5 @@
-use rs_ai_ai::*;
 use rs_ai_chatgpt::ChatGptProvider;
+use rs_ai_traits::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

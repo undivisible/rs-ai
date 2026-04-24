@@ -4,10 +4,11 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Observability wrapper for RAI language models (tracing spans, token counts, latency)"
+repository.workspace = true
+description = "(UNSTABLE; in active development) Observability wrapper for RAI language models (tracing spans, token counts, latency)"
 
 [dependencies]
-rs_ai_ai = { workspace = true }
+rs_ai_traits = { workspace = true }
 async-trait = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }

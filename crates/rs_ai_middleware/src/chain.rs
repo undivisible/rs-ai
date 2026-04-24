@@ -1,4 +1,4 @@
-use rs_ai_ai::{
+use rs_ai_traits::{
     AiResult, GenerateOptions, GenerateResult, LanguageModel, Middleware, MiddlewareNext, Prompt,
 };
 

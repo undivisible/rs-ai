@@ -1,4 +1,4 @@
-use rs_ai_ai::{
+use rs_ai_traits::{
     ContentPart, GenerateOptions, ImageData, Message, Role, ToolCallRequest, ToolDefinition,
 };
 
@@ -6,7 +6,7 @@ use crate::api_types::{
     OllamaFunction, OllamaFunctionCall, OllamaMessage, OllamaOptions, OllamaTool, OllamaToolCall,
 };
 
-/// Convert a slice of `rs_ai_ai::Message` into Ollama messages.
+/// Convert a slice of `rs_ai_traits::Message` into Ollama messages.
 pub(crate) fn convert_messages(messages: &[Message]) -> Vec<OllamaMessage> {
     messages.iter().map(convert_message).collect()
 }
@@ -106,7 +106,7 @@ pub(crate) fn convert_options(opts: &GenerateOptions) -> Option<OllamaOptions> {
     Some(o)
 }
 
-/// Convert `rs_ai_ai::ToolDefinition` to Ollama tools.
+/// Convert `rs_ai_traits::ToolDefinition` to Ollama tools.
 pub(crate) fn convert_tools(tools: Option<&[ToolDefinition]>) -> Option<Vec<OllamaTool>> {
     let tools = tools?;
     if tools.is_empty() {
@@ -127,7 +127,7 @@ pub(crate) fn convert_tools(tools: Option<&[ToolDefinition]>) -> Option<Vec<Olla
     )
 }
 
-/// Convert Ollama tool calls to `rs_ai_ai::ToolCallRequest`.
+/// Convert Ollama tool calls to `rs_ai_traits::ToolCallRequest`.
 pub(crate) fn convert_tool_calls(calls: &[OllamaToolCall]) -> Vec<ToolCallRequest> {
     calls
         .iter()

@@ -1,3 +1,6 @@
+//!
+//! ⚠️ **UNSTABLE** — This crate is in active development. APIs may change without notice.
+//!
 //! Portkey AI Gateway provider for RAI.
 //!
 //! Provides access to Portkey's multi-provider LLM gateway through the unified RAI interface.
@@ -32,8 +35,8 @@
 //! let model = provider.model("gpt-4");
 //!
 //! let response = model.generate(
-//!     rs_ai_ai::Prompt::Text("What is 2+2?".into()),
-//!     rs_ai_ai::GenerateOptions::default(),
+//!     rs_ai_traits::Prompt::Text("What is 2+2?".into()),
+//!     rs_ai_traits::GenerateOptions::default(),
 //! ).await?;
 //! ```
 
