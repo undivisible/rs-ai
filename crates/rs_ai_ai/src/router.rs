@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use std::cmp::Reverse;
 
 use crate::capability::{Capability, CapabilitySet};
 use crate::error::{AiError, AiResult};
@@ -131,7 +132,7 @@ impl Router {
             .iter()
             .filter(|r| (r.condition)(prompt, options))
             .collect();
-        candidates.sort_by(|a, b| b.priority.cmp(&a.priority));
+        candidates.sort_by_key(|b| Reverse(b.priority));
 
         if let Some(route) = candidates.first() {
             return Ok(route.model.as_ref());
@@ -186,8 +187,6 @@ impl LanguageModel for Router {
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
-
-    use async_trait::async_trait;
 
     use super::*;
     use crate::schema::OutputSchema;
