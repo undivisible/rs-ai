@@ -86,5 +86,4 @@ fn test_all_presets_accessible() {
     let _ = presets::vllm::config(None);
     let _ = presets::lm_studio::config(None);
     let _ = presets::text_gen_webui::config(None);
-
-    }
+}
