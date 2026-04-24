@@ -5,5 +5,5 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-rai_gemini = { workspace = true }
+rs_ai_gemini = { workspace = true }
 tokio = { workspace = true }

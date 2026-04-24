@@ -1,0 +1,26 @@
+[package]
+name = "rs_ai_gemini"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Google Gemini provider for the Rusty AI SDK"
+
+[dependencies]
+rs_ai_ai = { workspace = true }
+rs_ai_cache = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+secrecy = { workspace = true }
+tokio-tungstenite = { workspace = true }
+url = { workspace = true }
+base64 = { workspace = true }
+thiserror = { workspace = true }
+urlencoding = "2.1"

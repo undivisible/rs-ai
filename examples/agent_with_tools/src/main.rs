@@ -3,8 +3,8 @@
 //! Run: `ANTHROPIC_API_KEY=... cargo run --example agent_with_tools`
 
 use futures::StreamExt;
-use rai_ai::{GenerateOptions, LanguageModel, Prompt, StreamEvent, ToolChoice, ToolDefinition};
-use rai_claude::ClaudeProvider;
+use rs_ai_ai::{GenerateOptions, LanguageModel, Prompt, StreamEvent, ToolChoice, ToolDefinition};
+use rs_ai_claude::ClaudeProvider;
 use schemars::schema_for;
 use serde::{Deserialize, Serialize};
 
@@ -56,7 +56,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let prompt = "What's the weather in Paris and what are the top sights to visit? Please use tools to get this information.";
 
     // Stream the response
-    let mut stream = model.stream(Prompt::Text(prompt.to_string()), options).await?;
+    let mut stream = model
+        .stream(Prompt::Text(prompt.to_string()), options)
+        .await?;
 
     let mut text_response = String::new();
     let mut tool_calls_seen = 0;
@@ -69,15 +71,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 print!("{}", delta);
                 text_response.push_str(&delta);
             }
-            StreamEvent::ToolCallStart { call_id: id, tool_name } => {
+            StreamEvent::ToolCallStart {
+                call_id: id,
+                tool_name,
+            } => {
                 tool_calls_seen += 1;
                 println!("\n🔧 Tool call [{}]: {}", id, tool_name);
             }
             StreamEvent::ToolCallDelta { call_id, delta } => {
                 print!("  📝 [{}] {}", call_id, delta);
             }
-            StreamEvent::ToolCallEnd { call_id: _, arguments } => {
-                let tool_name = arguments.get("location").is_some().then_some("get_weather")
+            StreamEvent::ToolCallEnd {
+                call_id: _,
+                arguments,
+            } => {
+                let tool_name = arguments
+                    .get("location")
+                    .is_some()
+                    .then_some("get_weather")
                     .or_else(|| arguments.get("query").map(|_| "search"))
                     .unwrap_or("unknown");
 
@@ -88,7 +99,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 finish_reason,
                 usage: _,
             } => {
-                println!("\n\n✅ Message generation complete (finish_reason: {:?})", finish_reason);
+                println!(
+                    "\n\n✅ Message generation complete (finish_reason: {:?})",
+                    finish_reason
+                );
                 break;
             }
             _ => {}
@@ -115,10 +129,7 @@ fn execute_tool(name: &str, args: &serde_json::Value) -> String {
         }
         "search" => {
             if let Some(query) = args.get("query").and_then(|v| v.as_str()) {
-                format!(
-                    "Search results for '{}': 3 relevant articles found",
-                    query
-                )
+                format!("Search results for '{}': 3 relevant articles found", query)
             } else {
                 "Error: invalid query".to_string()
             }

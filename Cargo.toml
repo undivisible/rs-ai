@@ -1,26 +1,26 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/rai_ai",
-    "crates/rai_middleware",
-    "crates/rai_ui_stream",
-    "crates/rai_testing",
-    "crates/rai_chatgpt",
-    "crates/rai_claude",
-    "crates/rai_gemini",
-    "crates/rai_openai_compatible",
-    "crates/rai_xai",
-    "crates/rai_cloudflare",
-    "crates/rai_observability",
+    "crates/rs_ai_ai",
+    "crates/rs_ai_middleware",
+    "crates/rs_ai_ui_stream",
+    "crates/rs_ai_testing",
+    "crates/rs_ai_chatgpt",
+    "crates/rs_ai_claude",
+    "crates/rs_ai_gemini",
+    "crates/rs_ai_openai_compatible",
+    "crates/rs_ai_xai",
+    "crates/rs_ai_cloudflare",
+    "crates/rs_ai_observability",
     "crates/rs_ai_cache",
     "crates/rs_ai_portkey",
     "crates/rs_ai_langfuse",
-    "crates/rs-ai",
-    "crates/rai_gemini_nano",
-    "crates/rai_foundationmodels",
-    "crates/rai_phi_silica",
-    "crates/rai_browser",
-    "crates/rai_ollama",
+    "crates/rs_ai",
+    "crates/rs_ai_gemini_nano",
+    "crates/rs_ai_foundationmodels",
+    "crates/rs_ai_phi_silica",
+    "crates/rs_ai_browser",
+    "crates/rs_ai_ollama",
     "examples/basic_text",
     "examples/stream_text",
     "examples/generate_object",
@@ -47,30 +47,30 @@ repository = "https://github.com/undivisible/rusty_ai"
 
 [workspace.dependencies]
 # Core
-rai_ai = { path = "crates/rai_ai" }
-rai_middleware = { path = "crates/rai_middleware" }
-rai_ui_stream = { path = "crates/rai_ui_stream" }
-rai_testing = { path = "crates/rai_testing" }
+rs_ai_ai = { path = "crates/rs_ai_ai" }
+rs_ai_middleware = { path = "crates/rs_ai_middleware" }
+rs_ai_ui_stream = { path = "crates/rs_ai_ui_stream" }
+rs_ai_testing = { path = "crates/rs_ai_testing" }
 
 # Cloud providers
-rai_chatgpt = { path = "crates/rai_chatgpt" }
-rai_claude = { path = "crates/rai_claude" }
-rai_gemini = { path = "crates/rai_gemini" }
-rai_openai_compatible = { path = "crates/rai_openai_compatible" }
-rai_xai = { path = "crates/rai_xai" }
-rai_cloudflare = { path = "crates/rai_cloudflare" }
-rai_observability = { path = "crates/rai_observability" }
+rs_ai_chatgpt = { path = "crates/rs_ai_chatgpt" }
+rs_ai_claude = { path = "crates/rs_ai_claude" }
+rs_ai_gemini = { path = "crates/rs_ai_gemini" }
+rs_ai_openai_compatible = { path = "crates/rs_ai_openai_compatible" }
+rs_ai_xai = { path = "crates/rs_ai_xai" }
+rs_ai_cloudflare = { path = "crates/rs_ai_cloudflare" }
+rs_ai_observability = { path = "crates/rs_ai_observability" }
 rs_ai_cache = { path = "crates/rs_ai_cache" }
 rs_ai_portkey = { path = "crates/rs_ai_portkey" }
 rs_ai_langfuse = { path = "crates/rs_ai_langfuse" }
-rs-ai = { path = "crates/rs-ai" }
+rs_ai = { path = "crates/rs_ai" }
 
 # Local / platform runtimes
-rai_gemini_nano = { path = "crates/rai_gemini_nano" }
-rai_foundationmodels = { path = "crates/rai_foundationmodels" }
-rai_phi_silica = { path = "crates/rai_phi_silica" }
-rai_browser = { path = "crates/rai_browser" }
-rai_ollama = { path = "crates/rai_ollama" }
+rs_ai_gemini_nano = { path = "crates/rs_ai_gemini_nano" }
+rs_ai_foundationmodels = { path = "crates/rs_ai_foundationmodels" }
+rs_ai_phi_silica = { path = "crates/rs_ai_phi_silica" }
+rs_ai_browser = { path = "crates/rs_ai_browser" }
+rs_ai_ollama = { path = "crates/rs_ai_ollama" }
 
 # Async / streaming
 tokio = { version = "1", features = ["full"] }
@@ -109,5 +109,5 @@ tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 
 # WASM and platform-specific dependencies should be added to individual crates
 # See CRATE_AUDIT.md for recommended dependencies by crate:
-# - wasm-bindgen, web-sys for rai_browser (WASM target)
+# - wasm-bindgen, web-sys for rs_ai_browser (WASM target)
 # - mockall, proptest, wiremock for testing crates

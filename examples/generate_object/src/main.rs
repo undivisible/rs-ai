@@ -1,6 +1,6 @@
-use rai_ai::model::generate_object;
-use rai_ai::*;
-use rai_chatgpt::ChatGptProvider;
+use rs_ai_ai::model::generate_object;
+use rs_ai_ai::*;
+use rs_ai_chatgpt::ChatGptProvider;
 use schemars::JsonSchema;
 use serde::Deserialize;
 

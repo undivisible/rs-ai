@@ -36,7 +36,7 @@ use futures::Stream;
 use pin_project_lite::pin_project;
 use uuid::Uuid;
 
-use rai_ai::{
+use rs_ai_ai::{
     AiError, AiResult, AiStream, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
     LanguageModel, Prompt, StreamEvent, Usage,
 };
@@ -142,8 +142,7 @@ impl LanguageModel for LangfuseModel {
 
         match &result {
             Ok(gen_result) => {
-                let mut event = self.build_event("ai.generate")
-                    .with_latency_ms(latency_ms);
+                let mut event = self.build_event("ai.generate").with_latency_ms(latency_ms);
 
                 if let Some(pt) = gen_result.usage.prompt_tokens {
                     event = event.with_prompt_tokens(pt);
@@ -152,12 +151,14 @@ impl LanguageModel for LangfuseModel {
                     event = event.with_completion_tokens(ct);
                 }
 
-                event = event.with_finish_reason(finish_reason_str(&gen_result.finish_reason).to_string());
+                event = event
+                    .with_finish_reason(finish_reason_str(&gen_result.finish_reason).to_string());
 
                 self.emit_trace_async(event);
             }
             Err(_) => {
-                let event = self.build_event("ai.generate")
+                let event = self
+                    .build_event("ai.generate")
                     .with_latency_ms(latency_ms)
                     .with_finish_reason("error".to_string());
 
@@ -216,14 +217,19 @@ impl Stream for LangfuseStream {
                         let usage = usage.clone();
                         this.cumulative_usage.merge(&usage);
                     }
-                    Ok(StreamEvent::MessageEnd { finish_reason, usage }) => {
+                    Ok(StreamEvent::MessageEnd {
+                        finish_reason,
+                        usage,
+                    }) => {
                         // Merge any usage carried in the MessageEnd event.
                         if let Some(u) = usage {
                             this.cumulative_usage.merge(u);
                         }
 
                         let latency_ms = this.start.elapsed().as_millis() as u64;
-                        let mut event = this.event_base.clone()
+                        let mut event = this
+                            .event_base
+                            .clone()
                             .with_latency_ms(latency_ms)
                             .with_finish_reason(finish_reason_str(finish_reason).to_string());
 
@@ -280,7 +286,7 @@ fn finish_reason_str(reason: &FinishReason) -> &'static str {
 /// # Example
 ///
 /// ```rust,ignore
-/// let model: Box<dyn LanguageModel> = rai_claude("claude-3-5-sonnet").await?;
+/// let model: Box<dyn LanguageModel> = rs_ai_claude("claude-3-5-sonnet").await?;
 /// let observable = with_langfuse(model, "pub_key", "secret_key").await?;
 /// let result = observable.generate(prompt, options).await?;
 /// ```
@@ -296,7 +302,9 @@ pub async fn with_langfuse(
 /// Wrap a model with LangFuse observability using environment variables.
 ///
 /// Looks for `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` environment variables.
-pub async fn with_langfuse_from_env(model: Box<dyn LanguageModel>) -> LangfuseResult<LangfuseModel> {
+pub async fn with_langfuse_from_env(
+    model: Box<dyn LanguageModel>,
+) -> LangfuseResult<LangfuseModel> {
     let client = LangfuseClient::from_env()?;
     Ok(LangfuseModel::new(model, std::sync::Arc::new(client)))
 }
@@ -309,7 +317,7 @@ pub async fn with_langfuse_from_env(model: Box<dyn LanguageModel>) -> LangfuseRe
 mod tests {
     use super::*;
     use futures::StreamExt;
-    use rai_ai::{Capability, CapabilitySet, FinishReason, ResponseMetadata};
+    use rs_ai_ai::{Capability, CapabilitySet, FinishReason, ResponseMetadata};
     use std::sync::Arc;
 
     struct MockModel {
@@ -364,11 +372,7 @@ mod tests {
             })
         }
 
-        async fn stream(
-            &self,
-            _prompt: Prompt,
-            _options: GenerateOptions,
-        ) -> AiResult<AiStream> {
+        async fn stream(&self, _prompt: Prompt, _options: GenerateOptions) -> AiResult<AiStream> {
             use futures::stream;
             let events: Vec<Result<StreamEvent, AiError>> = vec![
                 Ok(StreamEvent::TextDelta {
@@ -448,8 +452,7 @@ mod tests {
     fn test_langfuse_model_with_trace_id() {
         let mock = Box::new(MockModel::new());
         let client = Arc::new(LangfuseClient::new("test_pub", "test_secret"));
-        let wrapped = LangfuseModel::new(mock, client)
-            .with_trace_id("custom-trace-id".to_string());
+        let wrapped = LangfuseModel::new(mock, client).with_trace_id("custom-trace-id".to_string());
 
         assert_eq!(wrapped.trace_id, "custom-trace-id");
     }
@@ -458,8 +461,7 @@ mod tests {
     fn test_langfuse_model_with_user_id() {
         let mock = Box::new(MockModel::new());
         let client = Arc::new(LangfuseClient::new("test_pub", "test_secret"));
-        let wrapped = LangfuseModel::new(mock, client)
-            .with_user_id("user123".to_string());
+        let wrapped = LangfuseModel::new(mock, client).with_user_id("user123".to_string());
 
         assert_eq!(wrapped.user_id, Some("user123".to_string()));
     }
@@ -468,8 +470,7 @@ mod tests {
     fn test_langfuse_model_with_session_id() {
         let mock = Box::new(MockModel::new());
         let client = Arc::new(LangfuseClient::new("test_pub", "test_secret"));
-        let wrapped = LangfuseModel::new(mock, client)
-            .with_session_id("session456".to_string());
+        let wrapped = LangfuseModel::new(mock, client).with_session_id("session456".to_string());
 
         assert_eq!(wrapped.session_id, Some("session456".to_string()));
     }
@@ -479,7 +480,10 @@ mod tests {
         assert_eq!(finish_reason_str(&FinishReason::Stop), "stop");
         assert_eq!(finish_reason_str(&FinishReason::Length), "length");
         assert_eq!(finish_reason_str(&FinishReason::ToolCall), "tool_call");
-        assert_eq!(finish_reason_str(&FinishReason::ContentFilter), "content_filter");
+        assert_eq!(
+            finish_reason_str(&FinishReason::ContentFilter),
+            "content_filter"
+        );
         assert_eq!(finish_reason_str(&FinishReason::Error), "error");
         assert_eq!(finish_reason_str(&FinishReason::Unknown), "unknown");
     }

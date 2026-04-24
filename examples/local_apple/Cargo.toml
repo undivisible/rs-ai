@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-rai_ai = { workspace = true }
-rai_foundationmodels = { workspace = true }
+rs_ai_ai = { workspace = true }
+rs_ai_foundationmodels = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }

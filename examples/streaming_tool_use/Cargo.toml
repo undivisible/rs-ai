@@ -5,8 +5,8 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-rai_ai = { workspace = true }
-rai_claude = { workspace = true }
+rs_ai_ai = { workspace = true }
+rs_ai_claude = { workspace = true }
 tokio = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }

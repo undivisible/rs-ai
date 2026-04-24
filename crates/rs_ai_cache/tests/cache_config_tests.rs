@@ -105,8 +105,7 @@ fn test_cache_config_clone() {
 
 #[test]
 fn test_cache_config_partial_setup() {
-    let config = CacheConfig::new()
-        .with_gemini_cache_key("key1");
+    let config = CacheConfig::new().with_gemini_cache_key("key1");
 
     assert_eq!(config.gemini_cache_key, Some("key1".to_string()));
     assert!(config.openai_cache_key.is_none());

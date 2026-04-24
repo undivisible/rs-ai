@@ -6,8 +6,8 @@
 //! Run: `ANTHROPIC_API_KEY=... cargo run --example streaming_tool_use`
 
 use futures::StreamExt;
-use rai_ai::{GenerateOptions, LanguageModel, Prompt, StreamEvent, ToolChoice, ToolDefinition};
-use rai_claude::ClaudeProvider;
+use rs_ai_ai::{GenerateOptions, LanguageModel, Prompt, StreamEvent, ToolChoice, ToolDefinition};
+use rs_ai_claude::ClaudeProvider;
 use schemars::schema_for;
 use serde::{Deserialize, Serialize};
 
@@ -105,7 +105,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("  ✅ result: {}", result);
                 }
             }
-            StreamEvent::MessageEnd { finish_reason, usage } => {
+            StreamEvent::MessageEnd {
+                finish_reason,
+                usage,
+            } => {
                 println!("\n\n✨ Done — finish_reason: {:?}", finish_reason);
                 if let Some(u) = usage {
                     println!(

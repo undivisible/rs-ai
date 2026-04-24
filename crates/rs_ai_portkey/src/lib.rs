@@ -32,8 +32,8 @@
 //! let model = provider.model("gpt-4");
 //!
 //! let response = model.generate(
-//!     rai_ai::Prompt::Text("What is 2+2?".into()),
-//!     rai_ai::GenerateOptions::default(),
+//!     rs_ai_ai::Prompt::Text("What is 2+2?".into()),
+//!     rs_ai_ai::GenerateOptions::default(),
 //! ).await?;
 //! ```
 

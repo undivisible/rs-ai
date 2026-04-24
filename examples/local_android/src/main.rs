@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use rai_ai::*;
-use rai_gemini_nano::*;
+use rs_ai_ai::*;
+use rs_ai_gemini_nano::*;
 
 /// Example bridge implementation (in a real app, this would call JNI)
 struct MockNanoBridge;

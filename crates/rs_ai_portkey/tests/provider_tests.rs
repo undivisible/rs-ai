@@ -1,5 +1,5 @@
+use rs_ai_ai::LanguageModel;
 use rs_ai_portkey::PortkeyProvider;
-use rai_ai::LanguageModel;
 
 #[test]
 fn test_provider_creation() {
@@ -12,8 +12,7 @@ fn test_provider_creation() {
 
 #[test]
 fn test_provider_with_custom_url() {
-    let provider = PortkeyProvider::new("test-key")
-        .with_base_url("https://custom.portkey.ai/v1");
+    let provider = PortkeyProvider::new("test-key").with_base_url("https://custom.portkey.ai/v1");
 
     let model = provider.model("gpt-4");
     assert_eq!(model.model_id(), "gpt-4");
@@ -25,10 +24,10 @@ fn test_model_capabilities() {
     let model = provider.model("gpt-4");
 
     let capabilities = model.capabilities();
-    assert!(capabilities.supports_all(&[rai_ai::Capability::TextInput]));
-    assert!(capabilities.supports_all(&[rai_ai::Capability::TextOutput]));
-    assert!(capabilities.supports_all(&[rai_ai::Capability::Streaming]));
-    assert!(capabilities.supports_all(&[rai_ai::Capability::ToolCalling]));
+    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextInput]));
+    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::TextOutput]));
+    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::Streaming]));
+    assert!(capabilities.supports_all(&[rs_ai_ai::Capability::ToolCalling]));
 }
 
 #[test]

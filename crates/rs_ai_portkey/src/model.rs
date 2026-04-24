@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use futures::stream::StreamExt;
-use rai_ai::{
+use rs_ai_ai::{
     AiError, AiResult, Capability, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
     LanguageModel, Prompt, StreamEvent, Usage,
 };
 
-use crate::client::{ChatCompletionRequest, PortkeyClient, Message};
+use crate::client::{ChatCompletionRequest, Message, PortkeyClient};
 
 /// Portkey AI Gateway model.
 ///
@@ -48,7 +48,11 @@ impl LanguageModel for PortkeyModel {
         &self.capabilities
     }
 
-    async fn generate(&self, prompt: Prompt, _options: GenerateOptions) -> AiResult<GenerateResult> {
+    async fn generate(
+        &self,
+        prompt: Prompt,
+        _options: GenerateOptions,
+    ) -> AiResult<GenerateResult> {
         let text = match prompt {
             Prompt::Text(t) => t,
             _ => {
@@ -98,7 +102,11 @@ impl LanguageModel for PortkeyModel {
         })
     }
 
-    async fn stream(&self, prompt: Prompt, _options: GenerateOptions) -> AiResult<rai_ai::AiStream> {
+    async fn stream(
+        &self,
+        prompt: Prompt,
+        _options: GenerateOptions,
+    ) -> AiResult<rs_ai_ai::AiStream> {
         let text = match prompt {
             Prompt::Text(t) => t,
             _ => {
@@ -131,18 +139,16 @@ impl LanguageModel for PortkeyModel {
                     Err(e) => Some(Err::<_, reqwest::Error>(e)),
                 })
             })
-            .flat_map(|result| {
-                match result {
-                    Ok(buffer) => {
-                        let events = parse_stream_buffer(&buffer);
-                        futures::stream::iter(events)
-                    }
-                    Err(e) => {
-                        let err = Err::<StreamEvent, AiError>(AiError::StreamError {
-                            message: e.to_string(),
-                        });
-                        futures::stream::iter(vec![err])
-                    }
+            .flat_map(|result| match result {
+                Ok(buffer) => {
+                    let events = parse_stream_buffer(&buffer);
+                    futures::stream::iter(events)
+                }
+                Err(e) => {
+                    let err = Err::<StreamEvent, AiError>(AiError::StreamError {
+                        message: e.to_string(),
+                    });
+                    futures::stream::iter(vec![err])
                 }
             });
 

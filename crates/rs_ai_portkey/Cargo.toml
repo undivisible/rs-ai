@@ -10,7 +10,7 @@ name = "rs_ai_portkey"
 path = "src/lib.rs"
 
 [dependencies]
-rai_ai = { workspace = true }
+rs_ai_ai = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

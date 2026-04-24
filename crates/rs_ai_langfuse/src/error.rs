@@ -1,6 +1,6 @@
 //! Error types for LangFuse integration.
 
-use rai_ai::AiError;
+use rs_ai_ai::AiError;
 
 /// Result type for LangFuse operations.
 pub type LangfuseResult<T> = Result<T, LangfuseError>;

@@ -1,4 +1,4 @@
-use rai_ai::AiError;
+use rs_ai_ai::AiError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PortkeyError {

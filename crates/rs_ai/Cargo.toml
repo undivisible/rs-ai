@@ -1,0 +1,21 @@
+[package]
+name = "rs_ai"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+rs_ai_ai = { workspace = true }
+rs_ai_cache = { workspace = true }
+rs_ai_claude = { workspace = true }
+rs_ai_chatgpt = { workspace = true }
+rs_ai_gemini = { workspace = true }
+rs_ai_openai_compatible = { workspace = true }
+rs_ai_xai = { workspace = true }
+rs_ai_cloudflare = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+serde_json = { workspace = true }
+base64 = { workspace = true }

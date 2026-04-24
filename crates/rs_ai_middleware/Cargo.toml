@@ -1,0 +1,20 @@
+[package]
+name = "rs_ai_middleware"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Middleware components for the Rusty AI SDK"
+
+[dependencies]
+rs_ai_ai = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+rs_ai_testing = { workspace = true }
+tokio = { workspace = true }

@@ -2,7 +2,7 @@
 //!
 //! Run: `OPENAI_API_KEY=sk-... cargo run --example realtime_voice`
 
-use rai_chatgpt::{
+use rs_ai_chatgpt::{
     realtime_api::{ServerEvent, SessionConfig, TurnDetection, Voice},
     ChatGptProvider, GPT_4O_REALTIME,
 };
@@ -18,8 +18,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     session
         .configure(SessionConfig {
             modalities: Some(vec![
-                rai_chatgpt::realtime_api::Modality::Text,
-                rai_chatgpt::realtime_api::Modality::Audio,
+                rs_ai_chatgpt::realtime_api::Modality::Text,
+                rs_ai_chatgpt::realtime_api::Modality::Audio,
             ]),
             voice: Some(Voice::Alloy),
             turn_detection: Some(TurnDetection::server_vad()),
@@ -59,7 +59,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 ServerEvent::AudioDelta { delta, .. } => {
                     // decode base64 → PCM bytes (play via a real audio sink in production)
-                    if let Ok(pcm) = rai_chatgpt::realtime_api::RealtimeSession::decode_audio(&delta) {
+                    if let Ok(pcm) =
+                        rs_ai_chatgpt::realtime_api::RealtimeSession::decode_audio(&delta)
+                    {
                         audio_bytes += pcm.len();
                     }
                 }

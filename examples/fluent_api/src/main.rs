@@ -1,6 +1,6 @@
-//! Demonstrates the fluent rs-ai API with simple one-line builder pattern.
+//! Demonstrates the fluent rs_ai API with simple one-line builder pattern.
 //!
-//! This example shows how to use rs-ai's ergonomic builder API for quick AI operations.
+//! This example shows how to use rs_ai's ergonomic builder API for quick AI operations.
 
 use rs_ai::{chatgpt, claude, compatible, gemini};
 
@@ -49,8 +49,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 5: Method chaining in different orders
     println!("=== Method Chaining (Order Independent) ===");
     let flexible_response = claude()
-        .model("claude-sonnet-4-6")  // Can set model first
-        .api_key("your-anthropic-api-key-here")  // Then api_key
+        .model("claude-sonnet-4-6") // Can set model first
+        .api_key("your-anthropic-api-key-here") // Then api_key
         .generate("Hello, world!")
         .await
         .unwrap_or_else(|e| format!("Error: {}", e));
