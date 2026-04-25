@@ -27,16 +27,16 @@
 
 use base64::Engine as _;
 use futures::stream::BoxStream;
-use rs_ai_traits::{
-    AiError, AiResult, ContentPart, FileData, GenerateOptions, ImageData, LanguageModel, Message,
-    Prompt, StreamEvent,
-};
 use rs_ai_cache::CacheConfig;
 use rs_ai_chatgpt::ChatGptProvider;
 use rs_ai_claude::ClaudeProvider;
 use rs_ai_cloudflare::CloudflareProvider;
 use rs_ai_gemini::GeminiProvider;
 use rs_ai_openai_compatible::{OpenAiCompatibleConfig, OpenAiCompatibleProvider};
+use rs_ai_traits::{
+    AiError, AiResult, ContentPart, FileData, GenerateOptions, ImageData, LanguageModel, Message,
+    Prompt, StreamEvent,
+};
 use rs_ai_xai::XaiProvider;
 
 /// Fluent builder for creating and configuring AI clients.

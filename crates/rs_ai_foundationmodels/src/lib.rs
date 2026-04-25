@@ -68,7 +68,7 @@ use std::task::{Context as StdContext, Poll};
 use futures_core::Stream;
 
 #[cfg(foundation_models_bridge)]
-use std::ffi::{CStr, CString, c_char, c_void};
+use std::ffi::{c_char, c_void, CStr, CString};
 
 #[cfg(foundation_models_bridge)]
 use std::ptr::null;
@@ -343,7 +343,10 @@ impl std::fmt::Debug for ToolDefinition {
 #[cfg(foundation_models_bridge)]
 #[allow(clippy::type_complexity)]
 struct ToolsContext {
-    tools: Vec<(String, Box<dyn Fn(serde_json::Value) -> Result<String, String> + Send + Sync>)>,
+    tools: Vec<(
+        String,
+        Box<dyn Fn(serde_json::Value) -> Result<String, String> + Send + Sync>,
+    )>,
 }
 
 // ─── Availability ──────────────────────────────────────────────────────────────
@@ -429,7 +432,10 @@ impl Session {
             if handle.is_null() {
                 return Err(Error::Unavailable(UnavailabilityReason::Unknown));
             }
-            Ok(Self { handle, _tools: None })
+            Ok(Self {
+                handle,
+                _tools: None,
+            })
         }
         #[cfg(not(foundation_models_bridge))]
         {
@@ -475,7 +481,10 @@ impl Session {
             if handle.is_null() {
                 return Err(Error::Unavailable(UnavailabilityReason::Unknown));
             }
-            Ok(Self { handle, _tools: Some(tools_ctx) })
+            Ok(Self {
+                handle,
+                _tools: Some(tools_ctx),
+            })
         }
         #[cfg(not(foundation_models_bridge))]
         {
@@ -486,7 +495,8 @@ impl Session {
 
     /// Sends a prompt and returns the full response text.
     pub async fn respond(&self, prompt: &str) -> Result<String, Error> {
-        self.respond_with_options(prompt, &GenerationOptions::default()).await
+        self.respond_with_options(prompt, &GenerationOptions::default())
+            .await
     }
 
     /// Like [`respond`] but with options.
@@ -531,7 +541,8 @@ impl Session {
         prompt: &str,
         schema: &Schema,
     ) -> Result<T, Error> {
-        self.respond_as_with_options(prompt, schema, &GenerationOptions::default()).await
+        self.respond_as_with_options(prompt, schema, &GenerationOptions::default())
+            .await
     }
 
     /// Like [`respond_as`] but with options.
@@ -563,7 +574,8 @@ impl Session {
                 );
             }
 
-            let json = rx.await
+            let json = rx
+                .await
                 .map_err(|_| Error::Generation("session was dropped before responding".into()))?
                 .map_err(Error::Generation)?;
             Ok(serde_json::from_str(&json)?)
@@ -658,10 +670,7 @@ pub struct ResponseStream {
 impl Stream for ResponseStream {
     type Item = Result<String, Error>;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut StdContext<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut StdContext<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut self.rx)
             .poll_next(cx)
             .map(|opt| opt.map(|r| r.map_err(Error::Generation)))
@@ -671,11 +680,7 @@ impl Stream for ResponseStream {
 // ─── FFI callbacks ─────────────────────────────────────────────────────────────
 
 #[cfg(foundation_models_bridge)]
-extern "C" fn respond_callback(
-    ctx: *mut c_void,
-    result: *const c_char,
-    error: *const c_char,
-) {
+extern "C" fn respond_callback(ctx: *mut c_void, result: *const c_char, error: *const c_char) {
     let tx = unsafe { Box::from_raw(ctx as *mut oneshot::Sender<Result<String, String>>) };
 
     if !error.is_null() {
@@ -873,11 +878,7 @@ impl LanguageModel for FoundationModel {
         })
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: TraitGenerateOptions,
-    ) -> AiResult<AiStream> {
+    async fn stream(&self, prompt: Prompt, options: TraitGenerateOptions) -> AiResult<AiStream> {
         Self::ensure_available().await?;
 
         let config = Self::build_config(&options);

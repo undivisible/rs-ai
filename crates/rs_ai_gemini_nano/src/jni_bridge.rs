@@ -52,18 +52,15 @@ impl JniGeminiNanoBridge {
     }
 
     fn env(&self) -> JNIEnv {
-        self.vm.attach_current_thread().expect("Failed to attach JVM thread")
+        self.vm
+            .attach_current_thread()
+            .expect("Failed to attach JVM thread")
     }
 
     /// Check if Gemini Nano is available.
     pub fn is_available(&self) -> bool {
         let mut env = self.env();
-        let result = env.call_method(
-            &self.bridge,
-            "isAvailable",
-            "()Z",
-            &[],
-        );
+        let result = env.call_method(&self.bridge, "isAvailable", "()Z", &[]);
         match result {
             Ok(val) => val.z().unwrap_or(false),
             Err(e) => {
@@ -76,20 +73,19 @@ impl JniGeminiNanoBridge {
     /// Get the current download state.
     pub fn download_state(&self) -> ModelDownloadState {
         let mut env = self.env();
-        let result = env.call_method(
-            &self.bridge,
-            "downloadState",
-            "()I",
-            &[],
-        );
+        let result = env.call_method(&self.bridge, "downloadState", "()I", &[]);
         match result {
             Ok(val) => {
                 let state = val.i().unwrap_or(0);
                 match state {
                     0 => ModelDownloadState::NotDownloaded,
-                    1 => ModelDownloadState::Downloading { progress_percent: 0 },
+                    1 => ModelDownloadState::Downloading {
+                        progress_percent: 0,
+                    },
                     2 => ModelDownloadState::Downloaded,
-                    3 => ModelDownloadState::Failed { reason: "Unknown".into() },
+                    3 => ModelDownloadState::Failed {
+                        reason: "Unknown".into(),
+                    },
                     _ => ModelDownloadState::NotDownloaded,
                 }
             }
@@ -103,12 +99,7 @@ impl JniGeminiNanoBridge {
     /// Request model download.
     pub fn request_download(&self) -> Result<(), String> {
         let mut env = self.env();
-        let result = env.call_method(
-            &self.bridge,
-            "requestDownload",
-            "()Z",
-            &[],
-        );
+        let result = env.call_method(&self.bridge, "requestDownload", "()Z", &[]);
         match result {
             Ok(val) => {
                 if val.z().unwrap_or(false) {
@@ -124,12 +115,7 @@ impl JniGeminiNanoBridge {
     /// Get device capabilities.
     pub fn capabilities(&self) -> NanoCapabilities {
         let mut env = self.env();
-        let result = env.call_method(
-            &self.bridge,
-            "capabilities",
-            "()Ljava/util/Map;",
-            &[],
-        );
+        let result = env.call_method(&self.bridge, "capabilities", "()Ljava/util/Map;", &[]);
         match result {
             Ok(val) => {
                 let map = val.l().unwrap_or(JObject::null());
@@ -161,10 +147,7 @@ impl JniGeminiNanoBridge {
             &self.bridge,
             "generate",
             "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
-            &[
-                (&prompt_jstring).into(),
-                (&config_jstring).into(),
-            ],
+            &[(&prompt_jstring).into(), (&config_jstring).into()],
         );
 
         match result {
@@ -173,7 +156,9 @@ impl JniGeminiNanoBridge {
                 if jstring.is_null() {
                     return Err("Generation returned null".into());
                 }
-                let java_str = env.get_string(&JString::from(jstring)).map_err(|e| e.to_string())?;
+                let java_str = env
+                    .get_string(&JString::from(jstring))
+                    .map_err(|e| e.to_string())?;
                 Ok(java_str.to_string_lossy().into_owned())
             }
             Err(e) => Err(format!("JNI generate failed: {e}")),
@@ -199,7 +184,9 @@ impl JniGeminiNanoBridge {
                 if jstring.is_null() {
                     return Err("Session creation returned null".into());
                 }
-                let java_str = env.get_string(&JString::from(jstring)).map_err(|e| e.to_string())?;
+                let java_str = env
+                    .get_string(&JString::from(jstring))
+                    .map_err(|e| e.to_string())?;
                 Ok(java_str.to_string_lossy().into_owned())
             }
             Err(e) => Err(format!("JNI createSession failed: {e}")),
@@ -216,10 +203,7 @@ impl JniGeminiNanoBridge {
             &self.bridge,
             "sendMessage",
             "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
-            &[
-                (&session_jstring).into(),
-                (&message_jstring).into(),
-            ],
+            &[(&session_jstring).into(), (&message_jstring).into()],
         );
 
         match result {
@@ -228,7 +212,9 @@ impl JniGeminiNanoBridge {
                 if jstring.is_null() {
                     return Err("Send message returned null".into());
                 }
-                let java_str = env.get_string(&JString::from(jstring)).map_err(|e| e.to_string())?;
+                let java_str = env
+                    .get_string(&JString::from(jstring))
+                    .map_err(|e| e.to_string())?;
                 Ok(java_str.to_string_lossy().into_owned())
             }
             Err(e) => Err(format!("JNI sendMessage failed: {e}")),
@@ -281,12 +267,7 @@ fn get_bool_from_map(env: &mut JNIEnv, map: &JObject, key: &str) -> bool {
             if obj.is_null() {
                 return false;
             }
-            let bool_result = env.call_method(
-                &obj,
-                "booleanValue",
-                "()Z",
-                &[],
-            );
+            let bool_result = env.call_method(&obj, "booleanValue", "()Z", &[]);
             bool_result.ok().and_then(|v| v.z()).unwrap_or(false)
         }
         Err(_) => false,

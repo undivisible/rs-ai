@@ -19,14 +19,14 @@
 pub mod realtime_api;
 pub use realtime_api::RealtimeSession;
 
+use rs_ai_openai_compatible::{
+    OpenAiCompatibleConfig, OpenAiCompatibleModel, OpenAiCompatibleProvider,
+};
 use rs_ai_traits::capability::{Capability, CapabilitySet};
 use rs_ai_traits::error::AiResult;
 use rs_ai_traits::model::{EmbeddingModel, LanguageModel};
 use rs_ai_traits::provider::Provider;
 use rs_ai_traits::types::ModelInfo;
-use rs_ai_openai_compatible::{
-    OpenAiCompatibleConfig, OpenAiCompatibleModel, OpenAiCompatibleProvider,
-};
 
 // ── Latest model aliases ──
 
