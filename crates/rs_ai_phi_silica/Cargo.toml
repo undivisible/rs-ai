@@ -18,3 +18,9 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["AI", "AI_MachineLearning", "Foundation", "Storage_Streams", "Foundation_Collections"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(phi_silica_bridge)'] }

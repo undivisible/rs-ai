@@ -22,6 +22,18 @@ impl PhiSilicaProvider {
         }
     }
 
+    /// Try to create a provider using the native C# bridge.
+    ///
+    /// Returns `None` if the C# bridge is not available (e.g., not on Windows,
+    /// or the Windows App SDK is not installed).
+    pub fn try_native() -> Option<Self> {
+        if crate::native_bridge::native_bridge_available() {
+            Some(Self::new(crate::native_bridge::NativePhiSilicaBridge))
+        } else {
+            None
+        }
+    }
+
     /// Get the Phi Silica language model.
     pub fn model(&self) -> PhiSilicaModel {
         PhiSilicaModel::new(self.bridge.clone())

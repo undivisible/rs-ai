@@ -30,3 +30,17 @@ pub trait PhiSilicaBridge: Send + Sync {
         Ok(vec![result])
     }
 }
+
+/// A mock bridge for non-Windows targets, useful for testing.
+pub struct MockPhiSilicaBridge;
+
+#[async_trait]
+impl PhiSilicaBridge for MockPhiSilicaBridge {
+    async fn availability(&self) -> PhiSilicaAvailability {
+        PhiSilicaAvailability::Available
+    }
+
+    async fn generate(&self, prompt: &str, _max_tokens: Option<u32>) -> Result<String, String> {
+        Ok(format!("[Phi Silica mock response to: {prompt}]"))
+    }
+}
