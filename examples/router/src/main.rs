@@ -1,5 +1,5 @@
+use rs_ai_core::*;
 use rs_ai_testing::*;
-use rs_ai_traits::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -8,7 +8,7 @@ repository.workspace = true
 description = "(UNSTABLE; in active development) Testing utilities and mock providers for the Rusty AI SDK"
 
 [dependencies]
-rs_ai_traits = { workspace = true }
+rs_ai_core = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
 tokio = { workspace = true }

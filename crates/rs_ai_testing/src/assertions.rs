@@ -2,9 +2,9 @@
 
 use futures::StreamExt;
 
-use rs_ai_traits::error::AiResult;
-use rs_ai_traits::stream::{AiStream, StreamEvent};
-use rs_ai_traits::structured::GenerateResult;
+use rs_ai_core::error::AiResult;
+use rs_ai_core::stream::{AiStream, StreamEvent};
+use rs_ai_core::structured::GenerateResult;
 
 /// Collect all text deltas from a stream into a single string.
 pub async fn collect_text(mut stream: AiStream) -> AiResult<String> {

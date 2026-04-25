@@ -1,0 +1,52 @@
+[package]
+name = "rs_ai_local"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "(UNSTABLE; in active development) Platform-specific local AI runtimes for the Rusty AI SDK"
+build = "build.rs"
+
+[features]
+default = []
+browser = ["dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:js-sys", "dep:web-sys"]
+gemini-nano = []
+foundationmodels = []
+phi-silica = []
+
+[dependencies]
+rs_ai_core = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+futures-core = "0.3"
+futures-channel = "0.3"
+
+# Browser (WASM) — optional
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
+js-sys = { version = "0.3", optional = true }
+web-sys = { version = "0.3", optional = true, features = [
+    "Window",
+    "Navigator",
+    "console",
+] }
+
+# Android — optional
+[target.'cfg(target_os = "android")'.dependencies]
+jni = { version = "0.21", features = ["invocation"] }
+
+# Windows — optional
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["AI", "AI_MachineLearning", "Foundation", "Storage_Streams", "Foundation_Collections"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(phi_silica_bridge)', 'cfg(foundation_models_bridge)'] }

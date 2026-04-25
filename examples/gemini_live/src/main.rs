@@ -2,7 +2,7 @@
 //!
 //! Run: `GOOGLE_API_KEY=... cargo run --example gemini_live`
 
-use rs_ai_gemini::{
+use rs_ai_providers::gemini::{
     live_api::{
         BidiSetup, LiveEvent, LiveGenerationConfig, LiveVoice, PrebuiltVoiceConfig, SpeechConfig,
         VoiceConfig,
@@ -19,8 +19,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Build custom setup with a specific voice.
     let setup = BidiSetup {
         model: format!("models/{GEMINI_FLASH_LIVE_LATEST}"),
-        system_instruction: Some(rs_ai_gemini::live_api::SystemInstruction {
-            parts: vec![rs_ai_gemini::live_api::TextPart {
+        system_instruction: Some(rs_ai_providers::gemini::live_api::SystemInstruction {
+            parts: vec![rs_ai_providers::gemini::live_api::TextPart {
                 text: "You are a friendly, concise voice assistant.".into(),
             }],
         }),
@@ -40,9 +40,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // Connect and wait for setup confirmation.
-    let mut session =
-        rs_ai_gemini::live_api::LiveSession::connect(&api_key, GEMINI_FLASH_LIVE_LATEST, setup)
-            .await?;
+    let mut session = rs_ai_providers::gemini::live_api::LiveSession::connect(
+        &api_key,
+        GEMINI_FLASH_LIVE_LATEST,
+        setup,
+    )
+    .await?;
     println!("✅  Connected. Waiting for setup confirmation…");
 
     // Wait for SetupComplete before sending.

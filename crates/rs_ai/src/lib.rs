@@ -27,17 +27,16 @@
 
 use base64::Engine as _;
 use futures::stream::BoxStream;
-use rs_ai_cache::CacheConfig;
-use rs_ai_chatgpt::ChatGptProvider;
-use rs_ai_claude::ClaudeProvider;
-use rs_ai_cloudflare::CloudflareProvider;
-use rs_ai_gemini::GeminiProvider;
-use rs_ai_openai_compatible::{OpenAiCompatibleConfig, OpenAiCompatibleProvider};
-use rs_ai_traits::{
-    AiError, AiResult, ContentPart, FileData, GenerateOptions, ImageData, LanguageModel, Message,
-    Prompt, StreamEvent,
+use rs_ai_core::{
+    AiError, AiResult, CacheConfig, ContentPart, FileData, GenerateOptions, ImageData,
+    LanguageModel, Message, Prompt, StreamEvent,
 };
-use rs_ai_xai::XaiProvider;
+use rs_ai_providers::chatgpt::ChatGptProvider;
+use rs_ai_providers::claude::ClaudeProvider;
+use rs_ai_providers::cloudflare::CloudflareProvider;
+use rs_ai_providers::gemini::GeminiProvider;
+use rs_ai_providers::openai_compatible::{OpenAiCompatibleConfig, OpenAiCompatibleProvider};
+use rs_ai_providers::xai::XaiProvider;
 
 /// Fluent builder for creating and configuring AI clients.
 pub struct ClientBuilder {
@@ -362,7 +361,7 @@ impl ClientBuilder {
         };
 
         let message = Message {
-            role: rs_ai_traits::Role::User,
+            role: rs_ai_core::Role::User,
             content: vec![instruction_part, audio_part],
             name: None,
             metadata: std::collections::HashMap::new(),
@@ -545,7 +544,7 @@ fn build_vision_message(text: String, images: Vec<String>) -> AiResult<Message> 
         content.push(ContentPart::Image { data });
     }
     Ok(Message {
-        role: rs_ai_traits::Role::User,
+        role: rs_ai_core::Role::User,
         content,
         name: None,
         metadata: std::collections::HashMap::new(),

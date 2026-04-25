@@ -1,6 +1,6 @@
 use futures::StreamExt;
-use rs_ai_chatgpt::ChatGptProvider;
-use rs_ai_traits::*;
+use rs_ai_core::*;
+use rs_ai_providers::chatgpt::ChatGptProvider;
 use schemars::JsonSchema;
 use serde::Deserialize;
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-`rs_ai` is a Rust workspace SDK for AI applications. The top-level `rs_ai` crate exposes a fluent builder API (`rs_ai_claude()`, `rs_ai_gemini()`, etc.) over a set of provider crates (`rai_claude`, `rai_gemini`, …) built on the `rai_ai` core traits.
+`rs_ai` is a Rust workspace SDK for AI applications. The top-level `rs_ai` crate exposes a fluent builder API (`rs_ai_claude()`, `rs_ai_gemini()`, etc.) over consolidated provider and core crates.
 
 ## Workspace Layout
 
@@ -10,28 +10,11 @@
 rusty_ai/
 ├── Cargo.toml
 ├── crates/
-│   ├── rs_ai/               # Fluent top-level API
-│   ├── rs_ai_cache/         # CacheConfig / CacheTTL
-│   ├── rs_ai_langfuse/      # LangFuse observability wrapper
-│   ├── rs_ai_portkey/       # Portkey gateway provider
-│   │
-│   ├── rai_ai/              # Core traits & types
-│   ├── rai_claude/          # Anthropic Claude
-│   ├── rai_chatgpt/         # OpenAI ChatGPT
-│   ├── rai_gemini/          # Google Gemini
-│   ├── rai_xai/             # xAI Grok
-│   ├── rai_openai_compatible/ # Generic OpenAI-compat + presets
-│   ├── rai_ollama/          # Local Ollama
-│   ├── rai_cloudflare/      # Cloudflare Workers AI
-│   ├── rai_middleware/      # Retry / logging / cache middleware
-│   ├── rai_testing/         # MockLanguageModel
-│   ├── rai_ui_stream/       # SSE / NDJSON helpers
-│   ├── rai_observability/   # OpenTelemetry tracing
-│   ├── rai_simple/          # Legacy simple wrappers
-│   ├── rai_browser/         # WASM browser runtime
-│   ├── rai_gemini_nano/     # On-device Gemini Nano
-│   ├── rai_phi_silica/      # Microsoft Phi Silica
-│   └── rai_foundationmodels/ # Cross-provider foundation models
+│   ├── rs_ai_core/          # Core traits, types, middleware, cache, UI stream, observability
+│   ├── rs_ai_providers/     # Cloud AI providers (feature-gated)
+│   ├── rs_ai_local/         # Platform-specific local runtimes (feature-gated)
+│   ├── rs_ai_testing/       # MockLanguageModel, MockProvider
+│   └── rs_ai/               # Fluent top-level API
 └── examples/
     ├── fluent_api/          # rs_ai_claude() / rs_ai_gemini() usage
     ├── basic_text/
@@ -50,9 +33,9 @@ rusty_ai/
     └── local_windows/
 ```
 
-## Core Crate: `rai_ai`
+## Core Crate: `rs_ai_core`
 
-Defines the traits every provider implements:
+Defines the traits every provider implements, plus middleware, cache config, UI stream helpers, and observability:
 
 ```rust
 pub trait LanguageModel: Send + Sync {
@@ -71,6 +54,59 @@ pub trait Provider {
 ```
 
 Key types: `Prompt`, `GenerateResult`, `StreamEvent`, `AiError`, `Usage`, `FinishReason`, `CapabilitySet`, `ToolDefinition`.
+
+Also re-exports:
+- `cache::{CacheConfig, CacheTTL}`
+- `middleware::{CacheMiddleware, LoggingMiddleware, RetryMiddleware, MiddlewareChain}`
+- `ui_stream::{UiStreamEvent, NdjsonEncoder, SseEncoder}`
+- `observability::{with_observability, ObservableModel}`
+
+## Providers Crate: `rs_ai_providers`
+
+All cloud providers merged into one crate, gated behind feature flags:
+
+```toml
+[features]
+default = []
+claude = []
+chatgpt = []
+gemini = []
+openai-compatible = []
+xai = []
+cloudflare = []
+ollama = []
+portkey = []
+langfuse = []
+```
+
+Each provider is a module under `rs_ai_providers::`:
+- `claude` — Anthropic Claude (`ClaudeProvider`)
+- `chatgpt` — OpenAI ChatGPT (`ChatGptProvider`)
+- `gemini` — Google Gemini (`GeminiProvider`)
+- `openai_compatible` — Generic OpenAI-compatible adapter (`OpenAiCompatibleProvider`)
+- `xai` — xAI Grok (`XaiProvider`)
+- `cloudflare` — Cloudflare Workers AI (`CloudflareProvider`)
+- `ollama` — Local Ollama (`OllamaProvider`)
+- `portkey` — Portkey AI Gateway (`PortkeyProvider`)
+- `langfuse` — Langfuse observability wrapper (`with_langfuse`)
+
+## Local Crate: `rs_ai_local`
+
+Platform-specific local AI runtimes, gated behind feature flags:
+
+```toml
+[features]
+default = []
+browser = ["dep:wasm-bindgen", "dep:web-sys", "dep:js-sys"]
+gemini-nano = []
+foundationmodels = []
+phi-silica = []
+```
+
+- `browser` — WASM browser AI (Chrome/Edge built-in AI)
+- `gemini_nano` — Android Gemini Nano (Prompt API)
+- `foundationmodels` — Apple Foundation Models (Swift FFI via `build.rs`)
+- `phi_silica` — Windows Phi Silica (C# bridge via `build.rs`)
 
 ## Top-Level API: `rs_ai`
 
@@ -106,53 +142,51 @@ Key types: `Prompt`, `GenerateResult`, `StreamEvent`, `AiError`, `Usage`, `Finis
 
 If `.api_key()` is not called, `build()` reads the provider's env var. If the env var is absent, an empty string is sent (server will return 401 which surfaces as `AiError`).
 
-## Provider Crates
+## Provider Details
 
-### `rai_claude` — Anthropic
+### Claude — `rs_ai_providers::claude`
 
 - `ClaudeProvider::new(api_key)` / `.with_base_url(url)`
 - Convenience: `.claude_sonnet()`, `.claude_opus()`, `.claude_haiku()`
 - `ClaudeModel::set_cache(config)` — applies `cache_control` to requests
 - Streaming via SSE; tool use; vision; extended thinking
 
-### `rai_chatgpt` — OpenAI
+### ChatGPT — `rs_ai_providers::chatgpt`
 
 - `ChatGptProvider::new(api_key)` / `.with_org(org_id)`
 - Convenience: `.gpt4o()`, `.gpt4o_mini()`, `.gpt54()`, `.gpt54_mini()`, `.gpt54_nano()`
 - Realtime API (`RealtimeSession`) for voice agents
 - Structured output, vision, audio I/O
 
-### `rai_gemini` — Google
+### Gemini — `rs_ai_providers::gemini`
 
 - `GeminiProvider::new(api_key)`
 - Convenience: `.gemini_flash()`, `.gemini_pro()`, `.gemini_flash_lite()`, `.gemini_3_flash()`, `.gemini_31_pro()`
 - `.model_with_base_url(id, url)` for proxy/CF gateway
 - Live API (`provider.live_session(model_id)`) for low-latency voice/video
 
-### `rai_xai` — xAI
+### xAI — `rs_ai_providers::xai`
 
 - `XaiProvider::new(api_key)`
 - Convenience: `.grok_4()`, `.grok_4_20_reasoning()`
 - `XaiModel::set_cache(config)` — sets `x-grok-conv-id` headers and prompt cache keys
 
-### `rai_openai_compatible`
+### OpenAI Compatible — `rs_ai_providers::openai_compatible`
 
 - `OpenAiCompatibleProvider::new(config, id, name)`
 - `OpenAiCompatibleConfig` presets: `openai()`, `openrouter()`, `kilo()`, `bedrock()`, `together()`, `vllm(url)`, `ollama_openai(url)`, `lmstudio(url)`, `textgen(url)`
 
-### `rai_ollama` — Local
+### Ollama — `rs_ai_providers::ollama`
 
 - `OllamaProvider::new()` / `.with_base_url(url)` (default `http://localhost:11434`)
 - `provider.list_models()` — async model discovery
 
-### `rai_cloudflare`
+### Cloudflare — `rs_ai_providers::cloudflare`
 
 - `CloudflareProvider::new(account_id, api_key)`
 - Routes to `https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}`
 
-## New Crates (`rs_ai_*`)
-
-### `rs_ai_cache`
+## Cache Config — `rs_ai_core::cache`
 
 ```rust
 pub struct CacheConfig {
@@ -168,7 +202,7 @@ pub struct CacheConfig {
 
 `CacheTTL` variants: `FiveMinutes` (default), `OneHour`, `TwentyFourHours`, `InMemory`, `Custom(u64)`.
 
-### `rs_ai_langfuse`
+## Langfuse — `rs_ai_providers::langfuse`
 
 Wraps any `LanguageModel` to emit traces to LangFuse without blocking:
 
@@ -179,7 +213,7 @@ let observable = with_langfuse(model, "pub_key", "secret_key").await?;
 - `LangfuseModel::with_trace_id()`, `.with_user_id()`, `.with_session_id()`
 - Non-blocking via `tokio::spawn` — failed traces log a warning only
 
-### `rs_ai_portkey`
+## Portkey — `rs_ai_providers::portkey`
 
 Portkey AI Gateway provider:
 
@@ -190,7 +224,7 @@ let model = provider.model("gpt-4o");  // routes via Portkey
 
 - Capabilities: TextInput, TextOutput, Streaming, ToolCalling
 
-## Middleware: `rai_middleware`
+## Middleware — `rs_ai_core::middleware`
 
 Chain-able middleware over any `LanguageModel`:
 
@@ -198,10 +232,10 @@ Chain-able middleware over any `LanguageModel`:
 - `LoggingMiddleware` — structured request/response logging
 - `CacheMiddleware` — in-memory response cache with TTL + key hash
 
-## Testing: `rai_testing`
+## Testing: `rs_ai_testing`
 
 ```rust
-use rai_testing::{MockLanguageModel, MockResponse};
+use rs_ai_testing::{MockLanguageModel, MockResponse};
 
 let mock = MockLanguageModel::new("test-model")
     .with_text("response 1")
@@ -214,24 +248,21 @@ FIFO response queue. Records all invocations with timestamps in `mock.calls()`.
 ## Running Tests
 
 ```bash
-cargo test                         # all 125 tests
-cargo test -p rs_ai_cache          # 19 tests (3 inline + 16 integration)
-cargo test -p rai_xai              # 12 cache integration tests
-cargo test -p rs_ai_langfuse       # 10 inline tests
-cargo test -p rs_ai_portkey        # 5 integration tests
-cargo test -p rai_claude           # 8 integration tests
-cargo test -p rai_gemini           # 8 integration tests
-cargo test -p rai_chatgpt          # 8 integration tests
-cargo test -p rai_ollama           # 7 integration tests
+cargo test                         # all workspace tests
+cargo test -p rs_ai_core           # core traits + middleware + cache + UI stream + observability tests
+cargo test -p rs_ai_providers      # provider tests (enable features as needed)
+cargo test -p rs_ai_local          # local runtime tests
+cargo test -p rs_ai_testing        # mock model tests
 ```
 
 ## Adding a New Provider
 
-1. Create `crates/rai_newprovider/` with `Cargo.toml`, `src/{lib,provider,model,client,error}.rs`
-2. Implement `LanguageModel` (and optionally `Provider`) from `rai_ai`
-3. Add to workspace `Cargo.toml` `members`
-4. Add an entry point function in `crates/rs_ai/src/lib.rs`
-5. Add integration tests in `crates/rai_newprovider/tests/`
+1. Create a new module in `crates/rs_ai_providers/src/<provider>/` with `mod.rs`, `model.rs`, `provider.rs`, `client.rs`, `error.rs`, etc.
+2. Implement `LanguageModel` (and optionally `Provider`) from `rs_ai_core`
+3. Add a feature flag in `crates/rs_ai_providers/Cargo.toml`
+4. Add `pub mod <provider>;` and `pub use <provider>::*;` behind `#[cfg(feature = "...")]` in `crates/rs_ai_providers/src/lib.rs`
+5. Add an entry point function in `crates/rs_ai/src/lib.rs`
+6. Add integration tests in `crates/rs_ai_providers/tests/`
 
 ## Key Dependencies
 

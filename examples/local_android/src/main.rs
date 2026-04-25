@@ -4,8 +4,8 @@
 //! built-in mock bridge. In a real Android app, you would use `JniGeminiNanoBridge`
 //! to call into Kotlin.
 
-use rs_ai_gemini_nano::*;
-use rs_ai_traits::*;
+use rs_ai_core::*;
+use rs_ai_local::gemini_nano::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

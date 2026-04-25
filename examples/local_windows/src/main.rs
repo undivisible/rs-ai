@@ -3,8 +3,8 @@
 //! This example demonstrates how to use the Phi Silica provider with
 //! both the built-in mock bridge and the Windows ML model loader.
 
-use rs_ai_phi_silica::*;
-use rs_ai_traits::*;
+use rs_ai_core::*;
+use rs_ai_local::phi_silica::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

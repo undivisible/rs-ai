@@ -1,26 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/rs_ai_traits",
-    "crates/rs_ai_middleware",
-    "crates/rs_ai_ui_stream",
+    "crates/rs_ai_core",
+    "crates/rs_ai_providers",
+    "crates/rs_ai_local",
     "crates/rs_ai_testing",
-    "crates/rs_ai_chatgpt",
-    "crates/rs_ai_claude",
-    "crates/rs_ai_gemini",
-    "crates/rs_ai_openai_compatible",
-    "crates/rs_ai_xai",
-    "crates/rs_ai_cloudflare",
-    "crates/rs_ai_observability",
-    "crates/rs_ai_cache",
-    "crates/rs_ai_portkey",
-    "crates/rs_ai_langfuse",
     "crates/rs_ai",
-    "crates/rs_ai_gemini_nano",
-    "crates/rs_ai_foundationmodels",
-    "crates/rs_ai_phi_silica",
-    "crates/rs_ai_browser",
-    "crates/rs_ai_ollama",
     "examples/basic_text",
     "examples/stream_text",
     "examples/generate_object",
@@ -46,31 +31,12 @@ license = "MPL-2.0"
 repository = "https://github.com/undivisible/rs_ai"
 
 [workspace.dependencies]
-# Core
-rs_ai_traits = { path = "crates/rs_ai_traits", version = "0.1.0" }
-rs_ai_middleware = { path = "crates/rs_ai_middleware", version = "0.1.0" }
-rs_ai_ui_stream = { path = "crates/rs_ai_ui_stream", version = "0.1.0" }
+# Consolidated crates
+rs_ai_core = { path = "crates/rs_ai_core", version = "0.1.0" }
+rs_ai_providers = { path = "crates/rs_ai_providers", version = "0.1.0" }
+rs_ai_local = { path = "crates/rs_ai_local", version = "0.1.0" }
 rs_ai_testing = { path = "crates/rs_ai_testing", version = "0.1.0" }
-
-# Cloud providers
-rs_ai_chatgpt = { path = "crates/rs_ai_chatgpt", version = "0.1.0" }
-rs_ai_claude = { path = "crates/rs_ai_claude", version = "0.1.0" }
-rs_ai_gemini = { path = "crates/rs_ai_gemini", version = "0.1.0" }
-rs_ai_openai_compatible = { path = "crates/rs_ai_openai_compatible", version = "0.1.0" }
-rs_ai_xai = { path = "crates/rs_ai_xai", version = "0.1.0" }
-rs_ai_cloudflare = { path = "crates/rs_ai_cloudflare", version = "0.1.0" }
-rs_ai_observability = { path = "crates/rs_ai_observability", version = "0.1.0" }
-rs_ai_cache = { path = "crates/rs_ai_cache", version = "0.1.0" }
-rs_ai_portkey = { path = "crates/rs_ai_portkey", version = "0.1.0" }
-rs_ai_langfuse = { path = "crates/rs_ai_langfuse", version = "0.1.0" }
 rs_ai = { path = "crates/rs_ai", version = "0.1.0" }
-
-# Local / platform runtimes
-rs_ai_gemini_nano = { path = "crates/rs_ai_gemini_nano", version = "0.1.0" }
-rs_ai_foundationmodels = { path = "crates/rs_ai_foundationmodels", version = "0.1.0" }
-rs_ai_phi_silica = { path = "crates/rs_ai_phi_silica", version = "0.1.0" }
-rs_ai_browser = { path = "crates/rs_ai_browser", version = "0.1.0" }
-rs_ai_ollama = { path = "crates/rs_ai_ollama", version = "0.1.0" }
 
 # Async / streaming
 tokio = { version = "1", features = ["full"] }

@@ -5,5 +5,5 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
-rs_ai_gemini = { workspace = true }
+rs_ai_providers = { workspace = true, features = ["gemini"] }
 tokio = { workspace = true }
