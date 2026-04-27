@@ -28,4 +28,4 @@ secrecy = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
-rs_ai_testing = { workspace = true }
+rs_ai_testing = { path = "../rs_ai_testing" }
