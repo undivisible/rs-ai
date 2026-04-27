@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "(UNSTABLE; in active development) Core traits, types, middleware, cache config, UI stream, and observability for the Rusty AI SDK"
+description = "(UNSTABLE; in active development) Core traits, types, middleware, cache config, UI stream, and observability for the Rusty AI SDK. Includes: LanguageModel trait, Prompt/StreamEvent types, Retry/Logging/Cache middleware, SSE/NDJSON encoders, tracing observability."
 
 [dependencies]
 async-trait = { workspace = true }

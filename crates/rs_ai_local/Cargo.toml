@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "(UNSTABLE; in active development) Platform-specific local AI runtimes for the Rusty AI SDK"
+description = "(UNSTABLE; in active development) Platform-specific local AI runtimes for the Rusty AI SDK. Includes: Apple Foundation Models (Swift FFI), Android Gemini Nano (Prompt API), Windows Phi Silica (C# bridge), Browser WASM AI (Chrome/Edge built-in AI)."
 build = "build.rs"
 
 [features]

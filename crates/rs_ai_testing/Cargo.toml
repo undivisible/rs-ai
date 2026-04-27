@@ -5,7 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "(UNSTABLE; in active development) Testing utilities and mock providers for the Rusty AI SDK"
+description = "(UNSTABLE; in active development) Testing utilities and mock providers for the Rusty AI SDK. Includes: MockLanguageModel with FIFO response queue, MockProvider, assertion helpers."
 
 [dependencies]
 rs_ai_core = { workspace = true }
