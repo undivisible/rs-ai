@@ -10,7 +10,7 @@ description = "(UNSTABLE; in active development) Cloud AI providers for the Rust
 [features]
 default = []
 claude = []
-chatgpt = []
+chatgpt = ["openai-compatible"]
 gemini = []
 openai-compatible = []
 xai = []
