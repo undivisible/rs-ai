@@ -7,7 +7,7 @@
 ## Workspace Layout
 
 ```
-rusty_ai/
+rs_ai/
 ├── Cargo.toml
 ├── crates/
 │   ├── rs_ai_core/          # Core traits, types, middleware, cache, UI stream, observability
@@ -104,9 +104,95 @@ phi-silica = []
 ```
 
 - `browser` — WASM browser AI (Chrome/Edge built-in AI)
-- `gemini_nano` — Android Gemini Nano (Prompt API)
-- `foundationmodels` — Apple Foundation Models (Swift FFI via `build.rs`)
+- `gemini_nano` — Android Gemini Nano (uniffi Kotlin bindings)
+- `foundationmodels` — Apple Foundation Models (uniffi Swift bindings)
 - `phi_silica` — Windows Phi Silica (C# bridge via `build.rs`)
+
+## Local Runtimes: User Setup
+
+### Android (Gemini Nano)
+
+**1. Add dependencies:**
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
+    implementation("net.java.dev.jna:jna:5.12.0@aar")
+}
+```
+
+**2. Load Rust library and initialize (Kotlin):**
+
+```kotlin
+class MainActivity : Activity() {
+    companion object {
+        init { System.loadLibrary("rs_ai_local") }
+        
+        @JvmStatic
+        external fun init(context: Context)
+    }
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        init(this)  // One line - passes Android context to Rust
+    }
+}
+```
+
+**3. Use from Rust:**
+
+```rust
+use rs_ai_local::gemini_nano::GeminiNanoProvider;
+
+let provider = GeminiNanoProvider::new().await;
+let model = provider.model();
+let response = model.generate("Hello!").await?;
+```
+
+### iOS/macOS (Foundation Models)
+
+**1. Build the Rust crate:**
+
+```bash
+cargo build -p rs_ai_local --features foundationmodels --release
+```
+
+**2. Generate Swift bindings:**
+
+```bash
+uniffi-bindgen generate --library target/release/librs_ai_local.dylib --language swift --out-dir swift_bindings
+```
+
+**3. Use from Swift:**
+
+```swift
+import RsAiFoundationModels
+
+let available = RsAiFoundationModels.is_available()
+if available {
+    let response = try RsAiFoundationModels.generate_text("Hello!")
+    print(response)
+}
+```
+
+### Windows (Phi Silica)
+
+**1. Build with Rust - C# bridge compiles via `build.rs`**
+
+**2. Use from C#:**
+
+```csharp
+using RsAi;
+
+// Check availability
+var avail = PhiSilicaBridge.Availability();
+if (avail == PhiSilicaAvailability.Available)
+{
+    var response = await PhiSilicaBridge.GenerateAsync("Hello!");
+    Console.WriteLine(response);
+}
+```
 
 ## Top-Level API: `rs_ai`
 

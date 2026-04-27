@@ -29,6 +29,7 @@ edition = "2021"
 rust-version = "1.86"
 license = "MPL-2.0"
 repository = "https://github.com/undivisible/rs_ai"
+description = "Rust AI SDK with cloud and local providers"
 
 [workspace.dependencies]
 # Consolidated crates

@@ -5,9 +5,9 @@
 //!
 //! Each runtime is gated behind a Cargo feature flag:
 //! - `browser` — WASM browser AI (Chrome/Edge built-in AI)
-//! - `gemini-nano` — Android Gemini Nano (Prompt API)
-//! - `foundationmodels` — Apple Foundation Models
-//! - `phi-silica` — Windows Phi Silica
+//! - `gemini-nano` — Android Gemini Nano (Prompt API via JNI)
+//! - `foundationmodels` — Apple Foundation Models (uniffi Swift bindings)
+//! - `phi-silica` — Windows Phi Silica (C# bridge via build.rs)
 
 #[cfg(feature = "browser")]
 pub mod browser;

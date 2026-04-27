@@ -5,14 +5,14 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "(UNSTABLE; in active development) Platform-specific local AI runtimes for the Rusty AI SDK. Includes: Apple Foundation Models (Swift FFI), Android Gemini Nano (Prompt API), Windows Phi Silica (C# bridge), Browser WASM AI (Chrome/Edge built-in AI)."
-build = "build.rs"
+description.workspace = true
+links = "rs_ai_local"
 
 [features]
 default = []
 browser = ["dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:js-sys", "dep:web-sys"]
-gemini-nano = []
-foundationmodels = []
+gemini-nano = ["dep:jni", "dep:uniffi"]
+foundationmodels = ["dep:uniffi"]
 phi-silica = []
 
 [dependencies]
@@ -30,23 +30,17 @@ thiserror = { workspace = true }
 futures-core = "0.3"
 futures-channel = "0.3"
 
-# Browser (WASM) — optional
+uniffi = { version = "0.31", optional = true }
+jni = { version = "0.21", features = ["invocation"], optional = true }
+
 wasm-bindgen = { version = "0.2", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 js-sys = { version = "0.3", optional = true }
-web-sys = { version = "0.3", optional = true, features = [
-    "Window",
-    "Navigator",
-    "console",
-] }
+web-sys = { version = "0.3", optional = true, features = ["Window", "Navigator", "console"] }
 
-# Android — optional
-[target.'cfg(target_os = "android")'.dependencies]
-jni = { version = "0.21", features = ["invocation"] }
-
-# Windows — optional
-[target.'cfg(windows)'.dependencies]
-windows = { version = "0.62.2", features = ["AI", "AI_MachineLearning", "Foundation", "Storage_Streams", "Foundation_Collections"] }
+[lib]
+name = "rs_ai_local"
+crate-type = ["lib", "cdylib"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(phi_silica_bridge)', 'cfg(foundation_models_bridge)'] }
