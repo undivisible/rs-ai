@@ -79,7 +79,7 @@ use std::sync::Arc;
 #[cfg(foundation_models_bridge)]
 use futures_channel::{mpsc, oneshot};
 
-// Re-export rs_ai_traits types used in public API
+// Re-export rs_ai_core types used in public API
 // ─── FFI declarations ──────────────────────────────────────────────────────────
 
 #[cfg(foundation_models_bridge)]

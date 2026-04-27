@@ -1,7 +1,7 @@
 //! Example: Apple Foundation Models integration.
 //!
 //! This example demonstrates how the Apple Foundation Models provider would be
-//! used once the `rs_ai_foundationmodels` crate is fully implemented.
+//! used once the `rs_ai_local::foundationmodels` crate is fully implemented.
 //!
 //! On a real Apple device the bridge would call into the Foundation Models
 //! framework via Swift/Objective-C interop. Here we show the intended usage

@@ -8,7 +8,7 @@
 //! # Architecture
 //!
 //! ```text
-//! Rust (rs_ai_gemini_nano)
+//! Rust (rs_ai_local::gemini_nano)
 //!   │ JNI calls
 //!   ▼
 //! Kotlin (GeminiNanoBridge)
@@ -47,5 +47,5 @@ pub use provider::*;
 pub use session::*;
 pub use types::*;
 
-// Re-export rs_ai_traits for convenience
+// Re-export rs_ai_core for convenience
 pub use rs_ai_core;

@@ -13,7 +13,7 @@
 //! # Example
 //!
 //! ```ignore
-//! use rs_ai_cache::CacheConfig;
+//! use rs_ai_core::cache::CacheConfig;
 //!
 //! let cache = CacheConfig::default()
 //!     .with_ttl(CacheTTL::FiveMinutes)

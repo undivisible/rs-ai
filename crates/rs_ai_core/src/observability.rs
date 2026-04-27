@@ -14,7 +14,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use rs_ai_observability::with_observability;
+//! use rs_ai_core::observability::with_observability;
 //!
 //! let model: Box<dyn LanguageModel> = /* any provider */;
 //! let observable = with_observability(model);

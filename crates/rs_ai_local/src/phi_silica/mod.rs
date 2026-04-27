@@ -8,7 +8,7 @@
 //! # Architecture
 //!
 //! ```text
-//! Rust (rs_ai_phi_silica)
+//! Rust (rs_ai_local::phi_silica)
 //!   │
 //!   ├── On Windows with WinML ──► Windows.AI.MachineLearning (ONNX runtime)
 //!   │
@@ -55,5 +55,5 @@ pub use types::*;
 #[cfg(windows)]
 pub use winml::*;
 
-// Re-export rs_ai_traits for convenience
+// Re-export rs_ai_core for convenience
 pub use rs_ai_core;

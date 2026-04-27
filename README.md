@@ -8,7 +8,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-rs_ai = { path = "crates/rs_ai" }
+rs_ai = "0.1.0"
 ```
 
 ```rust
@@ -97,7 +97,7 @@ let response = rs_ai_claude()
 
 ```rust
 use rs_ai::rs_ai_claude;
-use rs_ai_cache::{CacheConfig, CacheTTL};
+use rs_ai_core::{CacheConfig, CacheTTL};
 
 let response = rs_ai_claude()
     .model("claude-sonnet-4-6")
@@ -118,77 +118,65 @@ let response = rs_ai_chatgpt()
     .await?;
 ```
 
-## Provider Crates
+## Lower-Level Provider Access
 
-For direct provider access with full control:
+For direct provider access with full control, use `rs_ai_providers`:
 
 ```rust
-use rai_claude::ClaudeProvider;
-use rai_ai::LanguageModel;
+use rs_ai_providers::claude::ClaudeProvider;
+use rs_ai_core::LanguageModel;
 
 let provider = ClaudeProvider::new(std::env::var("ANTHROPIC_API_KEY")?);
 let model = provider.claude_sonnet();
 let result = model.generate(prompt, options).await?;
 ```
 
-Available provider crates:
+Available provider modules (each gated by a Cargo feature):
 
-- `rai_claude` — Anthropic Claude (streaming, vision, tool use, cache control)
-- `rai_chatgpt` — OpenAI ChatGPT (Realtime API, vision, structured output)
-- `rai_gemini` — Google Gemini (Live API for voice/video, 2.5 Pro/Flash)
-- `rai_xai` — xAI Grok (conversation routing, prompt caching)
-- `rai_openai_compatible` — Generic OpenAI-compatible + 9 presets
-- `rai_ollama` — Local Ollama models
-- `rai_cloudflare` — Cloudflare Workers AI
+- `rs_ai_providers::claude` — Anthropic Claude (streaming, vision, tool use, cache control)
+- `rs_ai_providers::chatgpt` — OpenAI ChatGPT (Realtime API, vision, structured output)
+- `rs_ai_providers::gemini` — Google Gemini (Live API for voice/video, 2.5 Pro/Flash)
+- `rs_ai_providers::xai` — xAI Grok (conversation routing, prompt caching)
+- `rs_ai_providers::openai_compatible` — Generic OpenAI-compatible + 9 presets
+- `rs_ai_providers::ollama` — Local Ollama models
+- `rs_ai_providers::cloudflare` — Cloudflare Workers AI
+- `rs_ai_providers::portkey` — Portkey AI Gateway
+- `rs_ai_providers::langfuse` — Langfuse observability wrapper
 
-## Observability & Caching
+## Local Runtimes
 
-- `rs_ai_langfuse` — LangFuse tracing wrapper (wraps any `LanguageModel`)
-- `rs_ai_portkey` — Portkey AI Gateway (multi-provider routing, analytics)
-- `rs_ai_cache` — Unified cache config (`CacheConfig`, `CacheTTL`)
+Platform-specific on-device AI runtimes are available via `rs_ai_local` (feature-gated):
 
-```rust
-use rs_ai_langfuse::with_langfuse;
-
-let model = Box::new(provider.claude_sonnet());
-let observable = with_langfuse(model, "public_key", "secret_key").await?;
-let result = observable.generate(prompt, options).await?;
-```
+- `browser` — WASM browser AI (Chrome/Edge built-in AI)
+- `gemini-nano` — Android Gemini Nano (Prompt API)
+- `foundationmodels` — Apple Foundation Models (Swift FFI)
+- `phi-silica` — Windows Phi Silica (C# bridge)
 
 ## Workspace Structure
 
 ```
 crates/
-├── rs_ai/                   # Top-level fluent API (rs_ai_claude, rs_ai_gemini, …)
-├── rs_ai_cache/             # Unified cache configuration
-├── rs_ai_langfuse/          # LangFuse observability integration
-├── rs_ai_portkey/           # Portkey AI Gateway provider
-│
-├── rai_ai/                  # Core traits: LanguageModel, Provider, StreamEvent
-├── rai_claude/              # Anthropic Claude provider
-├── rai_chatgpt/             # OpenAI ChatGPT provider
-├── rai_gemini/              # Google Gemini provider
-├── rai_xai/                 # xAI Grok provider
-├── rai_openai_compatible/   # Generic OpenAI-compatible provider + presets
-├── rai_ollama/              # Local Ollama provider
-├── rai_cloudflare/          # Cloudflare Workers AI provider
-├── rai_middleware/          # Retry, logging, caching middleware
-├── rai_testing/             # MockLanguageModel for unit tests
-└── rai_ui_stream/           # SSE/NDJSON streaming helpers
+├── rs_ai/               # Top-level fluent API (rs_ai_claude, rs_ai_gemini, ...)
+├── rs_ai_core/          # Core traits, types, middleware, cache, UI stream, observability
+├── rs_ai_providers/     # Cloud AI providers (feature-gated)
+├── rs_ai_local/         # Platform-specific local runtimes (feature-gated)
+└── rs_ai_testing/       # MockLanguageModel for unit tests
 ```
 
 ## Testing
 
 ```bash
-cargo test            # 125 tests, all passing
-cargo test -p rs_ai_cache
-cargo test -p rai_xai
+cargo test            # all workspace tests
+cargo test -p rs_ai_core
+cargo test -p rs_ai_providers --all-features
+cargo test -p rs_ai_local --all-features
+cargo test -p rs_ai_testing
 ```
 
 Mock provider for unit tests (no network required):
 
 ```rust
-use rai_testing::MockLanguageModel;
+use rs_ai_testing::MockLanguageModel;
 
 let mock = MockLanguageModel::new("test-model")
     .with_text("Hello from mock!");
