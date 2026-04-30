@@ -97,101 +97,89 @@ Platform-specific local AI runtimes, gated behind feature flags:
 ```toml
 [features]
 default = []
-browser = ["dep:wasm-bindgen", "dep:web-sys", "dep:js-sys"]
-gemini-nano = []
-foundationmodels = []
+browser = ["dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:js-sys", "dep:web-sys"]
+gemini-nano = ["dep:jni", "dep:uniffi"]
+foundationmodels = ["dep:uniffi"]
 phi-silica = []
 ```
 
 - `browser` — WASM browser AI (Chrome/Edge built-in AI)
-- `gemini_nano` — Android Gemini Nano (uniffi Kotlin bindings)
-- `foundationmodels` — Apple Foundation Models (uniffi Swift bindings)
+- `gemini_nano` — Android Gemini Nano (JNI, 1-line Kotlin init)
+- `foundationmodels` — Apple Foundation Models (macOS)
 - `phi_silica` — Windows Phi Silica (C# bridge via `build.rs`)
 
 ## Local Runtimes: User Setup
 
 ### Android (Gemini Nano)
 
-**1. Add dependencies:**
+Add to `build.gradle.kts`:
 
 ```kotlin
-// build.gradle.kts
 dependencies {
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta2")
     implementation("net.java.dev.jna:jna:5.12.0@aar")
 }
 ```
 
-**2. Load Rust library and initialize (Kotlin):**
+Add 1 line to your `MainActivity`:
 
 ```kotlin
 class MainActivity : Activity() {
     companion object {
         init { System.loadLibrary("rs_ai_local") }
-        
-        @JvmStatic
-        external fun init(context: Context)
+        @JvmStatic external fun init(context: Context)
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        init(this)  // One line - passes Android context to Rust
+        init(this)  // Calls our init - that's it!
     }
 }
 ```
 
-**3. Use from Rust:**
+Then use from Rust:
 
 ```rust
 use rs_ai_local::gemini_nano::GeminiNanoProvider;
 
-let provider = GeminiNanoProvider::new().await;
+let provider = GeminiNanoProvider::new(my_bridge);
 let model = provider.model();
 let response = model.generate("Hello!").await?;
 ```
 
 ### iOS/macOS (Foundation Models)
 
-**1. Build the Rust crate:**
+Enable feature, build on macOS (Xcode 16+, macOS 26+ SDK):
 
-```bash
-cargo build -p rs_ai_local --features foundationmodels --release
+```toml
+rs_ai_local = { version = "0.2", features = ["foundationmodels"] }
 ```
 
-**2. Generate Swift bindings:**
+Use from Rust:
 
-```bash
-uniffi-bindgen generate --library target/release/librs_ai_local.dylib --language swift --out-dir swift_bindings
-```
+```rust
+use rs_ai_local::foundationmodels::{is_available, respond};
 
-**3. Use from Swift:**
-
-```swift
-import RsAiFoundationModels
-
-let available = RsAiFoundationModels.is_available()
-if available {
-    let response = try RsAiFoundationModels.generate_text("Hello!")
-    print(response)
+if is_available() {
+    let response = respond("What is Rust?").await?;
 }
 ```
 
 ### Windows (Phi Silica)
 
-**1. Build with Rust - C# bridge compiles via `build.rs`**
+Enable feature (requires .NET SDK):
 
-**2. Use from C#:**
+```toml
+rs_ai_local = { version = "0.2", features = ["phi-silica"] }
+```
+
+Use from C# (calls `build.rs`-compiled DLL):
 
 ```csharp
 using RsAi;
 
-// Check availability
-var avail = PhiSilicaBridge.Availability();
-if (avail == PhiSilicaAvailability.Available)
-{
-    var response = await PhiSilicaBridge.GenerateAsync("Hello!");
-    Console.WriteLine(response);
-}
+var response = await PhiSilicaBridge.GenerateAsync("Hello!");
+Console.WriteLine(response);
 ```
 
 ## Top-Level API: `rs_ai`

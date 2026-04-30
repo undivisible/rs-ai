@@ -46,7 +46,7 @@ rs_ai_local = { version = "0.2", features = ["gemini-nano"] }
 
 ### Android (Gemini Nano)
 
-Enable the feature and add initialization to your Activity:
+Enable the feature and add initialization to your Activity. They call **our** init function — just one line of Kotlin:
 
 ```kotlin
 // MainActivity.kt
@@ -63,7 +63,7 @@ class MainActivity : Activity() {
 }
 ```
 
-They call our init function - just one line. Then use from Rust:
+Then use from Rust — **your** code:
 
 ```rust
 use rs_ai_local::gemini_nano::init_with_context;
@@ -76,11 +76,13 @@ let response = provider.model().generate("Hello!").await?;
 
 ### macOS (Foundation Models)
 
-Enable the feature. Build on macOS with Xcode - `build.rs` auto-compiles the Swift bridge.
+Enable the feature. Build on macOS with Xcode — `build.rs` auto-compiles the Swift bridge:
 
 ```toml
 rs_ai_local = { version = "0.2", features = ["foundationmodels"] }
 ```
+
+Use from Rust:
 
 ```rust
 use rs_ai_local::foundationmodels::{is_available, respond};
@@ -92,11 +94,13 @@ if is_available() {
 
 ### Windows (Phi Silica)
 
-Enable the feature. Build with .NET SDK - `build.rs` auto-compiles the C# bridge.
+Enable the feature. Build with .NET SDK — `build.rs` auto-compiles the C# bridge:
 
 ```toml
 rs_ai_local = { version = "0.2", features = ["phi-silica"] }
 ```
+
+Use from Rust:
 
 ```rust
 use rs_ai_local::phi_silica::respond;
