@@ -10,20 +10,19 @@ use std::sync::Arc;
 #[cfg(windows)]
 use windows::{
     core::HSTRING,
-    AI::MachineLearning::{LearningModel, LearningModelSession, LearningModelBinding},
     Storage::Streams::{DataReader, InputStreamOption},
+    AI::MachineLearning::{LearningModel, LearningModelBinding, LearningModelSession},
 };
 
 use async_trait::async_trait;
 
 use rs_ai_core::{
-    AiError, AiResult, AiStream, Capability, CapabilitySet, ContentPart,
-    GenerateOptions, GenerateResult, LanguageModel, Prompt, ResponseMetadata,
-    SyntheticStreamer, StreamEvent, Usage,
+    AiError, AiResult, AiStream, Capability, CapabilitySet, ContentPart, GenerateOptions,
+    GenerateResult, LanguageModel, Prompt, ResponseMetadata, StreamEvent, SyntheticStreamer, Usage,
 };
 
-use super::types::PhiSilicaAvailability;
 use super::bridge::PhiSilicaBridge;
+use super::types::PhiSilicaAvailability;
 
 const PHI_SILICA_MODEL_ID: &str = "phi-silica";
 
@@ -103,7 +102,9 @@ impl LanguageModel for NativePhiSilicaModel {
         prompt: Prompt,
         _options: GenerateOptions,
     ) -> AiResult<GenerateResult> {
-        let text = self.generate(&prompt.to_string()).await
+        let text = self
+            .generate(&prompt.to_string())
+            .await
             .map_err(|e| AiError::BridgeError {
                 bridge: "phi_silica".into(),
                 message: e,
@@ -119,16 +120,14 @@ impl LanguageModel for NativePhiSilicaModel {
         })
     }
 
-    async fn stream(
-        &self,
-        prompt: Prompt,
-        options: GenerateOptions,
-    ) -> AiResult<AiStream> {
-        let result = self.generate(&prompt.to_string()).await
-            .map_err(|e| AiError::BridgeError {
-                bridge: "phi_silica".into(),
-                message: e,
-            })?;
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
+        let result =
+            self.generate(&prompt.to_string())
+                .await
+                .map_err(|e| AiError::BridgeError {
+                    bridge: "phi_silica".into(),
+                    message: e,
+                })?;
 
         Ok(SyntheticStreamer::stream(result, 20))
     }

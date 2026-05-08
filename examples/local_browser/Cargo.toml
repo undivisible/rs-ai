@@ -1,0 +1,17 @@
+[package]
+name = "example_local_browser"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rs_ai_core = { workspace = true }
+rs_ai_local = { workspace = true, features = ["browser"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["console"] }

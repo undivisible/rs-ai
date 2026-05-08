@@ -25,7 +25,7 @@
 //!
 //! # Windows ML (ONNX)
 //!
-//! For generic ONNX model inference, use [`WinMlModel`] which calls the built-in
+//! For generic ONNX model inference, use `WinMlModel` which calls the built-in
 //! `Windows.AI.MachineLearning` APIs directly from Rust via the `windows` crate.
 //!
 //! # Requirements

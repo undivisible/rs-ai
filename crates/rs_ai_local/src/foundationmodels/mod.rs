@@ -203,10 +203,12 @@ impl GenerationOptions {
         Ok(())
     }
 
+    #[cfg_attr(not(foundation_models_bridge), allow(dead_code))]
     fn ffi_temperature(&self) -> f64 {
         self.temperature.unwrap_or(-1.0)
     }
 
+    #[cfg_attr(not(foundation_models_bridge), allow(dead_code))]
     fn ffi_max_tokens(&self) -> i64 {
         self.max_tokens.map(|n| n as i64).unwrap_or(-1)
     }
@@ -313,6 +315,7 @@ pub struct ToolDefinition {
     pub description: String,
     /// Parameter schema.
     pub parameters: Schema,
+    #[cfg_attr(not(foundation_models_bridge), allow(dead_code))]
     pub(crate) handler: Box<dyn Fn(serde_json::Value) -> Result<String, String> + Send + Sync>,
 }
 
@@ -353,9 +356,13 @@ struct ToolsContext {
 
 // ─── Availability ──────────────────────────────────────────────────────────────
 
+#[cfg_attr(not(foundation_models_bridge), allow(dead_code))]
 const FM_AVAILABLE: i32 = 0;
+#[cfg_attr(not(foundation_models_bridge), allow(dead_code))]
 const FM_DEVICE_NOT_ELIGIBLE: i32 = 1;
+#[cfg_attr(not(foundation_models_bridge), allow(dead_code))]
 const FM_NOT_ENABLED: i32 = 2;
+#[cfg_attr(not(foundation_models_bridge), allow(dead_code))]
 const FM_MODEL_NOT_READY: i32 = 3;
 
 /// Returns `true` if Apple Intelligence is available and ready.
@@ -547,7 +554,7 @@ impl Session {
             .await
     }
 
-    /// Like [`respond_as`] but with options.
+    /// Like [`Self::respond_as`] but with options.
     pub async fn respond_as_with_options<T: serde::de::DeserializeOwned>(
         &self,
         prompt: &str,
@@ -594,7 +601,7 @@ impl Session {
         self.stream_with_options(prompt, &GenerationOptions::default())
     }
 
-    /// Like [`stream`] but with options.
+    /// Like [`Self::stream`] but with options.
     pub fn stream_with_options(
         &self,
         prompt: &str,

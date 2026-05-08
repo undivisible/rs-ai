@@ -3,7 +3,7 @@
 //!
 //! OpenAI ChatGPT provider for the Rusty AI SDK.
 //!
-//! This is a thin wrapper around [`rs_ai_providers::openai_compatible`] that pre-configures
+//! This is a thin wrapper around [`crate::openai_compatible`] that pre-configures
 //! the adapter for the official OpenAI API with well-known ChatGPT models.
 //!
 //! # Example

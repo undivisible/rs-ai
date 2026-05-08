@@ -19,7 +19,6 @@ phi-silica = []
 rs_ai_core = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
-tokio = { workspace = true }
 tokio-stream = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -44,3 +43,9 @@ crate-type = ["lib", "cdylib"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(phi_silica_bridge)', 'cfg(foundation_models_bridge)'] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { version = "1", default-features = false, features = ["macros", "rt", "sync", "time"] }

@@ -1,6 +1,6 @@
 //! WASM implementation of [`BrowserAiBridge`] using Chrome's Prompt API.
 //!
-//! Compiled only when `features = ["wasm"]` and `target_arch = "wasm32"`.
+//! Compiled only when `features = ["browser"]` and `target_arch = "wasm32"`.
 //!
 //! **Browser support (2026):**
 //! - ✓ Chrome 138+ — `window.LanguageModel` (Gemini Nano on-device)
@@ -9,7 +9,7 @@
 //!
 //! **Building:**
 //! ```sh
-//! wasm-pack build crates/rs_ai_local::browser --target web --features wasm
+//! wasm-pack build --target web --features browser
 //! ```
 //!
 //! **Note:** `LanguageModel` and related Prompt API types are not yet in
@@ -18,13 +18,11 @@
 
 #![cfg(all(target_arch = "wasm32", feature = "browser"))]
 
-use async_trait::async_trait;
 use js_sys::{Function, Object, Promise, Reflect};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 
-use super::bridge::BrowserAiBridge;
 use super::capabilities::{BackingModel, BrowserAiCapabilities, BrowserAiOptions, BrowserType};
 
 // ── Chrome Prompt API bindings (not yet in web-sys) ───────────────────────────
@@ -89,20 +87,24 @@ fn language_model_exists() -> bool {
 
 /// WASM bridge that calls Chrome's Prompt API (`LanguageModel` global).
 ///
-/// Use this on WASM targets — pair with [`super::provider::BrowserAiProvider`]:
+/// Use this on WASM targets:
 ///
 /// ```no_run
 /// # #[cfg(all(target_arch = "wasm32", feature = "browser"))]
-/// use rs_ai_local::browser::{wasm_bridge::WasmBrowserBridge, BrowserAiProvider};
+/// use rs_ai_local::browser::{wasm_bridge::WasmBrowserBridge, BrowserAiOptions};
 ///
 /// # #[cfg(all(target_arch = "wasm32", feature = "browser"))]
-/// let provider = BrowserAiProvider::new(WasmBrowserBridge);
+/// # async fn example() -> Result<(), String> {
+/// let answer = WasmBrowserBridge
+///     .generate("Hello", &BrowserAiOptions::default())
+///     .await?;
+/// # Ok(())
+/// # }
 /// ```
 pub struct WasmBrowserBridge;
 
-#[async_trait(?Send)]
-impl BrowserAiBridge for WasmBrowserBridge {
-    async fn detect(&self) -> BrowserAiCapabilities {
+impl WasmBrowserBridge {
+    pub async fn detect(&self) -> BrowserAiCapabilities {
         let browser = if is_edge() {
             BrowserType::Edge
         } else if is_chrome() {
@@ -143,7 +145,7 @@ impl BrowserAiBridge for WasmBrowserBridge {
         }
     }
 
-    async fn generate(
+    pub async fn generate(
         &self,
         prompt_text: &str,
         options: &BrowserAiOptions,
@@ -163,7 +165,7 @@ impl BrowserAiBridge for WasmBrowserBridge {
             .ok_or_else(|| "No text in response".into())
     }
 
-    async fn stream(
+    pub async fn stream(
         &self,
         prompt_text: &str,
         options: &BrowserAiOptions,

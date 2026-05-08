@@ -44,6 +44,31 @@ Add `rs_ai_local` to use on-device AI:
 rs_ai_local = { version = "0.2", features = ["gemini-nano"] }
 ```
 
+### Browser (Chrome Prompt API)
+
+Enable the `browser` feature and compile for `wasm32` to use the browser's built-in AI APIs:
+
+```toml
+rs_ai_local = { version = "0.2", features = ["browser"] }
+```
+
+Use from Rust WASM:
+
+```rust
+use rs_ai_local::browser::{wasm_bridge::WasmBrowserBridge, BrowserAiOptions};
+
+let bridge = WasmBrowserBridge;
+let answer = bridge
+    .generate("Explain Rust ownership in one paragraph", &BrowserAiOptions::default())
+    .await?;
+```
+
+Build for the web:
+
+```bash
+wasm-pack build --target web --features browser
+```
+
 ### Android (Gemini Nano)
 
 Enable the feature and add initialization to your Activity. They call **our** init function — just one line of Kotlin:

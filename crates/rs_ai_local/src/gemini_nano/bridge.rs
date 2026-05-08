@@ -10,7 +10,7 @@ use super::types::{ModelDownloadState, NanoCapabilities, NanoSessionConfig};
 /// Trait that must be implemented by the host application to bridge
 /// to the Android Prompt API.
 ///
-/// On Android targets, the [`crate::JniGeminiNanoBridge`] type implements
+/// On Android targets, the `JniGeminiNanoBridge` type implements
 /// this trait by calling into Kotlin via JNI. On non-Android targets, you
 /// must provide your own implementation or use the mock bridge for testing.
 #[async_trait]
