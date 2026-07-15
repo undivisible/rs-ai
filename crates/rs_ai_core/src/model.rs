@@ -1,6 +1,4 @@
-use std::pin::Pin;
 use std::sync::Arc;
-use std::task::{Context, Poll};
 
 use async_trait::async_trait;
 
@@ -8,14 +6,12 @@ use crate::capability::CapabilitySet;
 use crate::error::{AiError, AiResult};
 use crate::prompt::Prompt;
 use crate::schema::OutputSchema;
-use crate::stream::{AiStream, StreamEvent};
+use crate::stream::AiStream;
 use crate::structured::{
     AudioResult, EmbeddingResult, GenerateResult, ImageResult, ObjectResult, RerankResult,
     StepResult, TranscriptionResult, TtsOptions, VideoResult,
 };
-use crate::tool::{
-    ToolCallRequest, ToolCallResult, ToolChoice, ToolContext, ToolDefinition,
-};
+use crate::tool::{ToolCallRequest, ToolCallResult, ToolChoice, ToolContext, ToolDefinition};
 use crate::types::RequestMetadata;
 
 /// Callback invoked after each step in the agent loop.
@@ -79,8 +75,6 @@ pub enum ReasoningEffort {
     Medium,
     /// High reasoning effort.
     High,
-    /// Very high reasoning effort.
-    XHigh,
 }
 
 /// Options that control generation behaviour.
@@ -281,92 +275,6 @@ pub async fn generate_object<T: serde::de::DeserializeOwned + schemars::JsonSche
         usage: result.usage,
         metadata: result.metadata,
     })
-}
-
-/// Stream a structured object from a language model response.
-///
-/// Wraps `model.stream()` to accumulate text deltas and parse the final
-/// output as a typed object. Analogous to Vercel AI SDK's `streamObject()`.
-///
-/// The returned [`ObjectStream`] emits [`ObjectStreamEvent::Delta`] for each
-/// text chunk and [`ObjectStreamEvent::Object`] with the final parsed object
-/// once the stream completes.
-pub async fn stream_object<T: serde::de::DeserializeOwned + Send + 'static>(
-    model: &dyn LanguageModel,
-    prompt: Prompt,
-    options: GenerateOptions,
-) -> AiResult<ObjectStream<T>> {
-    let stream = model.stream(prompt, options).await?;
-    Ok(ObjectStream {
-        stream,
-        buffer: String::new(),
-        done: false,
-        _phantom: std::marker::PhantomData::<fn() -> T>,
-    })
-}
-
-/// A stream that accumulates text deltas and emits the final parsed object.
-///
-/// Yields [`ObjectStreamEvent::Delta`] for each text chunk and
-/// [`ObjectStreamEvent::Object`] once the stream completes.
-pub struct ObjectStream<T> {
-    stream: AiStream,
-    buffer: String,
-    done: bool,
-    _phantom: std::marker::PhantomData<fn() -> T>,
-}
-
-/// Events emitted by [`ObjectStream`].
-#[derive(Debug, Clone)]
-pub enum ObjectStreamEvent<T> {
-    /// A text delta chunk (partial JSON).
-    Delta { text: String },
-    /// The final parsed object.
-    Object(T),
-}
-
-impl<T: serde::de::DeserializeOwned + Send> futures::Stream for ObjectStream<T> {
-    type Item = AiResult<ObjectStreamEvent<T>>;
-
-    fn poll_next(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
-        // ObjectStream<T> is Unpin — get_mut() is safe
-        let this = self.get_mut();
-
-        if this.done {
-            return Poll::Ready(None);
-        }
-
-        let poll = this.stream.as_mut().poll_next(cx);
-        match poll {
-            Poll::Ready(Some(Ok(StreamEvent::TextDelta { delta }))) => {
-                this.buffer.push_str(&delta);
-                Poll::Ready(Some(Ok(ObjectStreamEvent::Delta { text: delta })))
-            }
-            Poll::Ready(Some(Ok(StreamEvent::MessageEnd { .. }))) => {
-                this.done = true;
-                let object = match serde_json::from_str::<T>(&this.buffer) {
-                    Ok(obj) => obj,
-                    Err(e) => {
-                        return Poll::Ready(Some(Err(AiError::Serialization(
-                            format!("Failed to parse streamed object: {e}"),
-                        ))))
-                    }
-                };
-                Poll::Ready(Some(Ok(ObjectStreamEvent::Object(object))))
-            }
-            Poll::Ready(Some(Ok(_))) => {
-                // Non-text event, re-poll
-                cx.waker().wake_by_ref();
-                Poll::Pending
-            }
-            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
-        }
-    }
 }
 
 /// Auto-execute tool calls in a loop (Vercel's `maxSteps` agent loop).

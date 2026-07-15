@@ -1,4 +1,4 @@
-# rs_ai — Codebase Guide (v0.2.6)
+# rs_ai — Codebase Guide (v0.2.9)
 
 ## Overview
 
@@ -202,9 +202,24 @@ Chain-able middleware over any `LanguageModel`:
 - `RetryMiddleware` — exponential backoff on transient errors
 - `CacheMiddleware` — in-memory response cache with TTL + key hash
 - `ExtractReasoningMiddleware` — strips `<thinking>` and ` ```reasoning ` blocks from model output, stores extracted reasoning in `result.reasoning`
+- `GuardrailMiddleware` — content filter with `FilterAction::Allow / Block / Replace`
 
 ```rust
-use rs_ai_core::middleware::{ExtractReasoningMiddleware, extract_reasoning_middleware};
+use rs_ai_core::middleware::{
+    ExtractReasoningMiddleware, GuardrailMiddleware, GuardrailConfig, FilterAction,
+    extract_reasoning_middleware,
+};
+```
+
+### wrapLanguageModel
+
+```rust
+use rs_ai_core::wrap_language_model;
+
+let wrapped = wrap_language_model(model, vec![
+    Box::new(GuardrailMiddleware::new(config)),
+    Box::new(ExtractReasoningMiddleware::default()),
+]);
 ```
 
 ## Agent Loop
@@ -252,6 +267,56 @@ let mock = MockLanguageModel::new("test-model")
 5. Add entry point function in `crates/rs_ai/src/lib.rs`
 6. Add integration tests in `crates/rs_ai_providers/tests/`
 
+## Reranking Providers
+
+### Cohere
+```toml
+rs_ai_providers = { version = "0.2", features = ["cohere"] }
+```
+```rust
+use rs_ai_providers::cohere::{CohereProvider, CohereRerankingModel};
+
+let model = CohereRerankingModel::new("rerank-v3.5", api_key);
+let result = model.rerank("query", docs, RerankOptions::default()).await?;
+```
+
+### Voyage
+```toml
+rs_ai_providers = { version = "0.2", features = ["voyage"] }
+```
+```rust
+use rs_ai_providers::voyage::VoyageRerankingModel;
+
+let model = VoyageRerankingModel::new("rerank-2", api_key);
+let result = model.rerank("query", docs, RerankOptions::default()).await?;
+```
+
+## OpenTelemetry
+
+```toml
+rs_ai_core = { version = "0.2", features = ["telemetry"] }
+```
+```rust
+use rs_ai_core::telemetry::{init_telemetry, TelemetryConfig};
+
+init_telemetry(&TelemetryConfig {
+    service_name: Some("my-app".into()),
+    ..Default::default()
+})?;
+```
+
+## OAuth
+
+```rust
+use rs_ai_core::oauth::{start_oauth_flow, OAuthProvider};
+
+let tokens = start_oauth_flow(OAuthProvider::ChatGpt)?;
+let client = rs_ai::chatgpt()
+    .with_oauth_token(tokens.access_token)
+    .model("gpt-4o")
+    .generate("Hello?"); 
+```
+
 ## Key Dependencies
 
 - `tokio` — async runtime
@@ -263,3 +328,4 @@ let mock = MockLanguageModel::new("test-model")
 - `pin-project-lite` — safe `Stream` pinning
 - `uuid` — trace IDs
 - `tracing` — structured logging
+- `opentelemetry` / `opentelemetry-sdk` / `opentelemetry-otlp` — OTEL export (optional)

@@ -6,10 +6,10 @@
 use async_trait::async_trait;
 
 use crate::error::{AiError, AiResult};
-use crate::{Middleware, MiddlewareNext};
 use crate::model::GenerateOptions;
 use crate::prompt::Prompt;
 use crate::structured::GenerateResult;
+use crate::{Middleware, MiddlewareNext};
 
 /// Content filter action.
 #[derive(Debug, Clone)]
@@ -95,9 +95,7 @@ impl Middleware for GuardrailMiddleware {
                         message: msg,
                     });
                 }
-                FilterAction::Replace(_safe) => {
-                    // Replace logic can be added later if needed.
-                }
+                FilterAction::Replace(_) => {}
             }
         }
 
@@ -152,11 +150,7 @@ mod tests {
         fn capabilities(&self) -> &crate::capability::CapabilitySet {
             unimplemented!()
         }
-        async fn generate(
-            &self,
-            _p: Prompt,
-            _o: GenerateOptions,
-        ) -> AiResult<GenerateResult> {
+        async fn generate(&self, _p: Prompt, _o: GenerateOptions) -> AiResult<GenerateResult> {
             Ok(GenerateResult {
                 text: Some("safe output".into()),
                 tool_calls: vec![],
@@ -211,7 +205,10 @@ mod tests {
         let model = TestModel;
         let chain = MiddlewareChain::new(model).with(guardrail);
         let result = chain
-            .generate(Prompt::Text("good stuff".into()), GenerateOptions::default())
+            .generate(
+                Prompt::Text("good stuff".into()),
+                GenerateOptions::default(),
+            )
             .await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap().text.as_deref(), Some("safe output"));

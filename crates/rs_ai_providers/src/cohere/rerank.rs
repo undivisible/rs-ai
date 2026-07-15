@@ -1,5 +1,7 @@
 use async_trait::async_trait;
-use rs_ai_core::{AiError, AiResult, RerankedDocument, RerankingModel, RerankOptions, RerankResult, Usage};
+use rs_ai_core::{
+    AiError, AiResult, RerankOptions, RerankResult, RerankedDocument, RerankingModel, Usage,
+};
 
 /// Cohere reranking model implementing the `RerankingModel` trait.
 pub struct CohereRerankingModel {
@@ -61,27 +63,34 @@ impl RerankingModel for CohereRerankingModel {
                 source: Some(Box::new(e)),
             })?;
 
-        let data: serde_json::Value = resp.json().await.map_err(|e| AiError::Transport {
+        #[derive(serde::Deserialize)]
+        struct CohereRerankResponse {
+            results: Vec<CohereRerankResult>,
+        }
+        #[derive(serde::Deserialize)]
+        struct CohereRerankResult {
+            index: usize,
+            #[serde(default)]
+            relevance_score: f64,
+            document: Option<CohereDocument>,
+        }
+        #[derive(serde::Deserialize)]
+        struct CohereDocument {
+            text: String,
+        }
+
+        let response: CohereRerankResponse = resp.json().await.map_err(|e| AiError::Transport {
             message: format!("Cohere rerank parse failed: {e}"),
             source: Some(Box::new(e)),
         })?;
 
-        let results = data["results"]
-            .as_array()
-            .ok_or_else(|| AiError::Transport {
-                message: "Cohere rerank: missing results array".into(),
-                source: None,
-            })?
-            .iter()
-            .map(|r| {
-                let doc = r["document"]
-                    .as_object()
-                    .and_then(|d| d.get("text").and_then(|t| t.as_str().map(String::from)));
-                RerankedDocument {
-                    index: r["index"].as_u64().unwrap_or(0) as usize,
-                    score: r["relevance_score"].as_f64().unwrap_or(0.0),
-                    document: doc,
-                }
+        let results = response
+            .results
+            .into_iter()
+            .map(|r| RerankedDocument {
+                index: r.index,
+                score: r.relevance_score,
+                document: r.document.map(|d| d.text),
             })
             .collect();
 

@@ -27,14 +27,14 @@
 
 use base64::Engine as _;
 use futures::stream::BoxStream;
-use rs_ai_core::{
-    agent_loop, AiError, AiResult, CacheConfig, ContentPart, EmbeddingResult,
-    FileData, GenerateOptions, ImageData, ImageGenerationOptions, ImageModel, ImageResult,
-    LanguageModel, LifecycleCallbacks, Message, OnFinish, OnStepFinish, OnToolCall, Prompt,
-    RealtimeSession, RerankResult, SpeechToTextModel, StreamEvent, TextToSpeechModel,
-    TtsOptions, VideoGenerationOptions, VideoResult,
-};
 use rs_ai_core::tool::ToolSet;
+use rs_ai_core::{
+    agent_loop, AiError, AiResult, CacheConfig, ContentPart, EmbeddingResult, FileData,
+    GenerateOptions, ImageData, ImageGenerationOptions, ImageModel, ImageResult, LanguageModel,
+    LifecycleCallbacks, Message, OnFinish, OnStepFinish, OnToolCall, Prompt, RealtimeSession,
+    RerankResult, SpeechToTextModel, StreamEvent, TextToSpeechModel, TtsOptions,
+    VideoGenerationOptions, VideoResult,
+};
 use rs_ai_providers::chatgpt::ChatGptProvider;
 use rs_ai_providers::claude::ClaudeProvider;
 use rs_ai_providers::cloudflare::CloudflareProvider;
@@ -369,8 +369,7 @@ impl ClientBuilder {
         match provider_type {
             ProviderType::ChatGpt => {
                 let key = api_key.ok_or_else(|| AiError::AuthError {
-                    message: "API key not set. Use .api_key() to specify credentials."
-                        .to_string(),
+                    message: "API key not set. Use .api_key() to specify credentials.".to_string(),
                 })?;
                 let provider = ChatGptProvider::new(key);
                 let model = provider.tts_model(&model_id.unwrap_or_default());
@@ -597,8 +596,7 @@ impl ClientBuilder {
         match provider_type {
             ProviderType::ChatGpt => {
                 let key = api_key.ok_or_else(|| AiError::AuthError {
-                    message: "API key not set. Use .api_key() to specify credentials."
-                        .to_string(),
+                    message: "API key not set. Use .api_key() to specify credentials.".to_string(),
                 })?;
                 let provider = ChatGptProvider::new(key);
                 let model = provider.stt_model(&model_id.unwrap_or_default());
@@ -606,8 +604,7 @@ impl ClientBuilder {
                 Ok(result.text)
             }
             _ => {
-                let encoded =
-                    base64::engine::general_purpose::STANDARD.encode(&audio);
+                let encoded = base64::engine::general_purpose::STANDARD.encode(&audio);
                 let audio_part = ContentPart::File {
                     data: FileData::Base64 {
                         media_type: mime_type.to_string(),
@@ -645,11 +642,9 @@ impl ClientBuilder {
                         }
                         _ => e,
                     })?;
-                result.text.ok_or_else(|| {
-                    AiError::UnsupportedCapability {
-                        capability: "audio_transcription".to_string(),
-                        provider: model_id_hint,
-                    }
+                result.text.ok_or_else(|| AiError::UnsupportedCapability {
+                    capability: "audio_transcription".to_string(),
+                    provider: model_id_hint,
                 })
             }
         }
@@ -755,8 +750,7 @@ impl ClientBuilder {
             }
         };
 
-        let mut options = GenerateOptions::default()
-            .with_max_steps(self.max_steps);
+        let mut options = GenerateOptions::default().with_max_steps(self.max_steps);
 
         let callbacks = LifecycleCallbacks {
             on_step_finish: self.on_step_finish,
@@ -781,7 +775,7 @@ impl ClientBuilder {
 ///
 /// - If the string starts with `http://` or `https://` it is used as a URL reference.
 /// - Otherwise it is assumed to be a file path; the file is read and base64-encoded.
-fn image_data_from_url_or_path(url_or_path: &str) -> AiResult<ImageData> {
+async fn image_data_from_url_or_path(url_or_path: &str) -> AiResult<ImageData> {
     if url_or_path.starts_with("http://") || url_or_path.starts_with("https://") {
         Ok(ImageData::Url {
             url: url_or_path.to_string(),
@@ -789,10 +783,12 @@ fn image_data_from_url_or_path(url_or_path: &str) -> AiResult<ImageData> {
         })
     } else {
         // Treat as a local file path.
-        let bytes = std::fs::read(url_or_path).map_err(|e| AiError::Transport {
-            message: format!("Failed to read image file `{url_or_path}`: {e}"),
-            source: None,
-        })?;
+        let bytes = tokio::fs::read(url_or_path)
+            .await
+            .map_err(|e| AiError::Transport {
+                message: format!("Failed to read image file `{url_or_path}`: {e}"),
+                source: None,
+            })?;
         let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
         // Infer a basic media type from the file extension.
         let media_type = if url_or_path.ends_with(".png") {
@@ -813,10 +809,10 @@ fn image_data_from_url_or_path(url_or_path: &str) -> AiResult<ImageData> {
 }
 
 /// Build a user `Message` that contains a text prompt and one or more images.
-fn build_vision_message(text: String, images: Vec<String>) -> AiResult<Message> {
+async fn build_vision_message(text: String, images: Vec<String>) -> AiResult<Message> {
     let mut content = vec![ContentPart::Text { text }];
     for img in images {
-        let data = image_data_from_url_or_path(&img)?;
+        let data = image_data_from_url_or_path(&img).await?;
         content.push(ContentPart::Image { data });
     }
     Ok(Message {
@@ -900,7 +896,7 @@ impl Client {
         prompt: impl Into<String>,
         images: Vec<String>,
     ) -> AiResult<String> {
-        let message = build_vision_message(prompt.into(), images)?;
+        let message = build_vision_message(prompt.into(), images).await?;
         let result = self
             .model
             .as_ref()
@@ -962,7 +958,7 @@ impl Client {
         prompt: impl Into<String>,
         images: Vec<String>,
     ) -> AiResult<BoxStream<'static, AiResult<StreamEvent>>> {
-        let message = build_vision_message(prompt.into(), images)?;
+        let message = build_vision_message(prompt.into(), images).await?;
         self.model
             .as_ref()
             .as_ref()

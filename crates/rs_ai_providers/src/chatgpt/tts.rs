@@ -55,12 +55,14 @@ impl TextToSpeechModel for ChatGptTtsModel {
             req = req.header("OpenAI-Organization", org);
         }
 
-        let resp = req.json(&body).send().await.map_err(|e| {
-            AiError::Transport {
+        let resp = req
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| AiError::Transport {
                 message: format!("OpenAI TTS request failed: {e}"),
                 source: Some(Box::new(e)),
-            }
-        })?;
+            })?;
 
         let status = resp.status();
         if !status.is_success() {

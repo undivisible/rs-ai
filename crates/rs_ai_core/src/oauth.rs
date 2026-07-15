@@ -26,9 +26,7 @@ impl OAuthProvider {
     pub fn scopes(&self) -> &str {
         match self {
             OAuthProvider::ChatGpt => "openid profile email offline_access",
-            OAuthProvider::Xai => {
-                "openid profile email offline_access grok-cli:access api:access"
-            }
+            OAuthProvider::Xai => "openid profile email offline_access grok-cli:access api:access",
         }
     }
 }
@@ -42,11 +40,15 @@ pub struct OAuthTokens {
 }
 
 /// Errors during OAuth flow.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum OAuthError {
+    #[error("Network error: {0}")]
     Network(String),
+    #[error("Authentication failed: {0}")]
     Auth(String),
+    #[error("OAuth flow timed out")]
     Timeout,
+    #[error("Port {0} is in use")]
     PortInUse(u16),
 }
 

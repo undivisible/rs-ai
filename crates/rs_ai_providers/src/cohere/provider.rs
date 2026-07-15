@@ -1,6 +1,8 @@
 use crate::cohere::rerank::CohereRerankingModel;
 use crate::cohere::RERANK_MODEL;
-use rs_ai_core::{AiError, AiResult, CapabilitySet, EmbeddingModel, LanguageModel, ModelInfo, Provider};
+use rs_ai_core::{
+    AiError, AiResult, CapabilitySet, EmbeddingModel, LanguageModel, ModelInfo, Provider,
+};
 
 /// Cohere API provider for reranking models.
 pub struct CohereProvider {

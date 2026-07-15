@@ -24,8 +24,6 @@ pub mod cloudflare;
 pub mod cohere;
 #[cfg(feature = "gemini")]
 pub mod gemini;
-#[cfg(feature = "voyage")]
-pub mod voyage;
 #[cfg(feature = "langfuse")]
 pub mod langfuse;
 #[cfg(feature = "ollama")]
@@ -34,6 +32,8 @@ pub mod ollama;
 pub mod openai_compatible;
 #[cfg(feature = "portkey")]
 pub mod portkey;
+#[cfg(feature = "voyage")]
+pub mod voyage;
 #[cfg(feature = "xai")]
 pub mod xai;
 
@@ -48,8 +48,6 @@ pub use cloudflare::*;
 pub use cohere::{CohereProvider, CohereRerankingModel, RERANK_MODEL as COHERE_RERANK_MODEL};
 #[cfg(feature = "gemini")]
 pub use gemini::*;
-#[cfg(feature = "voyage")]
-pub use voyage::{VoyageRerankingModel, RERANK_MODEL as VOYAGE_RERANK_MODEL, RERANK_LITE};
 #[cfg(feature = "langfuse")]
 pub use langfuse::*;
 #[cfg(feature = "ollama")]
@@ -58,5 +56,7 @@ pub use ollama::*;
 pub use openai_compatible::*;
 #[cfg(feature = "portkey")]
 pub use portkey::*;
+#[cfg(feature = "voyage")]
+pub use voyage::{VoyageRerankingModel, RERANK_LITE, RERANK_MODEL as VOYAGE_RERANK_MODEL};
 #[cfg(feature = "xai")]
 pub use xai::*;

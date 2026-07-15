@@ -30,9 +30,7 @@ use crate::openai_compatible::{
 };
 use rs_ai_core::capability::{Capability, CapabilitySet};
 use rs_ai_core::error::AiResult;
-use rs_ai_core::model::{
-    EmbeddingModel, LanguageModel, SpeechToTextModel, TextToSpeechModel,
-};
+use rs_ai_core::model::{EmbeddingModel, LanguageModel, SpeechToTextModel, TextToSpeechModel};
 use rs_ai_core::provider::Provider;
 use rs_ai_core::types::ModelInfo;
 
@@ -72,7 +70,6 @@ pub const GPT_4O_MINI_REALTIME: &str = "gpt-4o-mini-realtime-preview";
 pub const DALL_E_3: &str = "dall-e-3";
 /// OpenAI DALL-E 2.
 pub const DALL_E_2: &str = "dall-e-2";
-
 
 /// A provider pre-configured for the official OpenAI ChatGPT API.
 pub struct ChatGptProvider {
@@ -236,16 +233,20 @@ impl ChatGptProvider {
         self
     }
 
-    fn effective_api_key(&self) -> String {
-        use secrecy::ExposeSecret;
-        self.oauth_token
-            .clone()
-            .unwrap_or_else(|| self.config.api_key().expose_secret().to_string())
+    fn effective_api_key(&self) -> secrecy::SecretString {
+        if let Some(ref token) = self.oauth_token {
+            secrecy::SecretString::new(token.clone().into())
+        } else {
+            self.config.api_key().clone()
+        }
     }
 
     fn effective_config(&self) -> OpenAiCompatibleConfig {
+        use secrecy::ExposeSecret;
         if self.oauth_token.is_some() {
-            self.config.clone().with_api_key(self.effective_api_key())
+            self.config
+                .clone()
+                .with_api_key(self.effective_api_key().expose_secret().to_string())
         } else {
             self.config.clone()
         }
@@ -281,7 +282,8 @@ impl ChatGptProvider {
                     .with(Capability::TextOutput)
                     .with(Capability::Streaming)
             });
-        OpenAiCompatibleModel::new(self.effective_config(), model_id, "chatgpt").with_capabilities(caps)
+        OpenAiCompatibleModel::new(self.effective_config(), model_id, "chatgpt")
+            .with_capabilities(caps)
     }
 
     pub fn gpt4o(&self) -> OpenAiCompatibleModel {
@@ -325,14 +327,16 @@ impl ChatGptProvider {
         &self,
         model: &str,
     ) -> Result<RealtimeSession, realtime_api::RealtimeError> {
-        RealtimeSession::connect(&self.effective_api_key(), model).await
+        use secrecy::ExposeSecret;
+        RealtimeSession::connect(self.effective_api_key().expose_secret(), model).await
     }
 
     /// Create an image generation model (DALL-E 3 or DALL-E 2).
     pub fn image_model(&self, model_id: &str) -> ChatGptImageModel {
+        use secrecy::ExposeSecret;
         let mut m = ChatGptImageModel::new(
             model_id,
-            self.effective_api_key(),
+            self.effective_api_key().expose_secret().to_string(),
             self.config.base_url(),
         );
         if let Some(ref org) = self.config.org_id {
@@ -343,8 +347,9 @@ impl ChatGptProvider {
 
     /// Create a speech-to-text model (Whisper).
     pub fn stt_model(&self, model_id: &str) -> ChatGptSttModel {
+        use secrecy::ExposeSecret;
         ChatGptSttModel::new(
-            self.effective_api_key(),
+            self.effective_api_key().expose_secret().to_string(),
             model_id.to_string(),
             self.config.org_id.clone(),
         )
@@ -352,8 +357,9 @@ impl ChatGptProvider {
 
     /// Create a text-to-speech model (OpenAI TTS).
     pub fn tts_model(&self, model_id: &str) -> ChatGptTtsModel {
+        use secrecy::ExposeSecret;
         ChatGptTtsModel::new(
-            self.effective_api_key(),
+            self.effective_api_key().expose_secret().to_string(),
             model_id.to_string(),
             self.config.org_id.clone(),
         )
@@ -377,12 +383,13 @@ impl ChatGptProvider {
 
     /// Fetch the list of models from the OpenAI API.
     pub async fn list_remote_models(&self) -> rs_ai_core::AiResult<Vec<String>> {
+        use secrecy::ExposeSecret;
         let client = reqwest::Client::new();
         let resp = client
             .get("https://api.openai.com/v1/models")
             .header(
                 "Authorization",
-                format!("Bearer {}", self.effective_api_key()),
+                format!("Bearer {}", self.effective_api_key().expose_secret()),
             )
             .send()
             .await

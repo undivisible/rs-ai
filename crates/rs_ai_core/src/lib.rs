@@ -43,12 +43,11 @@ pub use middleware::{
 };
 pub use model::{
     agent_loop, rerank, EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel,
-    LanguageModel, LifecycleCallbacks, Middleware, MiddlewareNext, ObjectStream, ObjectStreamEvent,
-    OnFinish, OnStepFinish, OnToolCall, ProviderInfo, RealtimeEvent, RealtimeSession,
-    ReasoningEffort, RerankOptions, RerankingModel, SpeechToTextModel, stream_object,
-    TextToSpeechModel, ThinkingConfig, VideoGenerationOptions, VideoModel,
+    LanguageModel, LifecycleCallbacks, Middleware, MiddlewareNext, OnFinish, OnStepFinish,
+    OnToolCall, ProviderInfo, RealtimeEvent, RealtimeSession, ReasoningEffort, RerankOptions,
+    RerankingModel, SpeechToTextModel, TextToSpeechModel, ThinkingConfig, VideoGenerationOptions,
+    VideoModel,
 };
-pub use middleware::wrap_language_model;
 pub use prompt::Prompt;
 pub use provider::Provider;
 pub use registry::{create_provider_registry, ProviderRegistry};
@@ -70,9 +69,9 @@ pub use usage::Usage;
 // Re-exports from merged crates.
 pub use cache::{CacheConfig, CacheTTL};
 pub use observability::{with_observability, ObservableModel};
-pub use telemetry::{TelemetryConfig, with_telemetry};
 #[cfg(feature = "telemetry")]
 pub use telemetry::init_telemetry;
+pub use telemetry::{with_telemetry, TelemetryConfig};
 
 /// Generate text from a language model with default options.
 ///

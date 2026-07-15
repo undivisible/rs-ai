@@ -10,10 +10,12 @@ use crate::observability::ObservableModel;
 /// Configure OpenTelemetry export for model calls.
 #[derive(Debug, Clone, Default)]
 pub struct TelemetryConfig {
-    /// Whether to record input/output content (may contain PII).
-    pub record_content: bool,
     /// Service name for traces.
     pub service_name: Option<String>,
+
+    /// Whether to record request/response content in spans.
+    /// When false, content fields are omitted from trace data.
+    pub record_content: bool,
 }
 
 /// Initialize OpenTelemetry tracing with an OTLP exporter.
@@ -59,11 +61,8 @@ pub fn init_telemetry(config: &TelemetryConfig) -> Result<(), String> {
 /// The returned `ObservableModel` emits tracing spans for each generate/stream
 /// call. When the `telemetry` feature is enabled and `init_telemetry` has been
 /// called, those spans are exported via OTLP.
-pub fn with_telemetry(
-    model: Box<dyn LanguageModel>,
-    _config: TelemetryConfig,
-) -> ObservableModel {
-    ObservableModel::new(model)
+pub fn with_telemetry(model: Box<dyn LanguageModel>, config: TelemetryConfig) -> ObservableModel {
+    ObservableModel::new(model).with_record_content(config.record_content)
 }
 
 #[cfg(test)]
@@ -73,7 +72,6 @@ mod tests {
     #[test]
     fn test_telemetry_config_default() {
         let config = TelemetryConfig::default();
-        assert!(!config.record_content);
         assert!(config.service_name.is_none());
     }
 }

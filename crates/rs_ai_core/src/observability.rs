@@ -44,12 +44,22 @@ use crate::{
 /// Create one via [`ObservableModel::new`] or the [`with_observability`] helper.
 pub struct ObservableModel {
     inner: Box<dyn LanguageModel>,
+    record_content: bool,
 }
 
 impl ObservableModel {
     /// Wrap an existing model with observability instrumentation.
     pub fn new(inner: Box<dyn LanguageModel>) -> Self {
-        Self { inner }
+        Self {
+            inner,
+            record_content: false,
+        }
+    }
+
+    /// Set whether to record request/response content in trace spans.
+    pub fn with_record_content(mut self, record: bool) -> Self {
+        self.record_content = record;
+        self
     }
 }
 

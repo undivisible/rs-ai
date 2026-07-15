@@ -1,5 +1,7 @@
 use async_trait::async_trait;
-use rs_ai_core::{AiError, AiResult, RerankedDocument, RerankingModel, RerankOptions, RerankResult, Usage};
+use rs_ai_core::{
+    AiError, AiResult, RerankOptions, RerankResult, RerankedDocument, RerankingModel, Usage,
+};
 
 /// Voyage AI reranking model implementing the `RerankingModel` trait.
 ///

@@ -86,7 +86,6 @@ impl GeminiProvider {
         self.image_model(super::image::IMAGEN_3_FAST)
     }
 
-
     /// Open a Gemini Live API session for bidirectional voice/video streaming.
     ///
     /// # Example
