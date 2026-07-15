@@ -1,6 +1,6 @@
-# rs_ai — Rust AI SDK
+# rs_ai — Rust AI SDK (v0.2.6)
 
-A comprehensive Rust SDK for building AI applications with cloud and local providers, streaming, and a clean async-first API.
+Comprehensive Rust SDK for AI applications. Cloud + local providers, streaming, agent loop, image/video generation, realtime voice, and a clean async-first API.
 
 ## Quick Start
 
@@ -18,124 +18,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .model("claude-sonnet-4-6")
         .generate("What is 2+2?")
         .await?;
-
     println!("{}", answer);
     Ok(())
 }
 ```
 
-## Providers
-
-| Function | Provider | Env Var |
-|---|---|---|
-| `rs_ai_claude()` | Anthropic Claude | `ANTHROPIC_API_KEY` |
-| `rs_ai_chatgpt()` | OpenAI ChatGPT | `OPENAI_API_KEY` |
-| `rs_ai_gemini()` | Google Gemini | `GOOGLE_API_KEY` |
-| `rs_ai_xai()` | xAI Grok | `XAI_API_KEY` |
-| `rs_ai_cloudflare(account_id)` | Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN` |
-| `rs_ai_compatible(base_url)` | Any OpenAI-compatible | `OPENAI_API_KEY` |
-
-## Local Runtimes
-
-Add `rs_ai_local` to use on-device AI:
-
-```toml
-[dependencies]
-rs_ai_local = { version = "0.2", features = ["gemini-nano"] }
-```
-
-### Browser (Chrome Prompt API)
-
-Enable the `browser` feature and compile for `wasm32` to use the browser's built-in AI APIs:
-
-```toml
-rs_ai_local = { version = "0.2", features = ["browser"] }
-```
-
-Use from Rust WASM:
-
-```rust
-use rs_ai_local::browser::{wasm_bridge::WasmBrowserBridge, BrowserAiOptions};
-
-let bridge = WasmBrowserBridge;
-let answer = bridge
-    .generate("Explain Rust ownership in one paragraph", &BrowserAiOptions::default())
-    .await?;
-```
-
-Build for the web:
-
-```bash
-wasm-pack build --target web --features browser
-```
-
-### Android (Gemini Nano)
-
-Enable the feature and add initialization to your Activity. They call **our** init function — just one line of Kotlin:
-
-```kotlin
-// MainActivity.kt
-class MainActivity : Activity() {
-    companion object {
-        init { System.loadLibrary("rs_ai_local") }
-        @JvmStatic external fun init(context: Context)
-    }
-    
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        init(this)
-    }
-}
-```
-
-Then use from Rust — **your** code:
-
-```rust
-use rs_ai_local::gemini_nano::init_with_context;
-use rs_ai_local::gemini_nano::GeminiNanoProvider;
-
-// In your Rust code
-let provider = GeminiNanoProvider::new(my_bridge);
-let response = provider.model().generate("Hello!").await?;
-```
-
-### macOS (Foundation Models)
-
-Enable the feature. Build on macOS with Xcode — `build.rs` auto-compiles the Swift bridge:
-
-```toml
-rs_ai_local = { version = "0.2", features = ["foundationmodels"] }
-```
-
-Use from Rust:
-
-```rust
-use rs_ai_local::foundationmodels::{is_available, respond};
-
-if is_available() {
-    let answer = respond("What is Rust?").await?;
-}
-```
-
-### Windows (Phi Silica)
-
-Enable the feature. Build with .NET SDK — `build.rs` auto-compiles the C# bridge:
-
-```toml
-rs_ai_local = { version = "0.2", features = ["phi-silica"] }
-```
-
-Use from Rust:
-
-```rust
-use rs_ai_local::phi_silica::respond;
-
-let answer = respond("Hello!").await?;
-```
-
-## Examples
-
 ### Streaming
+
 ```rust
 use rs_ai::rs_ai_claude;
 use futures::StreamExt;
@@ -146,10 +35,68 @@ while let Some(chunk) = stream.next().await {
 }
 ```
 
+### Agent Loop (auto tool execution)
+
+```rust
+use rs_ai::rs_ai_chatgpt;
+use rs_ai_core::agent_loop;
+use rs_ai_core::tool::{ToolSet, Tool};
+
+let mut tools = ToolSet::new();
+tools.add(MyWeatherTool);
+
+let result = agent_loop(&model, "What's the weather?".into(),
+    Default::default().max_steps(5), Some(&tools)).await?;
+// result.steps holds each intermediate step
+```
+
+### Provider Registry
+
+```rust
+use rs_ai_core::create_provider_registry;
+use rs_ai_providers::chatgpt::ChatGptProvider;
+
+let registry = create_provider_registry()
+    .register("openai", ChatGptProvider::new("sk-..."));
+let model = registry.model("openai/gpt-4o")?;
+```
+
+### Image Generation
+
+```rust
+let image = rs_ai_chatgpt()
+    .model("dall-e-3")
+    .generate_image("A cat in space", Default::default())
+    .await?;
+// image.data holds the bytes
+```
+
+## Providers
+
+| Function | Provider | Env Var | Extras |
+|---|---|---|---|
+| `rs_ai_claude()` | Anthropic Claude | `ANTHROPIC_API_KEY` | streaming, tools, vision |
+| `rs_ai_chatgpt()` | OpenAI ChatGPT | `OPENAI_API_KEY` | DALL-E, Sora, TTS, STT, realtime |
+| `rs_ai_gemini()` | Google Gemini | `GOOGLE_API_KEY` | Imagen, Veo, live API |
+| `rs_ai_xai()` | xAI Grok | `XAI_API_KEY` | Grok Imagine |
+| `rs_ai_cloudflare(id)` | Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN` | — |
+| `rs_ai_compatible(url)` | Any OpenAI-compatible | `OPENAI_API_KEY` | OpenRouter, vLLM, Ollama, etc. |
+
+## Local Runtimes
+
+```toml
+[dependencies]
+rs_ai_local = { version = "0.2", features = ["browser"] }       # WASM browser AI
+rs_ai_local = { version = "0.2", features = ["gemini-nano"] }   # Android Gemini Nano
+rs_ai_local = { version = "0.2", features = ["foundationmodels"] } # macOS Apple FM
+rs_ai_local = { version = "0.2", features = ["phi-silica"] }    # Windows Phi Silica
+```
+
 ## Testing
 
 ```bash
-cargo test
+make ci        # fmt + check + clippy + test + doc (152 tests)
+cargo test     # same
 ```
 
 ## License
