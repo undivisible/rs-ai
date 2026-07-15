@@ -22,6 +22,7 @@ pub mod types;
 pub mod usage;
 
 pub mod cache;
+pub mod oauth;
 
 pub mod observability;
 // middleware and ui_stream are already declared above from the old traits crate,

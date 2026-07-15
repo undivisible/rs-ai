@@ -199,6 +199,26 @@ pub mod text_gen_webui {
     pub const CUSTOM_MODEL: &str = "model";
 }
 
+/// Anthropic — Anthropic's Claude models via their API gateway
+/// Note: Anthropic uses a non-OpenAI format natively. This preset works
+/// through Anthropic's OpenAI-compatible gateway or third-party gateways.
+pub mod anthropic {
+    use super::*;
+
+    /// Create configuration for Anthropic's OpenAI-compatible endpoint.
+    pub fn config(api_key: impl Into<String>) -> OpenAiCompatibleConfig {
+        OpenAiCompatibleConfig::new("https://api.anthropic.com/v1", api_key)
+            .with_header("anthropic-version", "2023-06-01")
+    }
+
+    /// Claude Sonnet 4.6 model identifier.
+    pub const CLAUDE_SONNET_4: &str = "claude-sonnet-4-20250514";
+    /// Claude 3.5 Haiku model identifier.
+    pub const CLAUDE_HAIKU: &str = "claude-3-5-haiku-20241022";
+    /// Claude 3 Opus model identifier.
+    pub const CLAUDE_OPUS: &str = "claude-opus-4-20250514";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,5 +245,11 @@ mod tests {
     fn test_custom_vllm_endpoint() {
         let config = vllm::config(Some("http://my-vllm-server:8000/v1"));
         assert_eq!(config.base_url(), "http://my-vllm-server:8000/v1");
+    }
+
+    #[test]
+    fn test_anthropic_config() {
+        let config = anthropic::config("test-key");
+        assert_eq!(config.base_url(), "https://api.anthropic.com/v1");
     }
 }
