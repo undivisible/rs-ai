@@ -2,9 +2,11 @@ use super::client::XaiClient;
 use super::image::XaiImageModel;
 use super::model::XaiModel;
 use super::realtime::{create_grok_voice_session, GrokVoiceConfig, GrokVoiceSession};
+use super::speech::XaiSpeechModel;
+use super::transcription::XaiTranscriptionModel;
+use super::video::XaiVideoModel;
 use crate::XaiModelId;
 use rs_ai_core::{AiResult, CacheConfig};
-
 
 /// xAI provider for creating Grok models.
 #[derive(Clone)]
@@ -91,13 +93,39 @@ impl XaiProvider {
         self.image_model(XaiModelId::Aurora.as_str())
     }
 
+    /// Create a text-to-speech model.
+    pub fn speech_model(&self, model_id: &str) -> XaiSpeechModel {
+        XaiSpeechModel::new(
+            self.effective_client().api_key().to_string(),
+            model_id.to_string(),
+        )
+    }
+
+    /// Create a speech-to-text model.
+    pub fn stt_model(&self, model_id: &str) -> XaiTranscriptionModel {
+        XaiTranscriptionModel::new(
+            self.effective_client().api_key().to_string(),
+            model_id.to_string(),
+        )
+    }
+
+    /// Create a video generation model.
+    pub fn video_model(&self, model_id: &str) -> XaiVideoModel {
+        XaiVideoModel::new(
+            self.effective_client().api_key().to_string(),
+            model_id.to_string(),
+        )
+    }
+
     /// Create a Grok Voice Agent session.
     ///
     /// Connects to xAI's Realtime API via WebSocket.
     pub async fn realtime_session(&self, model_id: &str) -> AiResult<GrokVoiceSession> {
-        let api_key = self.oauth_token.clone().unwrap_or_else(|| self.client.api_key().to_string());
-        let config = GrokVoiceConfig::new(api_key)
-            .with_model(model_id);
+        let api_key = self
+            .oauth_token
+            .clone()
+            .unwrap_or_else(|| self.client.api_key().to_string());
+        let config = GrokVoiceConfig::new(api_key).with_model(model_id);
         create_grok_voice_session(config).await
     }
 }

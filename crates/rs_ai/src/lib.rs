@@ -33,7 +33,7 @@ use rs_ai_core::{
     GenerateOptions, ImageData, ImageGenerationOptions, ImageModel, ImageResult, LanguageModel,
     LifecycleCallbacks, Message, OnFinish, OnStepFinish, OnToolCall, Prompt, RealtimeSession,
     RerankResult, SpeechToTextModel, StreamEvent, TextToSpeechModel, TtsOptions,
-    VideoGenerationOptions, VideoResult,
+    VideoGenerationOptions, VideoModel, VideoResult,
 };
 use rs_ai_providers::chatgpt::ChatGptProvider;
 use rs_ai_providers::claude::ClaudeProvider;
@@ -45,6 +45,7 @@ use rs_ai_providers::xai::XaiProvider;
 pub use rs_ai_providers::xai::XAI_OAUTH_MODEL_IDS;
 
 /// Fluent builder for creating and configuring AI clients.
+#[allow(dead_code)]
 pub struct ClientBuilder {
     provider_type: ProviderType,
     api_key: Option<String>,
@@ -66,6 +67,8 @@ pub struct ClientBuilder {
     on_finish: Option<OnFinish>,
     /// OAuth bearer token (overrides API key when set).
     oauth_token: Option<String>,
+    /// Rerank model ID for Cohere/Voyage reranking.
+    rerank_model_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -378,6 +381,28 @@ impl ClientBuilder {
                     .await?;
                 Ok(result.audio)
             }
+            ProviderType::Xai => {
+                let key = api_key.ok_or_else(|| AiError::AuthError {
+                    message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+                })?;
+                let provider = XaiProvider::new(key);
+                let model = provider.speech_model(&model_id.unwrap_or_default());
+                let result = model
+                    .synthesize(&text_str, "alloy", TtsOptions::default())
+                    .await?;
+                Ok(result.audio)
+            }
+            ProviderType::Gemini => {
+                let key = api_key.ok_or_else(|| AiError::AuthError {
+                    message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+                })?;
+                let provider = GeminiProvider::new(key);
+                let model = provider.speech_model(&model_id.unwrap_or_default());
+                let result = model
+                    .synthesize(&text_str, "en-US-Standard-A", TtsOptions::default())
+                    .await?;
+                Ok(result.audio)
+            }
             _ => {
                 let options = GenerateOptions::default();
                 let model_id_hint = model_id.unwrap_or_default();
@@ -467,13 +492,34 @@ impl ClientBuilder {
     /// ```
     pub async fn generate_video(
         self,
-        _prompt: impl Into<String>,
-        _options: VideoGenerationOptions,
+        prompt: impl Into<String>,
+        options: VideoGenerationOptions,
     ) -> AiResult<VideoResult> {
-        Err(AiError::UnsupportedCapability {
-            capability: "video_generation".to_string(),
-            provider: format!("{:?}", self.provider_type),
-        })
+        let text = prompt.into();
+        let api_key = self.api_key.clone().ok_or_else(|| AiError::AuthError {
+            message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+        })?;
+
+        match self.provider_type {
+            ProviderType::ChatGpt => Err(AiError::UnsupportedCapability {
+                capability: "video_generation".to_string(),
+                provider: "chatgpt".to_string(),
+            }),
+            ProviderType::Xai => {
+                let provider = XaiProvider::new(api_key);
+                let model = provider.video_model(&self.model_id.unwrap_or_default());
+                model.generate_video(&text, options).await
+            }
+            ProviderType::Gemini => {
+                let provider = GeminiProvider::new(api_key);
+                let model = provider.video_model(&self.model_id.unwrap_or_default());
+                model.generate_video(&text, options).await
+            }
+            _ => Err(AiError::UnsupportedCapability {
+                capability: "video_generation".to_string(),
+                provider: format!("{:?}", self.provider_type),
+            }),
+        }
     }
 
     /// Open a realtime voice/text session.
@@ -558,7 +604,10 @@ impl ClientBuilder {
     ) -> AiResult<RerankResult> {
         Err(AiError::UnsupportedCapability {
             capability: "reranking".to_string(),
-            provider: format!("{:?}", self.provider_type),
+            provider: format!(
+                "{:?} — enable the `cohere` or `voyage` feature on rs_ai_providers and use the provider directly",
+                self.provider_type
+            ),
         })
     }
 
@@ -599,6 +648,15 @@ impl ClientBuilder {
                     message: "API key not set. Use .api_key() to specify credentials.".to_string(),
                 })?;
                 let provider = ChatGptProvider::new(key);
+                let model = provider.stt_model(&model_id.unwrap_or_default());
+                let result = model.transcribe(audio, mime_type, None).await?;
+                Ok(result.text)
+            }
+            ProviderType::Xai => {
+                let key = api_key.ok_or_else(|| AiError::AuthError {
+                    message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+                })?;
+                let provider = XaiProvider::new(key);
                 let model = provider.stt_model(&model_id.unwrap_or_default());
                 let result = model.transcribe(audio, mime_type, None).await?;
                 Ok(result.text)
@@ -995,6 +1053,7 @@ pub fn claude() -> ClientBuilder {
         on_tool_call: None,
         on_finish: None,
         oauth_token: None,
+        rerank_model_id: None,
     }
 }
 
@@ -1021,6 +1080,7 @@ pub fn chatgpt() -> ClientBuilder {
         on_tool_call: None,
         on_finish: None,
         oauth_token: None,
+        rerank_model_id: None,
     }
 }
 
@@ -1047,6 +1107,7 @@ pub fn gemini() -> ClientBuilder {
         on_tool_call: None,
         on_finish: None,
         oauth_token: None,
+        rerank_model_id: None,
     }
 }
 
@@ -1073,6 +1134,7 @@ pub fn xai() -> ClientBuilder {
         on_tool_call: None,
         on_finish: None,
         oauth_token: None,
+        rerank_model_id: None,
     }
 }
 
@@ -1104,6 +1166,7 @@ pub fn cloudflare(account_id: impl Into<String>) -> ClientBuilder {
         on_tool_call: None,
         on_finish: None,
         oauth_token: None,
+        rerank_model_id: None,
     }
 }
 
@@ -1132,5 +1195,6 @@ pub fn compatible(base_url: impl Into<String>) -> ClientBuilder {
         on_tool_call: None,
         on_finish: None,
         oauth_token: None,
+        rerank_model_id: None,
     }
 }

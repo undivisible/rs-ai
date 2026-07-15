@@ -2,6 +2,8 @@ use secrecy::SecretString;
 
 use super::image::GeminiImageModel;
 use super::model::GeminiModel;
+use super::speech::GeminiSpeechModel;
+use super::video::GeminiVideoModel;
 
 // ── Latest model aliases ──
 
@@ -84,6 +86,18 @@ impl GeminiProvider {
     /// Get the fast Gemini Imagen 3 model.
     pub fn imagen_3_fast(&self) -> GeminiImageModel {
         self.image_model(super::image::IMAGEN_3_FAST)
+    }
+
+    /// Get a speech (text-to-speech) model.
+    pub fn speech_model(&self, model_id: &str) -> GeminiSpeechModel {
+        use secrecy::ExposeSecret;
+        GeminiSpeechModel::new(self.api_key.expose_secret(), model_id)
+    }
+
+    /// Get a video generation model.
+    pub fn video_model(&self, model_id: &str) -> GeminiVideoModel {
+        use secrecy::ExposeSecret;
+        GeminiVideoModel::new(self.api_key.expose_secret(), model_id)
     }
 
     /// Open a Gemini Live API session for bidirectional voice/video streaming.

@@ -13,14 +13,14 @@
 //! - Server VAD with interrupt support
 //! - In-stream reasoning
 
+use async_trait::async_trait;
+use base64::Engine;
+use futures::SinkExt;
+use rs_ai_core::{AiError, AiResult, RealtimeEvent, RealtimeSession};
+use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message as WsMessage};
-use futures::SinkExt;
-use serde::Deserialize;
-use base64::Engine;
-use rs_ai_core::{AiError, AiResult, RealtimeEvent, RealtimeSession};
-use async_trait::async_trait;
 
 const DEFAULT_BASE_URL: &str = "https://api.x.ai";
 const WS_BASE_URL: &str = "wss://api.x.ai";
@@ -100,7 +100,13 @@ async fn create_client_secret(api_key: &str, base_url: &str) -> AiResult<String>
 
 /// An active xAI Grok Voice Agent session.
 pub struct GrokVoiceSession {
-    write: Arc<Mutex<tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>>>,
+    write: Arc<
+        Mutex<
+            tokio_tungstenite::WebSocketStream<
+                tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            >,
+        >,
+    >,
     model: String,
 }
 
@@ -111,10 +117,7 @@ impl GrokVoiceSession {
     pub async fn connect(config: GrokVoiceConfig) -> AiResult<Self> {
         let secret = create_client_secret(&config.api_key, &config.base_url).await?;
 
-        let ws_url = format!(
-            "{}/realtime?client_secret={}",
-            WS_BASE_URL, secret
-        );
+        let ws_url = format!("{}/realtime?client_secret={}", WS_BASE_URL, secret);
 
         let (ws_stream, _) = connect_async(&ws_url)
             .await
@@ -147,12 +150,12 @@ impl GrokVoiceSession {
             let msg = serde_json::to_string(&session_config).map_err(|e| {
                 AiError::Serialization(format!("xAI session config serialize: {e}"))
             })?;
-            w.send(WsMessage::Text(msg)).await.map_err(|e| {
-                AiError::Transport {
+            w.send(WsMessage::Text(msg))
+                .await
+                .map_err(|e| AiError::Transport {
                     message: format!("xAI WebSocket send failed: {e}"),
                     source: Some(Box::new(e)),
-                }
-            })?;
+                })?;
         }
 
         Ok(Self {
@@ -181,15 +184,15 @@ impl RealtimeSession for GrokVoiceSession {
                 "content": [{"type": "input_text", "text": text}],
             }
         });
-        let msg = serde_json::to_string(&event)
-            .map_err(|e| AiError::Serialization(e.to_string()))?;
+        let msg =
+            serde_json::to_string(&event).map_err(|e| AiError::Serialization(e.to_string()))?;
         let mut w = self.write.lock().await;
-        w.send(WsMessage::Text(msg)).await.map_err(|e| {
-            AiError::Transport {
+        w.send(WsMessage::Text(msg))
+            .await
+            .map_err(|e| AiError::Transport {
                 message: format!("xAI WebSocket send_text failed: {e}"),
                 source: Some(Box::new(e)),
-            }
-        })?;
+            })?;
         Ok(())
     }
 
@@ -199,15 +202,15 @@ impl RealtimeSession for GrokVoiceSession {
             "type": "input_audio_buffer.append",
             "audio": base64,
         });
-        let msg = serde_json::to_string(&event)
-            .map_err(|e| AiError::Serialization(e.to_string()))?;
+        let msg =
+            serde_json::to_string(&event).map_err(|e| AiError::Serialization(e.to_string()))?;
         let mut w = self.write.lock().await;
-        w.send(WsMessage::Text(msg)).await.map_err(|e| {
-            AiError::Transport {
+        w.send(WsMessage::Text(msg))
+            .await
+            .map_err(|e| AiError::Transport {
                 message: format!("xAI WebSocket send_audio failed: {e}"),
                 source: Some(Box::new(e)),
-            }
-        })?;
+            })?;
         Ok(())
     }
 
@@ -234,7 +237,9 @@ impl RealtimeSession for GrokVoiceSession {
                         }
                         "response.audio.delta" => {
                             let b64 = parsed["delta"].as_str().unwrap_or("");
-                            let delta = base64::engine::general_purpose::STANDARD.decode(b64).unwrap_or_default();
+                            let delta = base64::engine::general_purpose::STANDARD
+                                .decode(b64)
+                                .unwrap_or_default();
                             return Some(RealtimeEvent::AudioDelta { delta });
                         }
                         "response.function_call_arguments.done" | "response.tool_call" => {
@@ -280,8 +285,6 @@ impl RealtimeSession for GrokVoiceSession {
 }
 
 /// Create an xAI Grok Voice Agent session with the given config.
-pub async fn create_grok_voice_session(
-    config: GrokVoiceConfig,
-) -> AiResult<GrokVoiceSession> {
+pub async fn create_grok_voice_session(config: GrokVoiceConfig) -> AiResult<GrokVoiceSession> {
     GrokVoiceSession::connect(config).await
 }

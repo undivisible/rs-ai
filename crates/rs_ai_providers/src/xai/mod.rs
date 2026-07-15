@@ -36,13 +36,18 @@ mod image;
 mod model;
 mod provider;
 pub mod realtime;
+pub mod speech;
+pub mod transcription;
+pub mod video;
 
 pub use client::{AURORA, GROK_4_IMAGINE};
 pub use error::{XaiError, XaiResult};
 pub use image::XaiImageModel;
 pub use model::XaiModel;
 pub use provider::XaiProvider;
-
+pub use speech::XaiSpeechModel;
+pub use transcription::XaiTranscriptionModel;
+pub use video::XaiVideoModel;
 
 pub const XAI_OAUTH_MODEL_IDS: &[&str] = &[
     "grok-4.5",

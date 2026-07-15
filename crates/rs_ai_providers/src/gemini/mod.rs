@@ -11,7 +11,15 @@ mod model;
 mod provider;
 mod stream_parser;
 
-pub use image::{GeminiImageModel, IMAGEN_3, IMAGEN_3_FAST};
+pub(crate) mod speech;
+pub(crate) mod video;
+
+pub use image::{
+    GeminiImageModel, GEMINI_2_5_FLASH_IMAGE, GEMINI_3_1_FLASH_IMAGE, GEMINI_3_PRO_IMAGE, IMAGEN_3,
+    IMAGEN_3_FAST, IMAGEN_4, IMAGEN_4_FAST, IMAGEN_4_ULTRA,
+};
 pub use live_api::{GeminiLiveSessionAdapter, LiveSession};
 pub use model::*;
 pub use provider::*;
+pub use speech::GeminiSpeechModel;
+pub use video::GeminiVideoModel;

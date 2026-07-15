@@ -14,6 +14,12 @@ const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1";
 /// Model constants for Google Imagen.
 pub const IMAGEN_3: &str = "imagen-3.0-generate-001";
 pub const IMAGEN_3_FAST: &str = "imagen-3.0-fast-001";
+pub const IMAGEN_4: &str = "imagen-4.0-generate-001";
+pub const IMAGEN_4_ULTRA: &str = "imagen-4.0-ultra-generate-001";
+pub const IMAGEN_4_FAST: &str = "imagen-4.0-fast-generate-001";
+pub const GEMINI_2_5_FLASH_IMAGE: &str = "gemini-2.5-flash-image";
+pub const GEMINI_3_PRO_IMAGE: &str = "gemini-3-pro-image-preview";
+pub const GEMINI_3_1_FLASH_IMAGE: &str = "gemini-3.1-flash-image-preview";
 
 // ── Request types ──
 
@@ -61,6 +67,36 @@ struct PredictResult {
     mime_type: String,
 }
 
+#[derive(Deserialize)]
+struct GenerateContentResponse {
+    candidates: Vec<Candidate>,
+}
+
+#[derive(Deserialize)]
+struct Candidate {
+    content: Content,
+}
+
+#[derive(Deserialize)]
+struct Content {
+    parts: Vec<Part>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+#[allow(dead_code)]
+enum Part {
+    Text { text: String },
+    InlineData { inline_data: InlineData },
+}
+
+#[derive(Deserialize)]
+struct InlineData {
+    #[serde(rename = "mimeType")]
+    mime_type: String,
+    data: String,
+}
+
 /// A Gemini Imagen image generation model.
 pub struct GeminiImageModel {
     api_key: SecretString,
@@ -94,6 +130,19 @@ impl GeminiImageModel {
             self.api_key.expose_secret()
         )
     }
+
+    fn generate_content_url(&self) -> String {
+        format!(
+            "{}/models/{}:generateContent?key={}",
+            self.base_url,
+            self.model_id,
+            self.api_key.expose_secret()
+        )
+    }
+
+    fn is_gemini_multimodal(&self) -> bool {
+        self.model_id.starts_with("gemini-") || self.model_id.starts_with("gemini/")
+    }
 }
 
 #[async_trait]
@@ -111,10 +160,23 @@ impl ImageModel for GeminiImageModel {
         prompt: &str,
         options: ImageGenerationOptions,
     ) -> AiResult<ImageResult> {
+        if self.is_gemini_multimodal() {
+            self.generate_gemini_image(prompt, options).await
+        } else {
+            self.generate_imagen_image(prompt, options).await
+        }
+    }
+}
+
+impl GeminiImageModel {
+    async fn generate_imagen_image(
+        &self,
+        prompt: &str,
+        options: ImageGenerationOptions,
+    ) -> AiResult<ImageResult> {
         let n = options.n.unwrap_or(1);
 
         let aspect_ratio: Option<String> = options.aspect_ratio.clone().or_else(|| {
-            // Derive from size if no explicit aspect_ratio
             options.size.as_deref().and_then(|s| {
                 let parts: Vec<&str> = s.split('x').collect();
                 if parts.len() == 2 {
@@ -127,7 +189,6 @@ impl ImageModel for GeminiImageModel {
 
         let mut extra = options.provider_options.clone().unwrap_or_default();
 
-        // Move known extra params from provider_options or fill from options
         let person_generation = extra
             .remove("personGeneration")
             .and_then(|v| v.as_str().map(|s| s.to_string()));
@@ -204,6 +265,79 @@ impl ImageModel for GeminiImageModel {
                 provider: "gemini".to_string(),
                 status: None,
                 message: "Imagen returned no predictions".to_string(),
+            })?;
+
+        Ok(ImageResult {
+            image,
+            images,
+            usage: Usage::default(),
+            metadata: ResponseMetadata::default(),
+        })
+    }
+
+    async fn generate_gemini_image(
+        &self,
+        prompt: &str,
+        _options: ImageGenerationOptions,
+    ) -> AiResult<ImageResult> {
+        let body = serde_json::json!({
+            "contents": [{
+                "parts": [{ "text": prompt }]
+            }]
+        });
+
+        let response = self
+            .client
+            .post(self.generate_content_url())
+            .header("Content-Type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| AiError::Transport {
+                message: format!("Gemini image request failed: {e}"),
+                source: Some(Box::new(e)),
+            })?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let status_code = status.as_u16();
+            let body = response.text().await.unwrap_or_default();
+            return Err(AiError::ProviderError {
+                provider: "gemini".to_string(),
+                status: Some(status_code),
+                message: body,
+            });
+        }
+
+        let api_response: GenerateContentResponse = response
+            .json()
+            .await
+            .map_err(|e| AiError::Serialization(e.to_string()))?;
+
+        let images: Vec<GeneratedFile> = api_response
+            .candidates
+            .into_iter()
+            .flat_map(|c| c.content.parts)
+            .filter_map(|part| match part {
+                Part::InlineData { inline_data } => {
+                    let bytes = STANDARD.decode(&inline_data.data).unwrap_or_default();
+                    Some(GeneratedFile {
+                        base64: inline_data.data,
+                        bytes,
+                        media_type: inline_data.mime_type,
+                    })
+                }
+                _ => None,
+            })
+            .collect();
+
+        let image = images
+            .first()
+            .cloned()
+            .ok_or_else(|| AiError::ProviderError {
+                provider: "gemini".to_string(),
+                status: None,
+                message: "Gemini returned no image data".to_string(),
             })?;
 
         Ok(ImageResult {
