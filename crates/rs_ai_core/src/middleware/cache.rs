@@ -15,9 +15,7 @@ impl CacheMiddleware {
     /// Create a new `CacheMiddleware` with the specified time-to-live.
     pub fn new(ttl: std::time::Duration) -> Self {
         Self {
-            cache: moka::sync::Cache::builder()
-                .time_to_live(ttl)
-                .build(),
+            cache: moka::sync::Cache::builder().time_to_live(ttl).build(),
         }
     }
 
@@ -44,7 +42,10 @@ impl CacheMiddleware {
         options.top_p.map(f64::to_bits).hash(&mut hasher);
         options.top_k.hash(&mut hasher);
         options.stop_sequences.hash(&mut hasher);
-        options.frequency_penalty.map(f64::to_bits).hash(&mut hasher);
+        options
+            .frequency_penalty
+            .map(f64::to_bits)
+            .hash(&mut hasher);
         options.presence_penalty.map(f64::to_bits).hash(&mut hasher);
         options.seed.hash(&mut hasher);
 

@@ -162,7 +162,13 @@ fn wait_for_callback(listener: &TcpListener) -> Result<String, OAuthError> {
                 let mut buf = [0u8; 8192];
                 let n = stream.read(&mut buf).unwrap_or(0);
                 let req = String::from_utf8_lossy(&buf[..n]);
-                let req_path = req.lines().next().unwrap_or("").split(' ').nth(1).unwrap_or("");
+                let req_path = req
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .split(' ')
+                    .nth(1)
+                    .unwrap_or("");
 
                 let query = req_path.split('?').nth(1).unwrap_or("");
                 let params: HashMap<&str, String> = query
@@ -186,7 +192,8 @@ fn wait_for_callback(listener: &TcpListener) -> Result<String, OAuthError> {
                     return Ok(code.clone());
                 }
 
-                let body = "<html><body><h1>Error</h1><p>Missing authorization code.</p></body></html>";
+                let body =
+                    "<html><body><h1>Error</h1><p>Missing authorization code.</p></body></html>";
                 let resp = format!(
                     "HTTP/1.1 400 Bad Request\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                     body.len(),
