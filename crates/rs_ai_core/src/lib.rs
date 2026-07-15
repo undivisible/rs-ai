@@ -22,6 +22,7 @@ pub mod types;
 pub mod usage;
 
 pub mod cache;
+#[cfg(feature = "oauth")]
 pub mod oauth;
 
 pub mod observability;

@@ -1,7 +1,10 @@
 //! OAuth flows for ChatGPT and xAI/Grok (PKCE S256).
+//! Uses the `oauth2` crate for PKCE challenge generation.
 //! Based on openclaw openai-chatgpt-oauth-flow and pi-xai-oauth.
 
+use oauth2::PkceCodeChallenge;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -16,17 +19,55 @@ pub enum OAuthProvider {
 }
 
 impl OAuthProvider {
+    fn client_id(&self) -> &str {
+        match self {
+            OAuthProvider::ChatGpt => "app_EMoamEEZ73f0CkXaXp7hrann",
+            OAuthProvider::Xai => "b1a00492-073a-47ea-816f-4c329264a828",
+        }
+    }
+
+    fn auth_url(&self) -> &str {
+        match self {
+            OAuthProvider::ChatGpt => "https://auth.openai.com/oauth/authorize",
+            OAuthProvider::Xai => "https://auth.x.ai/oauth2/authorize",
+        }
+    }
+
+    fn token_url(&self) -> &str {
+        match self {
+            OAuthProvider::ChatGpt => "https://auth.openai.com/oauth/token",
+            OAuthProvider::Xai => "https://auth.x.ai/oauth2/token",
+        }
+    }
+
+    fn scopes(&self) -> Vec<&str> {
+        match self {
+            OAuthProvider::ChatGpt => vec!["openid", "profile", "email", "offline_access"],
+            OAuthProvider::Xai => {
+                vec![
+                    "openid",
+                    "profile",
+                    "email",
+                    "offline_access",
+                    "grok-cli:access",
+                    "api:access",
+                ]
+            }
+        }
+    }
+
+    fn redirect_port(&self) -> u16 {
+        match self {
+            OAuthProvider::ChatGpt => 1455,
+            OAuthProvider::Xai => 56121,
+        }
+    }
+
+    /// Provider name string.
     pub fn name(&self) -> &str {
         match self {
             OAuthProvider::ChatGpt => "chatgpt",
             OAuthProvider::Xai => "grok",
-        }
-    }
-
-    pub fn scopes(&self) -> &str {
-        match self {
-            OAuthProvider::ChatGpt => "openid profile email offline_access",
-            OAuthProvider::Xai => "openid profile email offline_access grok-cli:access api:access",
         }
     }
 }
@@ -52,53 +93,6 @@ pub enum OAuthError {
     PortInUse(u16),
 }
 
-/// PKCE helper: generate code verifier + challenge (S256).
-fn pkce_pair() -> (String, String) {
-    use sha2::{Digest, Sha256};
-    let mut raw = [0u8; 32];
-    getrandom::getrandom(&mut raw).expect("entropy");
-    let verifier = base64url(&raw);
-    let challenge = {
-        let mut hasher = Sha256::new();
-        hasher.update(verifier.as_bytes());
-        base64url(&hasher.finalize())
-    };
-    (verifier, challenge)
-}
-
-fn base64url(bytes: &[u8]) -> String {
-    const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-    let mut s = String::new();
-    for chunk in bytes.chunks(3) {
-        let b0 = chunk[0] as u32;
-        let b1 = chunk.get(1).copied().unwrap_or(0) as u32;
-        let b2 = chunk.get(2).copied().unwrap_or(0) as u32;
-        let triple = (b0 << 16) | (b1 << 8) | b2;
-        s.push(T[((triple >> 18) & 63) as usize] as char);
-        s.push(T[((triple >> 12) & 63) as usize] as char);
-        if chunk.len() > 1 {
-            s.push(T[((triple >> 6) & 63) as usize] as char);
-        }
-        if chunk.len() > 2 {
-            s.push(T[(triple & 63) as usize] as char);
-        }
-    }
-    s
-}
-
-fn urlenc(s: &str) -> String {
-    let mut out = String::new();
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char);
-            }
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
-}
-
 fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -106,115 +100,59 @@ fn now_secs() -> u64 {
         .unwrap_or(0)
 }
 
-fn html_ok(body: &str) -> String {
-    format!(
-        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-        body.len()
-    )
-}
-
 /// Start the OAuth flow for the given provider.
 /// Opens the browser and waits for the callback on a localhost server.
 /// Returns OAuth tokens on success.
 pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthError> {
-    match provider {
-        OAuthProvider::ChatGpt => oauth_flow_chatgpt(),
-        OAuthProvider::Xai => oauth_flow_xai(),
-    }
-}
+    let redirect_port = provider.redirect_port();
+    let redirect_host = if matches!(provider, OAuthProvider::ChatGpt) {
+        "0.0.0.0"
+    } else {
+        "127.0.0.1"
+    };
+    let redirect_path = if matches!(provider, OAuthProvider::ChatGpt) {
+        "/auth/callback"
+    } else {
+        "/callback"
+    };
+    let redirect_uri_str = format!("http://{redirect_host}:{redirect_port}{redirect_path}");
 
-fn oauth_flow_chatgpt() -> Result<OAuthTokens, OAuthError> {
-    const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
-    const AUTHORIZE: &str = "https://auth.openai.com/oauth/authorize";
-    const TOKEN: &str = "https://auth.openai.com/oauth/token";
-    const SCOPES: &str = "openid profile email offline_access";
-    const REDIRECT_PORT: u16 = 1455;
-    const REDIRECT_PATH: &str = "/auth/callback";
-
-    let (verifier, challenge) = pkce_pair();
-    let redirect = format!("http://localhost:{REDIRECT_PORT}{REDIRECT_PATH}");
-
-    let listener = TcpListener::bind(("0.0.0.0", REDIRECT_PORT))
-        .map_err(|_| OAuthError::PortInUse(REDIRECT_PORT))?;
+    // Set up local callback server
+    let listener = TcpListener::bind((redirect_host, redirect_port))
+        .map_err(|_| OAuthError::PortInUse(redirect_port))?;
     listener.set_nonblocking(true).ok();
 
-    let url = format!(
-        "{AUTHORIZE}?response_type=code&client_id={cid}&redirect_uri={redir}&scope={s}&code_challenge={ch}&code_challenge_method=S256&state={st}&originator=codex_cli_rs",
-        cid = urlenc(CLIENT_ID),
-        redir = urlenc(&redirect),
-        s = urlenc(SCOPES),
-        ch = urlenc(&challenge),
-        st = urlenc("rs_ai_oauth"),
-    );
+    // Generate PKCE challenge
+    let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
-    open_browser(&url).map_err(OAuthError::Network)?;
+    // Build authorize URL manually
+    let scopes = provider.scopes();
+    let authorize_url = {
+        let mut url = format!(
+            "{}?response_type=code&client_id={}&redirect_uri={}&code_challenge={}&code_challenge_method=S256",
+            provider.auth_url(),
+            url_encode(provider.client_id()),
+            url_encode(&redirect_uri_str),
+            url_encode(pkce_challenge.as_str()),
+        );
+        for scope in scopes {
+            url.push_str("&scope=");
+            url.push_str(&url_encode(scope));
+        }
+        url
+    };
 
-    let code = wait_for_callback(&listener, REDIRECT_PATH)?;
-    exchange_code(TOKEN, CLIENT_ID, &redirect, &verifier, &code)
+    // Open browser
+    open_browser(&authorize_url).map_err(OAuthError::Network)?;
+
+    // Wait for callback
+    let code = wait_for_callback(&listener)?;
+
+    // Exchange code for tokens
+    exchange_code(&provider, &code, pkce_verifier.secret(), &redirect_uri_str)
 }
 
-fn oauth_flow_xai() -> Result<OAuthTokens, OAuthError> {
-    const CLIENT_ID: &str = "b1a00492-073a-47ea-816f-4c329264a828";
-    const DISCOVERY: &str = "https://auth.x.ai/.well-known/openid-configuration";
-    const SCOPES: &str = "openid profile email offline_access grok-cli:access api:access";
-    const REDIRECT_HOST: &str = "127.0.0.1";
-    const REDIRECT_PORT: u16 = 56121;
-    const REDIRECT_PATH: &str = "/callback";
-
-    let (auth_ep, token_ep) = discover_xai(DISCOVERY)?;
-
-    let (verifier, challenge) = pkce_pair();
-
-    let listener = TcpListener::bind((REDIRECT_HOST, REDIRECT_PORT))
-        .or_else(|_| TcpListener::bind((REDIRECT_HOST, 0u16)))
-        .map_err(|_| OAuthError::PortInUse(REDIRECT_PORT))?;
-    let bound_port = listener
-        .local_addr()
-        .map(|a| a.port())
-        .unwrap_or(REDIRECT_PORT);
-    let redirect = format!("http://{REDIRECT_HOST}:{bound_port}{REDIRECT_PATH}");
-    listener.set_nonblocking(true).ok();
-
-    let url = format!(
-        "{auth}?response_type=code&client_id={cid}&redirect_uri={redir}&scope={s}&code_challenge={ch}&code_challenge_method=S256&state={st}",
-        auth = auth_ep,
-        cid = urlenc(CLIENT_ID),
-        redir = urlenc(&redirect),
-        s = urlenc(SCOPES),
-        ch = urlenc(&challenge),
-        st = urlenc("rs_ai_oauth"),
-    );
-
-    open_browser(&url).map_err(OAuthError::Network)?;
-
-    let code = wait_for_callback(&listener, REDIRECT_PATH)?;
-    exchange_code(&token_ep, CLIENT_ID, &redirect, &verifier, &code)
-}
-
-fn discover_xai(discovery_url: &str) -> Result<(String, String), OAuthError> {
-    let out = std::process::Command::new("curl")
-        .args(["-fsSL", discovery_url])
-        .output()
-        .map_err(|e| OAuthError::Network(format!("xAI discovery failed: {e}")))?;
-    if !out.status.success() {
-        return Err(OAuthError::Network("xAI discovery failed".into()));
-    }
-    let v: serde_json::Value = serde_json::from_slice(&out.stdout)
-        .map_err(|e| OAuthError::Network(format!("discovery json: {e}")))?;
-    let auth = v
-        .get("authorization_endpoint")
-        .and_then(|x| x.as_str())
-        .ok_or_else(|| OAuthError::Network("missing authorization_endpoint".into()))?
-        .to_string();
-    let token = v
-        .get("token_endpoint")
-        .and_then(|x| x.as_str())
-        .ok_or_else(|| OAuthError::Network("missing token_endpoint".into()))?
-        .to_string();
-    Ok((auth, token))
-}
-
-fn wait_for_callback(listener: &TcpListener, _path: &str) -> Result<String, OAuthError> {
+fn wait_for_callback(listener: &TcpListener) -> Result<String, OAuthError> {
     let start = std::time::Instant::now();
     let timeout = std::time::Duration::from_secs(180);
 
@@ -224,40 +162,37 @@ fn wait_for_callback(listener: &TcpListener, _path: &str) -> Result<String, OAut
                 let mut buf = [0u8; 8192];
                 let n = stream.read(&mut buf).unwrap_or(0);
                 let req = String::from_utf8_lossy(&buf[..n]);
-                let line = req.lines().next().unwrap_or("");
-                let req_path = line.split_whitespace().nth(1).unwrap_or("");
+                let req_path = req.lines().next().unwrap_or("").split(' ').nth(1).unwrap_or("");
 
-                if !req_path.contains('?') {
-                    let body = "Not found";
-                    let _ = stream.write_all(
-                        format!(
-                            "HTTP/1.1 404 Not Found\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                            body.len()
-                        )
-                        .as_bytes(),
+                let query = req_path.split('?').nth(1).unwrap_or("");
+                let params: HashMap<&str, String> = query
+                    .split('&')
+                    .filter_map(|pair| {
+                        let mut parts = pair.splitn(2, '=');
+                        let k = parts.next()?;
+                        let v = url_decode(parts.next().unwrap_or(""));
+                        Some((k, v))
+                    })
+                    .collect();
+
+                if let Some(code) = params.get("code") {
+                    let body = "<html><body style='font-family:sans-serif;background:#111;color:#eee;padding:40px'><h1>Connected</h1><p>You can close this tab.</p></body></html>";
+                    let resp = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        body.len(),
+                        body
                     );
-                    continue;
+                    let _ = stream.write_all(resp.as_bytes());
+                    return Ok(code.clone());
                 }
 
-                let q = req_path.split('?').nth(1).unwrap_or("");
-                let mut code = None;
-                for pair in q.split('&') {
-                    let mut it = pair.splitn(2, '=');
-                    let k = it.next().unwrap_or("");
-                    let v = it.next().unwrap_or("");
-                    if k == "code" {
-                        code = Some(url_decode(v));
-                    }
-                }
-
-                if let Some(code) = code {
-                    let body = "<html><body style='font-family:sans-serif;background:#111;color:#eee;padding:40px'><h1>Connected to rs_ai</h1><p>You can close this tab.</p></body></html>";
-                    let _ = stream.write_all(html_ok(body).as_bytes());
-                    return Ok(code);
-                }
-
-                let body = "<html><body><h1>Missing code parameter</h1></body></html>";
-                let _ = stream.write_all(html_ok(body).as_bytes());
+                let body = "<html><body><h1>Error</h1><p>Missing authorization code.</p></body></html>";
+                let resp = format!(
+                    "HTTP/1.1 400 Bad Request\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                );
+                let _ = stream.write_all(resp.as_bytes());
                 return Err(OAuthError::Auth("Missing code in callback".into()));
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -270,44 +205,34 @@ fn wait_for_callback(listener: &TcpListener, _path: &str) -> Result<String, OAut
 }
 
 fn exchange_code(
-    token_url: &str,
-    client_id: &str,
-    redirect_uri: &str,
-    code_verifier: &str,
+    provider: &OAuthProvider,
     code: &str,
+    code_verifier: &str,
+    redirect_uri: &str,
 ) -> Result<OAuthTokens, OAuthError> {
+    use reqwest::blocking::Client as BlockingClient;
+
+    let http_client = BlockingClient::new();
+
     let body = format!(
         "grant_type=authorization_code&client_id={}&code={}&redirect_uri={}&code_verifier={}",
-        urlenc(client_id),
-        urlenc(code),
-        urlenc(redirect_uri),
-        urlenc(code_verifier),
+        url_encode(provider.client_id()),
+        url_encode(code),
+        url_encode(redirect_uri),
+        url_encode(code_verifier),
     );
 
-    let out = std::process::Command::new("curl")
-        .args([
-            "-fsSL",
-            "-X",
-            "POST",
-            token_url,
-            "-H",
-            "Content-Type: application/x-www-form-urlencoded",
-            "-H",
-            "Accept: application/json",
-            "--data",
-            &body,
-        ])
-        .output()
-        .map_err(|e| OAuthError::Network(format!("token exchange failed: {e}")))?;
+    let response = http_client
+        .post(provider.token_url())
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("Accept", "application/json")
+        .body(body)
+        .send()
+        .map_err(|e| OAuthError::Network(format!("token exchange request failed: {e}")))?;
 
-    if !out.status.success() {
-        return Err(OAuthError::Auth(
-            String::from_utf8_lossy(&out.stderr).to_string(),
-        ));
-    }
-
-    let v: serde_json::Value = serde_json::from_slice(&out.stdout)
-        .map_err(|e| OAuthError::Network(format!("token json: {e}")))?;
+    let v: serde_json::Value = response
+        .json()
+        .map_err(|e| OAuthError::Network(format!("token exchange parse failed: {e}")))?;
 
     let access_token = v
         .get("access_token")
@@ -325,6 +250,58 @@ fn exchange_code(
     Ok(OAuthTokens {
         access_token,
         refresh_token,
+        expires_at,
+    })
+}
+
+/// Refresh an expired token using the refresh token.
+pub async fn refresh_oauth_token(
+    provider: OAuthProvider,
+    tokens: &OAuthTokens,
+) -> Result<OAuthTokens, OAuthError> {
+    let refresh = tokens.refresh_token.as_deref().unwrap_or("");
+    if refresh.is_empty() {
+        return Err(OAuthError::Auth("No refresh token available".into()));
+    }
+
+    let body = format!(
+        "grant_type=refresh_token&refresh_token={}&client_id={}",
+        url_encode(refresh),
+        url_encode(provider.client_id()),
+    );
+
+    let http_client = reqwest::Client::new();
+    let response = http_client
+        .post(provider.token_url())
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("Accept", "application/json")
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| OAuthError::Network(format!("token refresh failed: {e}")))?;
+
+    let v: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| OAuthError::Network(format!("token refresh json: {e}")))?;
+
+    let access_token = v
+        .get("access_token")
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| OAuthError::Auth("no access_token in refresh response".into()))?
+        .to_string();
+    let new_refresh = v
+        .get("refresh_token")
+        .and_then(|x| x.as_str())
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .or_else(|| tokens.refresh_token.clone());
+    let expires_in = v.get("expires_in").and_then(|x| x.as_u64()).unwrap_or(3600);
+    let expires_at = now_secs() + expires_in;
+
+    Ok(OAuthTokens {
+        access_token,
+        refresh_token: new_refresh,
         expires_at,
     })
 }
@@ -357,6 +334,11 @@ fn url_decode(s: &str) -> String {
     out
 }
 
+fn url_encode(s: &str) -> String {
+    use url::form_urlencoded::byte_serialize;
+    byte_serialize(s.as_bytes()).collect()
+}
+
 fn open_browser(url: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
@@ -379,107 +361,36 @@ fn open_browser(url: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Refresh an expired token using the refresh token.
-pub async fn refresh_oauth_token(
-    provider: OAuthProvider,
-    tokens: &OAuthTokens,
-) -> Result<OAuthTokens, OAuthError> {
-    let refresh = tokens.refresh_token.as_deref().unwrap_or("");
-    if refresh.is_empty() {
-        return Err(OAuthError::Auth("No refresh token available".into()));
-    }
-
-    let token_endpoint = match provider {
-        OAuthProvider::ChatGpt => "https://auth.openai.com/oauth/token",
-        OAuthProvider::Xai => "https://auth.x.ai/oauth2/token",
-    };
-
-    let client_id = match provider {
-        OAuthProvider::ChatGpt => "app_EMoamEEZ73f0CkXaXp7hrann",
-        OAuthProvider::Xai => "b1a00492-073a-47ea-816f-4c329264a828",
-    };
-
-    let body = format!(
-        "grant_type=refresh_token&refresh_token={}&client_id={}",
-        urlenc(refresh),
-        urlenc(client_id),
-    );
-
-    let client = reqwest::Client::new();
-    let response = client
-        .post(token_endpoint)
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .header("Accept", "application/json")
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| OAuthError::Network(format!("token refresh failed: {e}")))?;
-
-    if !response.status().is_success() {
-        return Err(OAuthError::Auth("Token refresh failed".into()));
-    }
-
-    let v: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| OAuthError::Network(format!("token refresh json: {e}")))?;
-
-    let access_token = v
-        .get("access_token")
-        .and_then(|x| x.as_str())
-        .ok_or_else(|| OAuthError::Auth("no access_token in refresh response".into()))?
-        .to_string();
-    let new_refresh = v
-        .get("refresh_token")
-        .and_then(|x| x.as_str())
-        .filter(|s| !s.is_empty())
-        .map(String::from)
-        .or_else(|| tokens.refresh_token.clone());
-    let expires_in = v.get("expires_in").and_then(|x| x.as_u64()).unwrap_or(3600);
-    let expires_at = now_secs() + expires_in;
-
-    Ok(OAuthTokens {
-        access_token,
-        refresh_token: new_refresh,
-        expires_at,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn pkce_pair_generates_valid_verifier_and_challenge() {
-        let (verifier, challenge) = pkce_pair();
-        assert!(!verifier.is_empty());
-        assert!(!challenge.is_empty());
-        assert_ne!(verifier, challenge);
-        // Both should be base64url (no + / or =)
-        assert!(!verifier.contains('+'));
-        assert!(!verifier.contains('/'));
-        assert!(!verifier.contains('='));
+    fn test_provider_client_ids() {
+        assert_eq!(
+            OAuthProvider::ChatGpt.client_id(),
+            "app_EMoamEEZ73f0CkXaXp7hrann"
+        );
+        assert_eq!(
+            OAuthProvider::Xai.client_id(),
+            "b1a00492-073a-47ea-816f-4c329264a828"
+        );
     }
 
     #[test]
-    fn base64url_encodes_correctly() {
-        let input = b"hello";
-        let result = base64url(input);
-        assert!(!result.is_empty());
-        assert!(!result.contains('+'));
-        assert!(!result.contains('/'));
-        assert!(!result.contains('='));
-    }
-
-    #[test]
-    fn url_decode_handles_encoded_string() {
+    fn test_url_decode() {
         assert_eq!(url_decode("hello%20world"), "hello world");
         assert_eq!(url_decode("a+b"), "a b");
         assert_eq!(url_decode("simple"), "simple");
     }
 
     #[test]
-    fn provider_names_are_correct() {
+    fn test_url_encode() {
+        assert_eq!(url_encode("hello world"), "hello+world");
+    }
+
+    #[test]
+    fn test_provider_names() {
         assert_eq!(OAuthProvider::ChatGpt.name(), "chatgpt");
         assert_eq!(OAuthProvider::Xai.name(), "grok");
     }

@@ -9,6 +9,7 @@ description = "(UNSTABLE; in active development) Core traits, types, middleware,
 
 [features]
 default = []
+oauth = ["dep:oauth2", "dep:url"]
 telemetry = [
     "dep:opentelemetry",
     "dep:opentelemetry_sdk",
@@ -30,13 +31,12 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 bytes = { workspace = true }
-url = { workspace = true }
+url = { workspace = true, optional = true }
 base64 = { workspace = true }
 mime = { workspace = true }
 secrecy = { workspace = true }
-sha2 = { workspace = true }
-getrandom = { workspace = true }
 reqwest = { workspace = true }
+oauth2 = { version = "5.0", optional = true, default-features = false, features = ["reqwest", "rustls-tls"] }
 
 # telemetry (optional)
 opentelemetry = { version = "0.27", optional = true, features = ["trace"] }
