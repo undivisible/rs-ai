@@ -20,8 +20,12 @@ pub mod chatgpt;
 pub mod claude;
 #[cfg(feature = "cloudflare")]
 pub mod cloudflare;
+#[cfg(feature = "cohere")]
+pub mod cohere;
 #[cfg(feature = "gemini")]
 pub mod gemini;
+#[cfg(feature = "voyage")]
+pub mod voyage;
 #[cfg(feature = "langfuse")]
 pub mod langfuse;
 #[cfg(feature = "ollama")]
@@ -40,8 +44,12 @@ pub use chatgpt::*;
 pub use claude::*;
 #[cfg(feature = "cloudflare")]
 pub use cloudflare::*;
+#[cfg(feature = "cohere")]
+pub use cohere::{CohereProvider, CohereRerankingModel, RERANK_MODEL as COHERE_RERANK_MODEL};
 #[cfg(feature = "gemini")]
 pub use gemini::*;
+#[cfg(feature = "voyage")]
+pub use voyage::{VoyageRerankingModel, RERANK_MODEL as VOYAGE_RERANK_MODEL, RERANK_LITE};
 #[cfg(feature = "langfuse")]
 pub use langfuse::*;
 #[cfg(feature = "ollama")]

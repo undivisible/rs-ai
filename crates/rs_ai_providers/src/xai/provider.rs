@@ -9,6 +9,7 @@ use rs_ai_core::CacheConfig;
 #[derive(Clone)]
 pub struct XaiProvider {
     client: std::sync::Arc<XaiClient>,
+    oauth_token: Option<String>,
 }
 
 impl XaiProvider {
@@ -24,17 +25,32 @@ impl XaiProvider {
         let client = XaiClient::new(api_key);
         Self {
             client: std::sync::Arc::new(client),
+            oauth_token: None,
+        }
+    }
+
+    /// Override the API key with an OAuth bearer token.
+    pub fn with_oauth_token(mut self, token: impl Into<String>) -> Self {
+        self.oauth_token = Some(token.into());
+        self
+    }
+
+    fn effective_client(&self) -> std::sync::Arc<XaiClient> {
+        if let Some(ref token) = self.oauth_token {
+            std::sync::Arc::new(XaiClient::new(token.as_str()))
+        } else {
+            self.client.clone()
         }
     }
 
     /// Create a model instance for the given model ID.
     pub fn model(&self, model_id: &str) -> XaiModel {
-        XaiModel::new(model_id.to_string(), self.client.clone())
+        XaiModel::new(model_id.to_string(), self.effective_client())
     }
 
     /// Create a model instance with cache configuration.
     pub fn model_with_cache(&self, model_id: &str, cache_config: CacheConfig) -> XaiModel {
-        let mut model = XaiModel::new(model_id.to_string(), self.client.clone());
+        let mut model = XaiModel::new(model_id.to_string(), self.effective_client());
         model.set_cache(cache_config);
         model
     }
@@ -61,7 +77,7 @@ impl XaiProvider {
 
     /// Create an image generation model for the given model ID.
     pub fn image_model(&self, model_id: &str) -> XaiImageModel {
-        XaiImageModel::new(model_id.to_string(), self.client.clone())
+        XaiImageModel::new(model_id.to_string(), self.effective_client())
     }
 
     /// Grok 4 Imagine — xAI's image generation model.

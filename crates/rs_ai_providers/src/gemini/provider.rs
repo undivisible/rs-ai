@@ -2,7 +2,6 @@ use secrecy::SecretString;
 
 use super::image::GeminiImageModel;
 use super::model::GeminiModel;
-use super::video::GeminiVideoModel;
 
 // ── Latest model aliases ──
 
@@ -87,13 +86,6 @@ impl GeminiProvider {
         self.image_model(super::image::IMAGEN_3_FAST)
     }
 
-    /// Get a video generation model using Google Veo.
-    ///
-    /// Note: Veo video generation is currently a stub and will return an
-    /// `AiError::Unsupported` error when called.
-    pub fn video_model(&self) -> GeminiVideoModel {
-        GeminiVideoModel::new()
-    }
 
     /// Open a Gemini Live API session for bidirectional voice/video streaming.
     ///

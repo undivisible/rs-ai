@@ -31,6 +31,12 @@ impl OpenAiCompatibleConfig {
         self
     }
 
+    /// Replace the API key (e.g. to override with an OAuth token).
+    pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = SecretString::from(api_key.into());
+        self
+    }
+
     /// Add a default header that will be sent with every request.
     pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
         self.default_headers.push((name.into(), value.into()));

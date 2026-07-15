@@ -7,6 +7,16 @@ license.workspace = true
 repository.workspace = true
 description = "(UNSTABLE; in active development) Core traits, types, middleware, cache config, UI stream, and observability for the Rusty AI SDK. Includes: LanguageModel trait, Prompt/StreamEvent types, Retry/Logging/Cache middleware, SSE/NDJSON encoders, tracing observability."
 
+[features]
+default = []
+telemetry = [
+    "dep:opentelemetry",
+    "dep:opentelemetry_sdk",
+    "dep:opentelemetry-otlp",
+    "dep:tracing-opentelemetry",
+    "dep:tracing-subscriber",
+]
+
 [dependencies]
 async-trait = { workspace = true }
 futures = { workspace = true }
@@ -27,6 +37,13 @@ secrecy = { workspace = true }
 sha2 = { workspace = true }
 getrandom = { workspace = true }
 reqwest = { workspace = true }
+
+# telemetry (optional)
+opentelemetry = { version = "0.27", optional = true, features = ["trace"] }
+opentelemetry_sdk = { version = "0.27", optional = true, features = ["trace", "rt-tokio"] }
+opentelemetry-otlp = { version = "0.27", optional = true }
+tracing-opentelemetry = { version = "0.28", optional = true }
+tracing-subscriber = { version = "0.3", optional = true, features = ["registry"] }
 
 [dev-dependencies]
 tokio = { workspace = true }

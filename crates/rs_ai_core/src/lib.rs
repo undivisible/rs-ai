@@ -25,6 +25,7 @@ pub mod cache;
 pub mod oauth;
 
 pub mod observability;
+pub mod telemetry;
 // middleware and ui_stream are already declared above from the old traits crate,
 // but we need to make sure they point to the right thing. The old traits crate
 // had `pub mod middleware` which was a placeholder; now it contains the impls.
@@ -37,7 +38,9 @@ pub use content::{ContentPart, FileData, ImageData, ImageDetail};
 pub use embedding::cosine_similarity;
 pub use error::{AiError, AiResult};
 pub use message::{Message, Role};
-pub use middleware::{extract_reasoning_middleware, ExtractReasoningMiddleware};
+pub use middleware::{
+    extract_reasoning_middleware, ExtractReasoningMiddleware, GuardrailConfig, GuardrailMiddleware,
+};
 pub use model::{
     agent_loop, rerank, EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel,
     LanguageModel, LifecycleCallbacks, Middleware, MiddlewareNext, ObjectStream, ObjectStreamEvent,
@@ -45,6 +48,7 @@ pub use model::{
     ReasoningEffort, RerankOptions, RerankingModel, SpeechToTextModel, stream_object,
     TextToSpeechModel, ThinkingConfig, VideoGenerationOptions, VideoModel,
 };
+pub use middleware::wrap_language_model;
 pub use prompt::Prompt;
 pub use provider::Provider;
 pub use registry::{create_provider_registry, ProviderRegistry};
@@ -66,6 +70,9 @@ pub use usage::Usage;
 // Re-exports from merged crates.
 pub use cache::{CacheConfig, CacheTTL};
 pub use observability::{with_observability, ObservableModel};
+pub use telemetry::{TelemetryConfig, with_telemetry};
+#[cfg(feature = "telemetry")]
+pub use telemetry::init_telemetry;
 
 /// Generate text from a language model with default options.
 ///

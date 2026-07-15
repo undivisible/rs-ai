@@ -10,10 +10,8 @@ pub mod live_api;
 mod model;
 mod provider;
 mod stream_parser;
-pub(crate) mod video;
 
 pub use image::{GeminiImageModel, IMAGEN_3, IMAGEN_3_FAST};
 pub use live_api::{GeminiLiveSessionAdapter, LiveSession};
 pub use model::*;
 pub use provider::*;
-pub use video::{GeminiVideoModel, VEO_3};

@@ -28,10 +28,11 @@
 use base64::Engine as _;
 use futures::stream::BoxStream;
 use rs_ai_core::{
-    agent_loop, AiError, AiResult, CacheConfig, ContentPart, EmbeddingResult, FileData,
-    GenerateOptions, ImageData, ImageGenerationOptions, ImageModel, ImageResult,
+    agent_loop, AiError, AiResult, CacheConfig, ContentPart, EmbeddingResult,
+    FileData, GenerateOptions, ImageData, ImageGenerationOptions, ImageModel, ImageResult,
     LanguageModel, LifecycleCallbacks, Message, OnFinish, OnStepFinish, OnToolCall, Prompt,
-    RealtimeSession, RerankResult, StreamEvent, VideoGenerationOptions, VideoModel, VideoResult,
+    RealtimeSession, RerankResult, SpeechToTextModel, StreamEvent, TextToSpeechModel,
+    TtsOptions, VideoGenerationOptions, VideoResult,
 };
 use rs_ai_core::tool::ToolSet;
 use rs_ai_providers::chatgpt::ChatGptProvider;
@@ -63,9 +64,11 @@ pub struct ClientBuilder {
     on_tool_call: Option<OnToolCall>,
     /// Callback after final result.
     on_finish: Option<OnFinish>,
+    /// OAuth bearer token (overrides API key when set).
+    oauth_token: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum ProviderType {
     Claude,
     ChatGpt,
@@ -194,6 +197,15 @@ impl ClientBuilder {
         let mut cache = self.cache_config.unwrap_or_default();
         cache.xai_conv_id = Some(conv_id.into());
         self.cache_config = Some(cache);
+        self
+    }
+
+    /// Override the API key with an OAuth bearer token.
+    ///
+    /// When set, the token is used as the Bearer credential for the provider,
+    /// overriding any API key.
+    pub fn with_oauth_token(mut self, token: impl Into<String>) -> Self {
+        self.oauth_token = Some(token.into());
         self
     }
 
@@ -350,40 +362,50 @@ impl ClientBuilder {
     /// ```
     pub async fn speak(self, text: impl Into<String>) -> AiResult<Vec<u8>> {
         let text_str = text.into();
-        // Build a generate request that signals TTS intent via metadata.
-        // The model receives the text and, if it supports audio output, may
-        // return audio content. The current degraded path encodes the text
-        // as UTF-8 bytes so callers always get a valid `Vec<u8>`.
-        let options = GenerateOptions::default();
-        let model_id_hint = self.model_id.clone().unwrap_or_default();
-        let client = self.build().await?;
+        let api_key = self.api_key.clone();
+        let model_id = self.model_id.clone();
+        let provider_type = self.provider_type.clone();
 
-        let result = client
-            .model
-            .as_ref()
-            .as_ref()
-            .generate(Prompt::Text(text_str.clone()), options)
-            .await?;
-
-        // If the model returned audio bytes in metadata, prefer those.
-        // Otherwise fall back to the text response encoded as UTF-8.
-        if let Some(audio_b64) = result.metadata.extra.get("audio_bytes") {
-            if let Some(encoded) = audio_b64.as_str() {
-                let bytes = base64::engine::general_purpose::STANDARD
-                    .decode(encoded)
-                    .map_err(|e| {
-                        AiError::Serialization(format!(
-                            "Failed to decode audio_bytes from model `{}` metadata: {e}",
-                            model_id_hint
-                        ))
-                    })?;
-                return Ok(bytes);
+        match provider_type {
+            ProviderType::ChatGpt => {
+                let key = api_key.ok_or_else(|| AiError::AuthError {
+                    message: "API key not set. Use .api_key() to specify credentials."
+                        .to_string(),
+                })?;
+                let provider = ChatGptProvider::new(key);
+                let model = provider.tts_model(&model_id.unwrap_or_default());
+                let result = model
+                    .synthesize(&text_str, "alloy", TtsOptions::default())
+                    .await?;
+                Ok(result.audio)
+            }
+            _ => {
+                let options = GenerateOptions::default();
+                let model_id_hint = model_id.unwrap_or_default();
+                let client = self.build().await?;
+                let result = client
+                    .model
+                    .as_ref()
+                    .as_ref()
+                    .generate(Prompt::Text(text_str.clone()), options)
+                    .await?;
+                if let Some(audio_b64) = result.metadata.extra.get("audio_bytes") {
+                    if let Some(encoded) = audio_b64.as_str() {
+                        let bytes = base64::engine::general_purpose::STANDARD
+                            .decode(encoded)
+                            .map_err(|e| {
+                                AiError::Serialization(format!(
+                                    "Failed to decode audio_bytes from model `{}` metadata: {e}",
+                                    model_id_hint
+                                ))
+                            })?;
+                        return Ok(bytes);
+                    }
+                }
+                let spoken_text = result.text.unwrap_or(text_str);
+                Ok(spoken_text.into_bytes())
             }
         }
-
-        // Degraded path: return text as UTF-8 bytes.
-        let spoken_text = result.text.unwrap_or(text_str);
-        Ok(spoken_text.into_bytes())
     }
 
     /// Generate an image from a text prompt.
@@ -446,30 +468,13 @@ impl ClientBuilder {
     /// ```
     pub async fn generate_video(
         self,
-        prompt: impl Into<String>,
-        options: VideoGenerationOptions,
+        _prompt: impl Into<String>,
+        _options: VideoGenerationOptions,
     ) -> AiResult<VideoResult> {
-        let text = prompt.into();
-        let api_key = self.api_key.clone().ok_or_else(|| AiError::AuthError {
-            message: "API key not set. Use .api_key() to specify credentials.".to_string(),
-        })?;
-
-        match self.provider_type {
-            ProviderType::ChatGpt => {
-                let provider = ChatGptProvider::new(api_key);
-                let model = provider.video_model(&self.model_id.unwrap_or_default());
-                model.generate_video(&text, options).await
-            }
-            ProviderType::Gemini => {
-                let provider = GeminiProvider::new(api_key);
-                let model = provider.video_model();
-                model.generate_video(&text, options).await
-            }
-            _ => Err(AiError::UnsupportedCapability {
-                capability: "video_generation".to_string(),
-                provider: format!("{:?}", self.provider_type),
-            }),
-        }
+        Err(AiError::UnsupportedCapability {
+            capability: "video_generation".to_string(),
+            provider: format!("{:?}", self.provider_type),
+        })
     }
 
     /// Open a realtime voice/text session.
@@ -585,58 +590,69 @@ impl ClientBuilder {
     ///     .await?;
     /// ```
     pub async fn transcribe(self, audio: Vec<u8>, mime_type: &str) -> AiResult<String> {
-        let encoded = base64::engine::general_purpose::STANDARD.encode(&audio);
+        let api_key = self.api_key.clone();
+        let model_id = self.model_id.clone();
+        let provider_type = self.provider_type.clone();
 
-        let audio_part = ContentPart::File {
-            data: FileData::Base64 {
-                media_type: mime_type.to_string(),
-                data: encoded,
-            },
-        };
-
-        let instruction_part = ContentPart::Text {
-            text: "Transcribe the audio in the attached file. Return only the transcription text, no commentary.".to_string(),
-        };
-
-        let message = Message {
-            role: rs_ai_core::Role::User,
-            content: vec![instruction_part, audio_part],
-            name: None,
-            metadata: std::collections::HashMap::new(),
-        };
-
-        let prompt = Prompt::Messages(vec![message]);
-        let model_id_hint = self.model_id.clone().unwrap_or_default();
-        let client = self.build().await?;
-
-        let result = client
-            .model
-            .as_ref()
-            .as_ref()
-            .generate(prompt, GenerateOptions::default())
-            .await
-            .map_err(|e| {
-                // Surface a clearer UnsupportedCapability if the provider
-                // rejects the audio content.
-                match &e {
-                    AiError::ProviderError { message, .. }
-                        if message.to_lowercase().contains("audio")
-                            || message.to_lowercase().contains("unsupported")
-                            || message.to_lowercase().contains("media type") =>
-                    {
-                        AiError::UnsupportedCapability {
-                            capability: "audio_transcription".to_string(),
-                            provider: model_id_hint.clone(),
+        match provider_type {
+            ProviderType::ChatGpt => {
+                let key = api_key.ok_or_else(|| AiError::AuthError {
+                    message: "API key not set. Use .api_key() to specify credentials."
+                        .to_string(),
+                })?;
+                let provider = ChatGptProvider::new(key);
+                let model = provider.stt_model(&model_id.unwrap_or_default());
+                let result = model.transcribe(audio, mime_type, None).await?;
+                Ok(result.text)
+            }
+            _ => {
+                let encoded =
+                    base64::engine::general_purpose::STANDARD.encode(&audio);
+                let audio_part = ContentPart::File {
+                    data: FileData::Base64 {
+                        media_type: mime_type.to_string(),
+                        data: encoded,
+                    },
+                };
+                let instruction_part = ContentPart::Text {
+                    text: "Transcribe the audio in the attached file. Return only the transcription text, no commentary.".to_string(),
+                };
+                let message = Message {
+                    role: rs_ai_core::Role::User,
+                    content: vec![instruction_part, audio_part],
+                    name: None,
+                    metadata: std::collections::HashMap::new(),
+                };
+                let prompt = Prompt::Messages(vec![message]);
+                let model_id_hint = model_id.unwrap_or_default();
+                let client = self.build().await?;
+                let result = client
+                    .model
+                    .as_ref()
+                    .as_ref()
+                    .generate(prompt, GenerateOptions::default())
+                    .await
+                    .map_err(|e| match &e {
+                        AiError::ProviderError { message, .. }
+                            if message.to_lowercase().contains("audio")
+                                || message.to_lowercase().contains("unsupported")
+                                || message.to_lowercase().contains("media type") =>
+                        {
+                            AiError::UnsupportedCapability {
+                                capability: "audio_transcription".to_string(),
+                                provider: model_id_hint.clone(),
+                            }
                         }
+                        _ => e,
+                    })?;
+                result.text.ok_or_else(|| {
+                    AiError::UnsupportedCapability {
+                        capability: "audio_transcription".to_string(),
+                        provider: model_id_hint,
                     }
-                    _ => e,
-                }
-            })?;
-
-        result.text.ok_or_else(|| AiError::UnsupportedCapability {
-            capability: "audio_transcription".to_string(),
-            provider: model_id_hint,
-        })
+                })
+            }
+        }
     }
 
     async fn build(self) -> AiResult<Client> {
@@ -681,7 +697,10 @@ impl ClientBuilder {
                     let provider = OpenAiCompatibleProvider::new(config, "chatgpt", "ChatGPT");
                     provider.language_model(&model_id)
                 } else {
-                    let provider = ChatGptProvider::new(api_key);
+                    let mut provider = ChatGptProvider::new(api_key);
+                    if let Some(ref token) = self.oauth_token {
+                        provider = provider.with_oauth_token(token.clone());
+                    }
                     let mut m = provider.model(&model_id);
                     if let Some(cache_cfg) = &self.cache_config {
                         m.set_cache(cache_cfg.clone());
@@ -714,7 +733,10 @@ impl ClientBuilder {
                     let provider = OpenAiCompatibleProvider::new(config, "xai", "xAI Grok");
                     provider.language_model(&model_id)
                 } else {
-                    let provider = XaiProvider::new(api_key);
+                    let mut provider = XaiProvider::new(api_key);
+                    if let Some(ref token) = self.oauth_token {
+                        provider = provider.with_oauth_token(token.clone());
+                    }
                     let mut m = provider.model(&model_id);
                     if let Some(cache_cfg) = &self.cache_config {
                         m.set_cache(cache_cfg.clone());
@@ -976,6 +998,7 @@ pub fn claude() -> ClientBuilder {
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
+        oauth_token: None,
     }
 }
 
@@ -1001,6 +1024,7 @@ pub fn chatgpt() -> ClientBuilder {
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
+        oauth_token: None,
     }
 }
 
@@ -1026,6 +1050,7 @@ pub fn gemini() -> ClientBuilder {
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
+        oauth_token: None,
     }
 }
 
@@ -1051,6 +1076,7 @@ pub fn xai() -> ClientBuilder {
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
+        oauth_token: None,
     }
 }
 
@@ -1081,6 +1107,7 @@ pub fn cloudflare(account_id: impl Into<String>) -> ClientBuilder {
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
+        oauth_token: None,
     }
 }
 
@@ -1108,5 +1135,6 @@ pub fn compatible(base_url: impl Into<String>) -> ClientBuilder {
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
+        oauth_token: None,
     }
 }
