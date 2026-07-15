@@ -153,6 +153,7 @@ impl OllamaModel {
                 model: self.model_id.clone(),
                 ..ResponseMetadata::default()
             },
+        steps: Vec::new(),
         })
     }
 }

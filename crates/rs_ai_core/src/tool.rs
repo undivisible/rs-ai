@@ -40,6 +40,22 @@ pub struct ToolCallResult {
     pub is_error: bool,
 }
 
+/// Tool execution options passed to tool handlers (Vercel's `ToolExecutionOptions`).
+#[derive(Debug, Clone, Default)]
+pub struct ToolExecutionOptions {
+    /// Unique identifier for this tool call.
+    pub call_id: String,
+    /// Arbitrary context data passed from the caller.
+    pub context: Option<serde_json::Value>,
+}
+
+/// Context injected into tools at execution time (Vercel's `toolsContext`).
+#[derive(Debug, Clone, Default)]
+pub struct ToolContext {
+    /// Per-tool context data.
+    pub data: HashMap<String, serde_json::Value>,
+}
+
 /// How the model should choose which tool to call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -94,8 +110,17 @@ impl ToolSet {
         self.tools.values().map(|t| t.definition()).collect()
     }
 
-    /// Execute a tool call request and return the result.
+    /// Execute a tool call request with default options.
     pub async fn execute(&self, call: &ToolCallRequest) -> AiResult<ToolCallResult> {
+        self.execute_with_options(call, &ToolExecutionOptions::default()).await
+    }
+
+    /// Execute a tool call request with execution options and return the result.
+    pub async fn execute_with_options(
+        &self,
+        call: &ToolCallRequest,
+        _options: &ToolExecutionOptions,
+    ) -> AiResult<ToolCallResult> {
         let tool = self
             .tools
             .get(&call.name)

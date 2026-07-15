@@ -12,6 +12,7 @@ pub mod middleware;
 pub mod model;
 pub mod prompt;
 pub mod provider;
+pub mod registry;
 pub mod router;
 pub mod schema;
 pub mod stream;
@@ -21,6 +22,7 @@ pub mod types;
 pub mod usage;
 
 pub mod cache;
+pub mod mcp;
 pub mod observability;
 // middleware and ui_stream are already declared above from the old traits crate,
 // but we need to make sure they point to the right thing. The old traits crate
@@ -35,20 +37,29 @@ pub use embedding::cosine_similarity;
 pub use error::{AiError, AiResult};
 pub use message::{Message, Role};
 pub use model::{
-    EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel, LanguageModel, Middleware,
-    MiddlewareNext, ProviderInfo, ReasoningEffort, RealtimeEvent, RealtimeSession,
-    SpeechToTextModel, TextToSpeechModel, ThinkingConfig, VideoGenerationOptions, VideoModel,
+    agent_loop, EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel,
+    LanguageModel, Middleware, MiddlewareNext, ProviderInfo, ReasoningEffort, RealtimeEvent,
+    RealtimeSession, SpeechToTextModel, TextToSpeechModel, ThinkingConfig,
+    VideoGenerationOptions, VideoModel,
 };
 pub use prompt::Prompt;
 pub use provider::Provider;
+pub use registry::{create_provider_registry, ProviderRegistry};
 pub use router::{Route, Router};
 pub use schema::OutputSchema;
-pub use stream::{AiStream, StreamCollector, StreamEvent, SyntheticStreamer};
+pub use mcp::{mcp_tools, McpConfig, McpTool};
+pub use stream::{
+    AiStream, Chunking, compose_transforms, SmoothStream, SmoothStreamOptions, StreamCollector,
+    StreamEvent, StreamTransform, SyntheticStreamer,
+};
 pub use structured::{
     AudioResult, EmbeddingResult, GenerateResult, GeneratedFile, ImageResult, ObjectResult,
-    TranscriptionResult, TtsOptions, VideoResult,
+    StepResult, TranscriptionResult, TtsOptions, VideoResult,
 };
-pub use tool::{ToolCallRequest, ToolCallResult, ToolChoice, ToolDefinition, ToolSet};
+pub use tool::{
+    ToolCallRequest, ToolCallResult, ToolChoice, ToolContext, ToolDefinition,
+    ToolExecutionOptions, ToolSet,
+};
 pub use types::{FinishReason, ModelInfo, ModelRegistry, RequestMetadata, ResponseMetadata};
 pub use usage::Usage;
 

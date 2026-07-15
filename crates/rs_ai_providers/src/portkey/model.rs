@@ -100,6 +100,7 @@ impl LanguageModel for PortkeyModel {
             finish_reason: FinishReason::Stop,
             usage,
             metadata: Default::default(),
+        steps: Vec::new(),
         })
     }
 

@@ -29,3 +29,15 @@ fn add_opt(a: Option<u64>, b: Option<u64>) -> Option<u64> {
         (None, None) => None,
     }
 }
+
+impl std::ops::Add for Usage {
+    type Output = Usage;
+
+    fn add(self, rhs: Usage) -> Usage {
+        Usage {
+            prompt_tokens: add_opt(self.prompt_tokens, rhs.prompt_tokens),
+            completion_tokens: add_opt(self.completion_tokens, rhs.completion_tokens),
+            total_tokens: add_opt(self.total_tokens, rhs.total_tokens),
+        }
+    }
+}

@@ -8,10 +8,11 @@ use uuid::Uuid;
 use crate::capability::{Capability, CapabilitySet};
 
 /// Reason the model stopped generating.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FinishReason {
     /// Generation completed naturally.
+    #[default]
     Stop,
     /// Maximum token limit reached.
     Length,

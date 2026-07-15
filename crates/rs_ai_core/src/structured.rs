@@ -1,9 +1,28 @@
 //! Structured generation result types.
 use serde::{Deserialize, Serialize};
 
-use crate::tool::ToolCallRequest;
+use crate::tool::{ToolCallRequest, ToolCallResult};
 use crate::types::{FinishReason, ResponseMetadata};
 use crate::usage::Usage;
+
+/// A single step in a multi-turn agent loop (Vercel's `StepResult`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StepResult {
+    /// Step number (0-indexed).
+    pub step_number: u32,
+    /// Text generated in this step.
+    pub text: Option<String>,
+    /// Tool calls made in this step.
+    #[serde(default)]
+    pub tool_calls: Vec<ToolCallRequest>,
+    /// Tool results returned in this step.
+    #[serde(default)]
+    pub tool_results: Vec<ToolCallResult>,
+    /// Why this step finished.
+    pub finish_reason: FinishReason,
+    /// Token usage for this step.
+    pub usage: Usage,
+}
 
 /// The result of a non-streaming generate call.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +39,22 @@ pub struct GenerateResult {
     /// Provider-specific response metadata.
     #[serde(default)]
     pub metadata: ResponseMetadata,
+    /// Per-step breakdown when using agent loop (maxSteps > 1).
+    #[serde(default)]
+    pub steps: Vec<StepResult>,
+}
+
+impl Default for GenerateResult {
+    fn default() -> Self {
+        Self {
+            text: None,
+            tool_calls: Vec::new(),
+            finish_reason: FinishReason::Stop,
+            usage: Usage::default(),
+            metadata: ResponseMetadata::default(),
+            steps: Vec::new(),
+        }
+    }
 }
 
 /// The result of a structured object generation.

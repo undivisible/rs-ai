@@ -9,7 +9,7 @@ use crate::structured::{
     AudioResult, EmbeddingResult, GenerateResult, ImageResult, ObjectResult, TranscriptionResult,
     TtsOptions, VideoResult,
 };
-use crate::tool::{ToolChoice, ToolDefinition};
+use crate::tool::{ToolChoice, ToolContext, ToolDefinition};
 use crate::types::RequestMetadata;
 
 /// Extended-thinking / reasoning configuration.
@@ -73,6 +73,13 @@ pub struct GenerateOptions {
     pub thinking: Option<ThinkingConfig>,
     /// Reasoning effort (OpenAI Responses API).
     pub reasoning_effort: Option<ReasoningEffort>,
+    /// Maximum number of tool-calling steps (agent loop).
+    /// When > 1, the model's tool calls are automatically executed and fed back
+    /// as new messages. Default: 1 (single-shot, no auto-loop).
+    pub max_steps: Option<u32>,
+    /// Tool context — arbitrary per-tool data passed to tool handlers.
+    /// Analogous to Vercel's `toolsContext` parameter.
+    pub tools_context: Option<ToolContext>,
     /// Request metadata.
     pub metadata: RequestMetadata,
 }
@@ -161,6 +168,19 @@ impl GenerateOptions {
         self.metadata = metadata;
         self
     }
+
+    /// Enable agent loop with the given max steps.
+    /// When > 1, tool calls are automatically executed and fed back to the model.
+    pub fn with_max_steps(mut self, max_steps: u32) -> Self {
+        self.max_steps = Some(max_steps);
+        self
+    }
+
+    /// Set tool context — arbitrary per-tool data passed to tool handlers.
+    pub fn with_tools_context(mut self, ctx: ToolContext) -> Self {
+        self.tools_context = Some(ctx);
+        self
+    }
 }
 
 /// Describes a provider backend.
@@ -213,6 +233,127 @@ pub async fn generate_object<T: serde::de::DeserializeOwned + schemars::JsonSche
         text: text.to_owned(),
         usage: result.usage,
         metadata: result.metadata,
+    })
+}
+
+/// Auto-execute tool calls in a loop (Vercel's `maxSteps` agent loop).
+///
+/// Equivalent to calling `generateText` with `maxSteps > 1` in Vercel AI SDK.
+/// Each iteration executes tool calls via `ToolSet`, feeds results back as
+/// new messages, and re-invokes the model until no more tool calls or
+/// `max_steps` is reached.
+///
+/// Returns a `GenerateResult` containing all steps and aggregated usage.
+pub async fn agent_loop(
+    model: &dyn LanguageModel,
+    prompt: Prompt,
+    options: GenerateOptions,
+    tools: &crate::tool::ToolSet,
+) -> AiResult<GenerateResult> {
+    use std::collections::HashMap;
+    use crate::message::{Message, Role};
+    use crate::structured::StepResult;
+    use crate::tool::ToolExecutionOptions;
+
+    let max_steps = options.max_steps.unwrap_or(1).max(1);
+    let mut current_prompt = prompt;
+    let mut all_steps: Vec<StepResult> = Vec::new();
+    let mut aggregated_usage = crate::usage::Usage::default();
+    let tool_context = options.tools_context.clone().unwrap_or_default();
+
+    for step_num in 0..max_steps {
+        // Generate with tools
+        let result = model.generate(current_prompt.clone(), options.clone()).await?;
+
+        aggregated_usage = aggregated_usage + result.usage.clone();
+
+        let has_tool_calls = !result.tool_calls.is_empty();
+
+        if has_tool_calls {
+            // Execute tool calls
+            let mut tool_results = Vec::new();
+            for call in &result.tool_calls {
+                let exec_opts = ToolExecutionOptions {
+                    call_id: call.id.clone(),
+                    context: tool_context.data.get(&call.name).cloned(),
+                };
+                let tr = tools.execute_with_options(call, &exec_opts).await?;
+                tool_results.push(tr);
+            }
+
+            // Record step
+            all_steps.push(StepResult {
+                step_number: step_num,
+                text: result.text.clone(),
+                tool_calls: result.tool_calls.clone(),
+                tool_results: tool_results.clone(),
+                finish_reason: result.finish_reason.clone(),
+                usage: result.usage,
+            });
+
+            // Build tool result messages and append to prompt
+            let tool_messages: Vec<Message> = tool_results.into_iter().map(|tr| Message {
+                role: Role::Tool,
+                content: vec![crate::content::ContentPart::Text { text: tr.content }],
+                name: None,
+                metadata: HashMap::new(),
+            }).collect();
+
+            // Append tool messages to current prompt
+            let mut msgs = current_prompt.clone().into_messages();
+            msgs.extend(tool_messages);
+            current_prompt = Prompt::Messages(msgs);
+
+            // If last step, still record final state
+            if step_num == max_steps - 1 {
+                all_steps.push(StepResult {
+                    step_number: step_num + 1,
+                    text: None,
+                    tool_calls: Vec::new(),
+                    tool_results: Vec::new(),
+                    finish_reason: result.finish_reason.clone(),
+                    usage: crate::usage::Usage::default(),
+                });
+            }
+        } else {
+            // No tool calls — done
+            all_steps.push(StepResult {
+                step_number: step_num,
+                text: result.text.clone(),
+                tool_calls: Vec::new(),
+                tool_results: Vec::new(),
+                finish_reason: result.finish_reason.clone(),
+                usage: result.usage.clone(),
+            });
+
+            return Ok(GenerateResult {
+                text: result.text,
+                tool_calls: Vec::new(),
+                finish_reason: result.finish_reason,
+                usage: aggregated_usage,
+                metadata: result.metadata,
+                steps: all_steps,
+            });
+        }
+    }
+
+    // Exhausted max_steps — extract final text from last step
+    let last = all_steps.last().cloned().unwrap_or(StepResult {
+        step_number: 0,
+        text: None,
+        tool_calls: Vec::new(),
+        tool_results: Vec::new(),
+        finish_reason: crate::types::FinishReason::Stop,
+        usage: crate::usage::Usage::default(),
+    });
+
+    Ok(GenerateResult {
+        text: last.text,
+        tool_calls: Vec::new(),
+        finish_reason: crate::types::FinishReason::Stop,
+        usage: aggregated_usage,
+        metadata: crate::types::ResponseMetadata::default(),
+        steps: all_steps,
     })
 }
 

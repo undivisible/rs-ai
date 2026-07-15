@@ -117,6 +117,7 @@ impl LanguageModel for FoundationModel {
             tool_calls: Vec::new(),
             finish_reason: FinishReason::Stop,
             usage: Usage::default(),
+            steps: Vec::new(),
             metadata: ResponseMetadata {
                 provider: "apple".into(),
                 model: "apple-foundation-model".into(),

@@ -290,6 +290,7 @@ mod tests {
                     total_tokens: Some(15),
                 },
                 metadata: ResponseMetadata::default(),
+            steps: Vec::new(),
             })
         }
 

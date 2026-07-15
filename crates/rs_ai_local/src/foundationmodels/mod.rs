@@ -1061,6 +1061,7 @@ impl LanguageModel for FoundationModel {
                 latency_ms: Some(latency_ms),
                 ..Default::default()
             },
+        steps: Vec::new(),
         })
     }
 

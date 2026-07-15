@@ -94,6 +94,7 @@ impl LanguageModel for BrowserAiModel {
                 model: "browser-ai".into(),
                 ..Default::default()
             },
+        steps: Vec::new(),
         })
     }
 

@@ -155,6 +155,7 @@ impl StreamCollector {
             finish_reason,
             usage,
             metadata: ResponseMetadata::default(),
+            steps: Vec::new(),
         })
     }
 }
@@ -207,4 +208,104 @@ impl SyntheticStreamer {
 
         Box::pin(stream::iter(chunks))
     }
+}
+
+// ─── Stream transforms ─────────────────────────────────────────────────────────────────
+
+/// Strategy for chunking text in stream transformations.
+#[derive(Debug, Clone)]
+pub enum Chunking {
+    /// Chunk by words (default).
+    Word,
+    /// Chunk by lines.
+    Line,
+    /// Chunk by custom regex pattern.
+    Pattern(String),
+}
+
+/// Options for the smooth stream transformation.
+#[derive(Debug, Clone)]
+pub struct SmoothStreamOptions {
+    /// Delay in milliseconds between chunks. Default: 10ms.
+    pub delay_ms: Option<u64>,
+    /// How to chunk the text.
+    pub chunking: Chunking,
+}
+
+impl Default for SmoothStreamOptions {
+    fn default() -> Self {
+        Self {
+            delay_ms: Some(10),
+            chunking: Chunking::Word,
+        }
+    }
+}
+
+/// A transform that can be applied to a text stream.
+/// Similar to Vercel's `experimental_transform` pipeline.
+pub trait StreamTransform: Send + Sync {
+    /// Apply the transform to a stream of text deltas.
+    fn apply(
+        &self,
+        input: futures::stream::BoxStream<'static, String>,
+    ) -> futures::stream::BoxStream<'static, String>;
+}
+
+/// Smooth streaming by chunking and adding delay between chunks.
+/// Equivalent to Vercel's `smoothStream()`.
+pub struct SmoothStream {
+    options: SmoothStreamOptions,
+}
+
+impl SmoothStream {
+    /// Create a new smooth stream transform.
+    pub fn new(options: SmoothStreamOptions) -> Self {
+        Self { options }
+    }
+}
+
+impl StreamTransform for SmoothStream {
+    fn apply(
+        &self,
+        input: futures::stream::BoxStream<'static, String>,
+    ) -> futures::stream::BoxStream<'static, String> {
+        use futures::stream::StreamExt as _;
+        use tokio_stream::StreamExt;
+
+        let delay = self.options.delay_ms.unwrap_or(10);
+        let chunking = self.options.chunking.clone();
+
+        input
+            .flat_map(move |chunk| {
+                let tokens: Vec<String> = match &chunking {
+                    Chunking::Word => chunk
+                        .split_inclusive(' ')
+                        .map(|s| s.to_string())
+                        .collect(),
+                    Chunking::Line => chunk
+                        .split_inclusive('\n')
+                        .map(|s| s.to_string())
+                        .collect(),
+                    Chunking::Pattern(_p) => {
+                        // Simple fallback: character-by-character for custom patterns
+                        chunk.chars().map(|c| c.to_string()).collect()
+                    }
+                };
+                futures::stream::iter(tokens)
+            })
+            .throttle(std::time::Duration::from_millis(delay))
+            .boxed()
+    }
+}
+
+/// Apply multiple transforms in sequence to a stream.
+pub fn compose_transforms(
+    stream: futures::stream::BoxStream<'static, String>,
+    transforms: &[Box<dyn StreamTransform>],
+) -> futures::stream::BoxStream<'static, String> {
+    let mut result = stream;
+    for t in transforms {
+        result = t.apply(result);
+    }
+    result
 }

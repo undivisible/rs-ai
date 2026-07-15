@@ -112,6 +112,13 @@ pub enum AiError {
         /// The step limit that was reached.
         max_steps: usize,
     },
+
+    /// Invalid prompt or parameters.
+    #[error("invalid prompt: {message}")]
+    InvalidPrompt {
+        /// Description of the validation failure.
+        message: String,
+    },
 }
 
 impl From<serde_json::Error> for AiError {
