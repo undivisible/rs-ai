@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use futures::stream::StreamExt;
 use rs_ai_core::CacheConfig;
 use rs_ai_core::{
-    AiError, AiResult, Capability, CapabilitySet, FinishReason, GenerateOptions, GenerateResult,
-    LanguageModel, Prompt, StreamEvent, Usage,
+    AiError, AiResult, Capability, CapabilitySet, ContentPart, FinishReason, GenerateOptions,
+    GenerateResult, LanguageModel, Prompt, Role, StreamEvent, Usage,
 };
 
 use super::client::{ChatCompletionRequest, Message, XaiClient};
@@ -59,6 +59,38 @@ impl XaiModel {
     }
 }
 
+fn chat_messages(prompt: Prompt) -> AiResult<Vec<Message>> {
+    prompt
+        .into_messages()
+        .into_iter()
+        .map(|message| {
+            let content = message.content.into_iter().try_fold(
+                String::new(),
+                |mut content, part| match part {
+                    ContentPart::Text { text } => {
+                        content.push_str(&text);
+                        Ok(content)
+                    }
+                    _ => Err(AiError::UnsupportedCapability {
+                        capability: "non-text message content".to_string(),
+                        provider: "xai".to_string(),
+                    }),
+                },
+            )?;
+            Ok(Message {
+                role: match message.role {
+                    Role::System => "system",
+                    Role::User => "user",
+                    Role::Assistant => "assistant",
+                    Role::Tool => "tool",
+                }
+                .to_string(),
+                content,
+            })
+        })
+        .collect()
+}
+
 #[async_trait]
 impl LanguageModel for XaiModel {
     fn model_id(&self) -> &str {
@@ -78,22 +110,9 @@ impl LanguageModel for XaiModel {
         prompt: Prompt,
         _options: GenerateOptions,
     ) -> AiResult<GenerateResult> {
-        let text = match prompt {
-            Prompt::Text(t) => t,
-            _ => {
-                return Err(AiError::UnsupportedCapability {
-                    capability: "non-text prompts".to_string(),
-                    provider: "xai".to_string(),
-                })
-            }
-        };
-
         let request = ChatCompletionRequest {
             model: self.model_id.clone(),
-            messages: vec![Message {
-                role: "user".to_string(),
-                content: text,
-            }],
+            messages: chat_messages(prompt)?,
             stream: Some(false),
             prompt_cache_key: self
                 .cache_config
@@ -139,22 +158,9 @@ impl LanguageModel for XaiModel {
         prompt: Prompt,
         _options: GenerateOptions,
     ) -> AiResult<rs_ai_core::AiStream> {
-        let text = match prompt {
-            Prompt::Text(t) => t,
-            _ => {
-                return Err(AiError::UnsupportedCapability {
-                    capability: "non-text prompts".to_string(),
-                    provider: "xai".to_string(),
-                })
-            }
-        };
-
         let request = ChatCompletionRequest {
             model: self.model_id.clone(),
-            messages: vec![Message {
-                role: "user".to_string(),
-                content: text,
-            }],
+            messages: chat_messages(prompt)?,
             stream: Some(true),
             prompt_cache_key: self
                 .cache_config
@@ -169,30 +175,33 @@ impl LanguageModel for XaiModel {
 
         let stream = response
             .bytes_stream()
-            .scan(String::new(), |buffer, chunk| {
+            .scan(Vec::new(), |buffer, chunk| {
                 futures::future::ready(match chunk {
                     Ok(bytes) => {
-                        buffer.push_str(&String::from_utf8_lossy(&bytes));
-                        Some(Ok(buffer.clone()))
+                        let events = parse_stream_chunk(buffer, &bytes);
+                        Some(Ok(events))
                     }
-                    Err(e) => Some(Err::<_, reqwest::Error>(e)),
+                    Err(error) => Some(Err(AiError::StreamError {
+                        message: error.to_string(),
+                    })),
                 })
             })
             .flat_map(|result| match result {
-                Ok(buffer) => {
-                    let events = parse_stream_buffer(&buffer);
-                    futures::stream::iter(events)
-                }
-                Err(e) => {
-                    let err = Err::<StreamEvent, AiError>(AiError::StreamError {
-                        message: e.to_string(),
-                    });
-                    futures::stream::iter(vec![err])
-                }
+                Ok(events) => futures::stream::iter(events),
+                Err(error) => futures::stream::iter(vec![Err(error)]),
             });
 
         Ok(Box::pin(stream))
     }
+}
+
+fn parse_stream_chunk(buffer: &mut Vec<u8>, bytes: &[u8]) -> Vec<Result<StreamEvent, AiError>> {
+    buffer.extend_from_slice(bytes);
+    let Some(end) = buffer.iter().rposition(|byte| *byte == b'\n') else {
+        return Vec::new();
+    };
+    let completed: Vec<u8> = buffer.drain(..=end).collect();
+    parse_stream_buffer(&String::from_utf8_lossy(&completed))
 }
 
 fn parse_stream_buffer(buffer: &str) -> Vec<Result<StreamEvent, AiError>> {
@@ -203,11 +212,10 @@ fn parse_stream_buffer(buffer: &str) -> Vec<Result<StreamEvent, AiError>> {
             continue;
         }
 
-        if !line.starts_with("data: ") {
+        let Some(data) = line.strip_prefix("data:") else {
             continue;
-        }
-
-        let data = &line[6..];
+        };
+        let data = data.trim_start();
 
         if data == "[DONE]" {
             events.push(Ok(StreamEvent::MessageEnd {
@@ -240,4 +248,48 @@ fn parse_stream_buffer(buffer: &str) -> Vec<Result<StreamEvent, AiError>> {
     }
 
     events
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{chat_messages, parse_stream_chunk};
+    use rs_ai_core::{Message, Prompt, StreamEvent};
+
+    #[test]
+    fn structured_prompt_preserves_chat_roles() {
+        let messages = chat_messages(Prompt::Messages(vec![
+            Message::system("Follow the context"),
+            Message::assistant("I can help"),
+            Message::user("Plan my day"),
+        ]))
+        .unwrap();
+
+        assert_eq!(messages[0].role, "system");
+        assert_eq!(messages[0].content, "Follow the context");
+        assert_eq!(messages[1].role, "assistant");
+        assert_eq!(messages[2].role, "user");
+    }
+
+    #[test]
+    fn split_sse_chunks_emit_each_delta_once() {
+        let mut buffer = Vec::new();
+        assert!(parse_stream_chunk(
+            &mut buffer,
+            br#"data: {"choices":[{"delta":{"content":"hel"#,
+        )
+        .is_empty());
+        let events = parse_stream_chunk(
+            &mut buffer,
+            b"lo\"}}]}\n\ndata: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\n",
+        );
+        let deltas = events
+            .into_iter()
+            .filter_map(|event| match event.unwrap() {
+                StreamEvent::TextDelta { delta } => Some(delta),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(deltas, ["hello", "lo"]);
+    }
 }
