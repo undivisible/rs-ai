@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use secrecy::{ExposeSecret, SecretString};
-use serde::Serialize;
 use serde::Deserialize;
+use serde::Serialize;
 
 use rs_ai_core::{
     AiError, AiResult, GeneratedFile, ImageGenerationOptions, ImageModel, ImageResult,
@@ -113,30 +113,28 @@ impl ImageModel for GeminiImageModel {
     ) -> AiResult<ImageResult> {
         let n = options.n.unwrap_or(1);
 
-        let aspect_ratio: Option<String> = options
-            .aspect_ratio
-            .clone()
-            .or_else(|| {
-                // Derive from size if no explicit aspect_ratio
-                options.size.as_deref().and_then(|s| {
-                    let parts: Vec<&str> = s.split('x').collect();
-                    if parts.len() == 2 {
-                        Some(format!("{}:{}", parts[0], parts[1]))
-                    } else {
-                        None
-                    }
-                })
-            });
+        let aspect_ratio: Option<String> = options.aspect_ratio.clone().or_else(|| {
+            // Derive from size if no explicit aspect_ratio
+            options.size.as_deref().and_then(|s| {
+                let parts: Vec<&str> = s.split('x').collect();
+                if parts.len() == 2 {
+                    Some(format!("{}:{}", parts[0], parts[1]))
+                } else {
+                    None
+                }
+            })
+        });
 
         let mut extra = options.provider_options.clone().unwrap_or_default();
 
         // Move known extra params from provider_options or fill from options
-        let person_generation = extra.remove("personGeneration")
+        let person_generation = extra
+            .remove("personGeneration")
             .and_then(|v| v.as_str().map(|s| s.to_string()));
-        let safety_filter_level = extra.remove("safetyFilterLevel")
+        let safety_filter_level = extra
+            .remove("safetyFilterLevel")
             .and_then(|v| v.as_str().map(|s| s.to_string()));
-        let add_watermark = extra.remove("addWatermark")
-            .and_then(|v| v.as_bool());
+        let add_watermark = extra.remove("addWatermark").and_then(|v| v.as_bool());
 
         let request = PredictRequest {
             instances: vec![Instance {
@@ -190,9 +188,7 @@ impl ImageModel for GeminiImageModel {
             .predictions
             .into_iter()
             .map(|p| {
-                let bytes = STANDARD
-                    .decode(&p.bytes_base64_encoded)
-                    .unwrap_or_default();
+                let bytes = STANDARD.decode(&p.bytes_base64_encoded).unwrap_or_default();
                 GeneratedFile {
                     base64: p.bytes_base64_encoded,
                     bytes,
@@ -201,13 +197,14 @@ impl ImageModel for GeminiImageModel {
             })
             .collect();
 
-        let image = images.first().cloned().ok_or_else(|| {
-            AiError::ProviderError {
+        let image = images
+            .first()
+            .cloned()
+            .ok_or_else(|| AiError::ProviderError {
                 provider: "gemini".to_string(),
                 status: None,
                 message: "Imagen returned no predictions".to_string(),
-            }
-        })?;
+            })?;
 
         Ok(ImageResult {
             image,

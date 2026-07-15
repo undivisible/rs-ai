@@ -250,10 +250,10 @@ pub async fn agent_loop(
     options: GenerateOptions,
     tools: &crate::tool::ToolSet,
 ) -> AiResult<GenerateResult> {
-    use std::collections::HashMap;
     use crate::message::{Message, Role};
     use crate::structured::StepResult;
     use crate::tool::ToolExecutionOptions;
+    use std::collections::HashMap;
 
     let max_steps = options.max_steps.unwrap_or(1).max(1);
     let mut current_prompt = prompt;
@@ -263,7 +263,9 @@ pub async fn agent_loop(
 
     for step_num in 0..max_steps {
         // Generate with tools
-        let result = model.generate(current_prompt.clone(), options.clone()).await?;
+        let result = model
+            .generate(current_prompt.clone(), options.clone())
+            .await?;
 
         aggregated_usage = aggregated_usage + result.usage.clone();
 
@@ -293,12 +295,15 @@ pub async fn agent_loop(
             });
 
             // Build tool result messages and append to prompt
-            let tool_messages: Vec<Message> = tool_results.into_iter().map(|tr| Message {
-                role: Role::Tool,
-                content: vec![crate::content::ContentPart::Text { text: tr.content }],
-                name: None,
-                metadata: HashMap::new(),
-            }).collect();
+            let tool_messages: Vec<Message> = tool_results
+                .into_iter()
+                .map(|tr| Message {
+                    role: Role::Tool,
+                    content: vec![crate::content::ContentPart::Text { text: tr.content }],
+                    name: None,
+                    metadata: HashMap::new(),
+                })
+                .collect();
 
             // Append tool messages to current prompt
             let mut msgs = current_prompt.clone().into_messages();
@@ -625,11 +630,11 @@ pub async fn rerank(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
     use crate::capability::CapabilitySet;
     use crate::tool::ToolSet;
     use crate::types::{FinishReason, ResponseMetadata};
     use crate::Usage;
+    use async_trait::async_trait;
 
     struct TestModel {
         model_id: String,
@@ -663,11 +668,7 @@ mod tests {
                 reasoning: None,
             })
         }
-        async fn stream(
-            &self,
-            _prompt: Prompt,
-            _options: GenerateOptions,
-        ) -> AiResult<AiStream> {
+        async fn stream(&self, _prompt: Prompt, _options: GenerateOptions) -> AiResult<AiStream> {
             unimplemented!()
         }
     }

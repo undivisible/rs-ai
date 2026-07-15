@@ -69,11 +69,13 @@ impl ImageModel for XaiImageModel {
                     media_type,
                 })
             } else if let Some(url) = &img.url {
-                let resp = reqwest::get(url).await.map_err(|e| AiError::ProviderError {
-                    provider: "xai".to_string(),
-                    status: None,
-                    message: format!("Failed to fetch image from URL: {e}"),
-                })?;
+                let resp = reqwest::get(url)
+                    .await
+                    .map_err(|e| AiError::ProviderError {
+                        provider: "xai".to_string(),
+                        status: None,
+                        message: format!("Failed to fetch image from URL: {e}"),
+                    })?;
                 let raw = resp.bytes().await.map_err(|e| AiError::ProviderError {
                     provider: "xai".to_string(),
                     status: None,
@@ -117,8 +119,8 @@ impl ImageModel for XaiImageModel {
 /// Detect media type from base64-encoded image data by checking magic bytes.
 fn detect_image_type(b64: &str) -> String {
     // Decode first 16 bytes to check magic bytes
-    if let Ok(bytes) = base64::engine::general_purpose::STANDARD
-        .decode(&b64[..std::cmp::min(24, b64.len())])
+    if let Ok(bytes) =
+        base64::engine::general_purpose::STANDARD.decode(&b64[..std::cmp::min(24, b64.len())])
     {
         if bytes.len() >= 4 {
             match &bytes[..4] {

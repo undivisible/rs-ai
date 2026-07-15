@@ -639,21 +639,23 @@ impl rs_ai_core::RealtimeSession for GeminiLiveSessionAdapter {
     }
 
     async fn send_text(&mut self, text: &str) -> AiResult<()> {
-        self.inner.send_text(text).await.map_err(|e| {
-            rs_ai_core::AiError::BridgeError {
+        self.inner
+            .send_text(text)
+            .await
+            .map_err(|e| rs_ai_core::AiError::BridgeError {
                 bridge: "gemini_live".into(),
                 message: e.to_string(),
-            }
-        })
+            })
     }
 
     async fn send_audio(&mut self, audio: Vec<u8>, mime_type: &str) -> AiResult<()> {
-        self.inner.send_audio_chunk(&audio, mime_type).await.map_err(|e| {
-            rs_ai_core::AiError::BridgeError {
+        self.inner
+            .send_audio_chunk(&audio, mime_type)
+            .await
+            .map_err(|e| rs_ai_core::AiError::BridgeError {
                 bridge: "gemini_live".into(),
                 message: e.to_string(),
-            }
-        })
+            })
     }
 
     async fn recv(&mut self) -> Option<RealtimeEvent> {

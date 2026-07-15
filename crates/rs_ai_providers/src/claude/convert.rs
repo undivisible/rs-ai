@@ -381,7 +381,7 @@ pub(crate) fn convert_response(response: MessagesResponse) -> GenerateResult {
             model: response.model,
             ..ResponseMetadata::default()
         },
-    steps: Vec::new(),
-    reasoning: None,
+        steps: Vec::new(),
+        reasoning: None,
     }
 }

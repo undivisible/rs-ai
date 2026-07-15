@@ -210,5 +210,3 @@ impl SyntheticStreamer {
         Box::pin(stream::iter(chunks))
     }
 }
-
-

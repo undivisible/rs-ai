@@ -143,15 +143,16 @@ impl GeminiProvider {
         &self,
         model_id: &str,
     ) -> rs_ai_core::AiResult<Box<dyn rs_ai_core::RealtimeSession>> {
-        let session = self.live_session(model_id).await.map_err(|e| {
-            rs_ai_core::AiError::BridgeError {
-                bridge: "gemini_live".into(),
-                message: e.to_string(),
-            }
-        })?;
-        Ok(Box::new(
-            super::live_api::GeminiLiveSessionAdapter::new(session, model_id),
-        ))
+        let session =
+            self.live_session(model_id)
+                .await
+                .map_err(|e| rs_ai_core::AiError::BridgeError {
+                    bridge: "gemini_live".into(),
+                    message: e.to_string(),
+                })?;
+        Ok(Box::new(super::live_api::GeminiLiveSessionAdapter::new(
+            session, model_id,
+        )))
     }
 
     /// Fetch the list of models from the Gemini API.

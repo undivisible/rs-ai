@@ -174,13 +174,16 @@ impl ImageModel for ChatGptImageModel {
             });
         }
 
-        let images_resp: ImagesResponse =
-            resp.json().await.map_err(|e| AiError::Serialization(e.to_string()))?;
+        let images_resp: ImagesResponse = resp
+            .json()
+            .await
+            .map_err(|e| AiError::Serialization(e.to_string()))?;
 
         let mut images = Vec::with_capacity(images_resp.data.len());
         for img in images_resp.data {
-            let bytes =
-                STANDARD.decode(&img.b64_json).map_err(|e| AiError::Serialization(e.to_string()))?;
+            let bytes = STANDARD
+                .decode(&img.b64_json)
+                .map_err(|e| AiError::Serialization(e.to_string()))?;
             images.push(GeneratedFile {
                 base64: img.b64_json,
                 bytes,
@@ -188,11 +191,14 @@ impl ImageModel for ChatGptImageModel {
             });
         }
 
-        let image = images.first().cloned().ok_or_else(|| AiError::ProviderError {
-            provider: "chatgpt".into(),
-            status: None,
-            message: "No images returned by API".into(),
-        })?;
+        let image = images
+            .first()
+            .cloned()
+            .ok_or_else(|| AiError::ProviderError {
+                provider: "chatgpt".into(),
+                status: None,
+                message: "No images returned by API".into(),
+            })?;
 
         Ok(ImageResult {
             image,

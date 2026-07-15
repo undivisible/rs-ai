@@ -640,21 +640,23 @@ impl rs_ai_core::RealtimeSession for ChatGptRealtimeSession {
     }
 
     async fn send_text(&mut self, text: &str) -> AiResult<()> {
-        self.inner.send_text(text).await.map_err(|e| {
-            rs_ai_core::AiError::BridgeError {
+        self.inner
+            .send_text(text)
+            .await
+            .map_err(|e| rs_ai_core::AiError::BridgeError {
                 bridge: "chatgpt_realtime".into(),
                 message: e.to_string(),
-            }
-        })
+            })
     }
 
     async fn send_audio(&mut self, audio: Vec<u8>, _mime_type: &str) -> AiResult<()> {
-        self.inner.send_audio(&audio).await.map_err(|e| {
-            rs_ai_core::AiError::BridgeError {
+        self.inner
+            .send_audio(&audio)
+            .await
+            .map_err(|e| rs_ai_core::AiError::BridgeError {
                 bridge: "chatgpt_realtime".into(),
                 message: e.to_string(),
-            }
-        })
+            })
     }
 
     async fn recv(&mut self) -> Option<RealtimeEvent> {

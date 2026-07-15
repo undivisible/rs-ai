@@ -211,22 +211,19 @@ impl ChatGptProvider {
                 id: DALL_E_3.into(),
                 provider: "chatgpt".into(),
                 display_name: "DALL-E 3".into(),
-                capabilities: CapabilitySet::new()
-                    .with(Capability::ImageGeneration),
+                capabilities: CapabilitySet::new().with(Capability::ImageGeneration),
             })
             .with_model_info(ModelInfo {
                 id: DALL_E_2.into(),
                 provider: "chatgpt".into(),
                 display_name: "DALL-E 2".into(),
-                capabilities: CapabilitySet::new()
-                    .with(Capability::ImageGeneration),
+                capabilities: CapabilitySet::new().with(Capability::ImageGeneration),
             })
             .with_model_info(ModelInfo {
                 id: SORA.into(),
                 provider: "chatgpt".into(),
                 display_name: "Sora".into(),
-                capabilities: CapabilitySet::new()
-                    .with(Capability::VideoGeneration),
+                capabilities: CapabilitySet::new().with(Capability::VideoGeneration),
             });
         Self { inner, config }
     }
@@ -334,12 +331,13 @@ impl ChatGptProvider {
         &self,
         model: &str,
     ) -> rs_ai_core::AiResult<Box<dyn rs_ai_core::RealtimeSession>> {
-        let session = self.realtime_session(model).await.map_err(|e| {
-            rs_ai_core::AiError::BridgeError {
-                bridge: "chatgpt_realtime".into(),
-                message: e.to_string(),
-            }
-        })?;
+        let session =
+            self.realtime_session(model)
+                .await
+                .map_err(|e| rs_ai_core::AiError::BridgeError {
+                    bridge: "chatgpt_realtime".into(),
+                    message: e.to_string(),
+                })?;
         Ok(Box::new(ChatGptRealtimeSession::new(session, model)))
     }
 

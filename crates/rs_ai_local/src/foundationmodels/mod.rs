@@ -853,10 +853,7 @@ pub struct ResponseStructuredStream {
 impl Stream for ResponseStructuredStream {
     type Item = Result<String, Error>;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut StdContext<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut StdContext<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut self.rx)
             .poll_next(cx)
             .map(|opt| opt.map(|r| r.map_err(Error::Generation)))
@@ -1061,8 +1058,8 @@ impl LanguageModel for FoundationModel {
                 latency_ms: Some(latency_ms),
                 ..Default::default()
             },
-        steps: Vec::new(),
-        reasoning: None,
+            steps: Vec::new(),
+            reasoning: None,
         })
     }
 

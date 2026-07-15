@@ -36,29 +36,27 @@ pub use content::{ContentPart, FileData, ImageData, ImageDetail};
 pub use embedding::cosine_similarity;
 pub use error::{AiError, AiResult};
 pub use message::{Message, Role};
-pub use model::{
-    agent_loop, EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel,
-    LanguageModel, Middleware, MiddlewareNext, ProviderInfo, ReasoningEffort, RealtimeEvent,
-    RealtimeSession, rerank, RerankingModel, RerankOptions, SpeechToTextModel,
-    TextToSpeechModel, ThinkingConfig, VideoGenerationOptions, VideoModel,
-};
 pub use middleware::{extract_reasoning_middleware, ExtractReasoningMiddleware};
+pub use model::{
+    agent_loop, rerank, EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel,
+    LanguageModel, Middleware, MiddlewareNext, ProviderInfo, RealtimeEvent, RealtimeSession,
+    ReasoningEffort, RerankOptions, RerankingModel, SpeechToTextModel, TextToSpeechModel,
+    ThinkingConfig, VideoGenerationOptions, VideoModel,
+};
 pub use prompt::Prompt;
 pub use provider::Provider;
 pub use registry::{create_provider_registry, ProviderRegistry};
 pub use router::{Route, Router};
 pub use schema::{Output, OutputSchema};
 
-pub use stream::{
-    AiStream, StreamCollector, StreamEvent, SyntheticStreamer,
-};
+pub use stream::{AiStream, StreamCollector, StreamEvent, SyntheticStreamer};
 pub use structured::{
     AudioResult, EmbeddingResult, GenerateResult, GeneratedFile, ImageResult, ObjectResult,
-    RerankedDocument, RerankResult, StepResult, TranscriptionResult, TtsOptions, VideoResult,
+    RerankResult, RerankedDocument, StepResult, TranscriptionResult, TtsOptions, VideoResult,
 };
 pub use tool::{
-    ToolCallRequest, ToolCallResult, ToolChoice, ToolContext, ToolDefinition,
-    ToolExecutionOptions, ToolSet,
+    ToolCallRequest, ToolCallResult, ToolChoice, ToolContext, ToolDefinition, ToolExecutionOptions,
+    ToolSet,
 };
 pub use types::{FinishReason, ModelInfo, ModelRegistry, RequestMetadata, ResponseMetadata};
 pub use usage::Usage;

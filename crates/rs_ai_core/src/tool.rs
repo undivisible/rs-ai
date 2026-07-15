@@ -112,7 +112,8 @@ impl ToolSet {
 
     /// Execute a tool call request with default options.
     pub async fn execute(&self, call: &ToolCallRequest) -> AiResult<ToolCallResult> {
-        self.execute_with_options(call, &ToolExecutionOptions::default()).await
+        self.execute_with_options(call, &ToolExecutionOptions::default())
+            .await
     }
 
     /// Execute a tool call request with execution options and return the result.

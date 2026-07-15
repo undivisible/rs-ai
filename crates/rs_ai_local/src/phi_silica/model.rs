@@ -89,8 +89,8 @@ impl LanguageModel for PhiSilicaModel {
                 model: "phi-silica".into(),
                 ..Default::default()
             },
-        steps: Vec::new(),
-        reasoning: None,
+            steps: Vec::new(),
+            reasoning: None,
         })
     }
 

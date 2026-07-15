@@ -136,8 +136,8 @@ mod tests {
 
     #[test]
     fn test_extract_thinking_tags() {
-        let result = extract_thinking_tags("Hello <thinking>let me think</thinking> world")
-            .unwrap();
+        let result =
+            extract_thinking_tags("Hello <thinking>let me think</thinking> world").unwrap();
         assert_eq!(result.reasoning, "let me think");
         assert_eq!(result.clean_text, "Hello  world");
 
@@ -153,8 +153,7 @@ mod tests {
     #[test]
     fn test_extract_reasoning_fences() {
         let result =
-            extract_reasoning_fences("text ```reasoning\nthink step\nby step\n``` more")
-                .unwrap();
+            extract_reasoning_fences("text ```reasoning\nthink step\nby step\n``` more").unwrap();
         assert_eq!(result.reasoning, "\nthink step\nby step\n");
         assert_eq!(result.clean_text, "text  more");
 
@@ -164,10 +163,9 @@ mod tests {
 
     #[test]
     fn test_multiple_thinking_blocks() {
-        let result = extract_thinking_tags(
-            "a <thinking>first</thinking> b <thinking>second</thinking> c",
-        )
-        .unwrap();
+        let result =
+            extract_thinking_tags("a <thinking>first</thinking> b <thinking>second</thinking> c")
+                .unwrap();
         assert_eq!(result.reasoning, "first\nsecond");
         assert_eq!(result.clean_text, "a  b  c");
     }

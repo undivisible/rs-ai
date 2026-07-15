@@ -271,8 +271,8 @@ pub(crate) fn response_to_result(
             latency_ms: None,
             extra: Default::default(),
         },
-    steps: Vec::new(),
-    reasoning: None,
+        steps: Vec::new(),
+        reasoning: None,
     }
 }
 

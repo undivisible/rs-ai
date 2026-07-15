@@ -47,22 +47,24 @@ impl ProviderRegistry {
     /// Returns the language model if found, or an error if the provider
     /// prefix or model ID is unknown.
     pub fn model(&self, id: &str) -> AiResult<Box<dyn LanguageModel>> {
-        let (provider_name, model_id) = id.split_once('/').ok_or_else(|| {
-            AiError::InvalidPrompt {
-                message: format!(
-                    "Invalid model ID format '{id}'. Expected 'provider/model-id'"
-                ),
-            }
-        })?;
+        let (provider_name, model_id) =
+            id.split_once('/').ok_or_else(|| AiError::InvalidPrompt {
+                message: format!("Invalid model ID format '{id}'. Expected 'provider/model-id'"),
+            })?;
 
-        let provider = self.providers.get(provider_name).ok_or_else(|| {
-            AiError::ModelUnavailable {
-                model: format!(
-                    "Unknown provider '{provider_name}'. Available: {}",
-                    self.providers.keys().cloned().collect::<Vec<_>>().join(", ")
-                ),
-            }
-        })?;
+        let provider =
+            self.providers
+                .get(provider_name)
+                .ok_or_else(|| AiError::ModelUnavailable {
+                    model: format!(
+                        "Unknown provider '{provider_name}'. Available: {}",
+                        self.providers
+                            .keys()
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                })?;
 
         provider.language_model(model_id)
     }
@@ -96,10 +98,10 @@ pub fn create_provider_registry() -> ProviderRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
     use crate::capability::CapabilitySet;
     use crate::error::AiResult;
     use crate::model::{EmbeddingModel, LanguageModel};
+    use async_trait::async_trait;
 
     struct MockProvider {
         id: String,
@@ -142,8 +144,7 @@ mod tests {
 
     #[test]
     fn test_registry_register() {
-        let registry = ProviderRegistry::new()
-            .register("test", MockProvider { id: "test".into() });
+        let registry = ProviderRegistry::new().register("test", MockProvider { id: "test".into() });
         assert_eq!(registry.available_models().len(), 1);
         assert_eq!(registry.available_models()[0].id, "test/m1");
     }
@@ -163,8 +164,7 @@ mod tests {
 
     #[test]
     fn test_registry_get_provider() {
-        let registry = ProviderRegistry::new()
-            .register("test", MockProvider { id: "test".into() });
+        let registry = ProviderRegistry::new().register("test", MockProvider { id: "test".into() });
         assert!(registry.get_provider("test").is_some());
         assert!(registry.get_provider("missing").is_none());
     }

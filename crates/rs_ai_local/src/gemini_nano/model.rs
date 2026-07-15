@@ -117,8 +117,8 @@ impl LanguageModel for GeminiNanoModel {
                 latency_ms: Some(latency_ms),
                 ..Default::default()
             },
-        steps: Vec::new(),
-        reasoning: None,
+            steps: Vec::new(),
+            reasoning: None,
         })
     }
 

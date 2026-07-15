@@ -248,8 +248,8 @@ mod tests {
                 finish_reason: FinishReason::Stop,
                 usage: Usage::default(),
                 metadata: ResponseMetadata::default(),
-            steps: Vec::new(),
-            reasoning: None,
+                steps: Vec::new(),
+                reasoning: None,
             })
         }
 

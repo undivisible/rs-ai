@@ -1,8 +1,6 @@
 use async_trait::async_trait;
 
-use rs_ai_core::{
-    AiError, AiResult, VideoGenerationOptions, VideoModel, VideoResult,
-};
+use rs_ai_core::{AiError, AiResult, VideoGenerationOptions, VideoModel, VideoResult};
 
 /// Model constant for Google Veo.
 pub const VEO_3: &str = "veo-3.0-generate-001";

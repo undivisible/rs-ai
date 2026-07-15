@@ -150,8 +150,8 @@ impl LanguageModel for XaiModel {
             finish_reason: FinishReason::Stop,
             usage,
             metadata: Default::default(),
-        steps: Vec::new(),
-        reasoning: None,
+            steps: Vec::new(),
+            reasoning: None,
         })
     }
 

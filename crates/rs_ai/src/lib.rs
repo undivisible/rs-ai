@@ -29,8 +29,8 @@ use base64::Engine as _;
 use futures::stream::BoxStream;
 use rs_ai_core::{
     AiError, AiResult, CacheConfig, ContentPart, FileData, GenerateOptions, ImageData,
-    ImageGenerationOptions, ImageModel, ImageResult, LanguageModel, Message, Prompt, RealtimeSession,
-    StreamEvent, VideoGenerationOptions, VideoModel, VideoResult,
+    ImageGenerationOptions, ImageModel, ImageResult, LanguageModel, Message, Prompt,
+    RealtimeSession, StreamEvent, VideoGenerationOptions, VideoModel, VideoResult,
 };
 use rs_ai_providers::chatgpt::ChatGptProvider;
 use rs_ai_providers::claude::ClaudeProvider;
@@ -368,12 +368,9 @@ impl ClientBuilder {
         options: ImageGenerationOptions,
     ) -> AiResult<ImageResult> {
         let text = prompt.into();
-        let api_key = self
-            .api_key
-            .clone()
-            .ok_or_else(|| AiError::AuthError {
-                message: "API key not set. Use .api_key() to specify credentials.".to_string(),
-            })?;
+        let api_key = self.api_key.clone().ok_or_else(|| AiError::AuthError {
+            message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+        })?;
 
         match self.provider_type {
             ProviderType::ChatGpt => {
@@ -416,12 +413,9 @@ impl ClientBuilder {
         options: VideoGenerationOptions,
     ) -> AiResult<VideoResult> {
         let text = prompt.into();
-        let api_key = self
-            .api_key
-            .clone()
-            .ok_or_else(|| AiError::AuthError {
-                message: "API key not set. Use .api_key() to specify credentials.".to_string(),
-            })?;
+        let api_key = self.api_key.clone().ok_or_else(|| AiError::AuthError {
+            message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+        })?;
 
         match self.provider_type {
             ProviderType::ChatGpt => {
@@ -459,12 +453,9 @@ impl ClientBuilder {
     /// }
     /// ```
     pub async fn realtime_session(self) -> AiResult<Box<dyn RealtimeSession>> {
-        let api_key = self
-            .api_key
-            .clone()
-            .ok_or_else(|| AiError::AuthError {
-                message: "API key not set. Use .api_key() to specify credentials.".to_string(),
-            })?;
+        let api_key = self.api_key.clone().ok_or_else(|| AiError::AuthError {
+            message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+        })?;
         let model_id = self.model_id.clone().unwrap_or_default();
 
         match self.provider_type {
