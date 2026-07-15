@@ -1,4 +1,4 @@
-# rs_ai — Rust AI SDK (v0.2.6)
+# rs_ai — Rust AI SDK (v0.2.9)
 
 Comprehensive Rust SDK for AI applications. Cloud + local providers, streaming, agent loop, image/video generation, realtime voice, and a clean async-first API.
 
@@ -81,6 +81,30 @@ let image = rs_ai_chatgpt()
 | `rs_ai_xai()` | xAI Grok | `XAI_API_KEY` | Grok Imagine |
 | `rs_ai_cloudflare(id)` | Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN` | — |
 | `rs_ai_compatible(url)` | Any OpenAI-compatible | `OPENAI_API_KEY` | OpenRouter, vLLM, Ollama, etc. |
+
+## Real TTS/STT
+
+```rust
+let audio = rs_ai::chatgpt()
+    .model("tts-1")
+    .speak("Hello world!")  // Returns real MP3 bytes via OpenAI TTS
+    .await?;
+
+let text = rs_ai::chatgpt()
+    .model("whisper-1")
+    .transcribe(audio_bytes, "audio/webm")
+    .await?;
+```
+
+## Reranking (Cohere / Voyage)
+
+```rust
+use rs_ai_providers::cohere::CohereRerankingModel;
+use rs_ai_core::RerankOptions;
+
+let model = CohereRerankingModel::new("rerank-v3.5", api_key);
+let result = model.rerank("my query", vec!["doc1".into(), "doc2".into()], RerankOptions::default()).await?;
+```
 
 ## Local Runtimes
 
