@@ -35,14 +35,14 @@ mod error;
 mod image;
 mod model;
 mod provider;
-mod realtime;
+pub mod realtime;
 
 pub use client::{AURORA, GROK_4_IMAGINE};
 pub use error::{XaiError, XaiResult};
 pub use image::XaiImageModel;
 pub use model::XaiModel;
 pub use provider::XaiProvider;
-pub use realtime::XaiRealtimeSession;
+
 
 pub const XAI_OAUTH_MODEL_IDS: &[&str] = &[
     "grok-4.5",

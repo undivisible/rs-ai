@@ -113,15 +113,19 @@ pub struct ImageData {
 
 pub struct XaiClient {
     http_client: HttpClient,
-    _api_key: String,
+    api_key: String,
 }
 
 impl XaiClient {
     pub fn new(api_key: impl Into<String>) -> Self {
         Self {
             http_client: HttpClient::new(),
-            _api_key: api_key.into(),
+            api_key: api_key.into(),
         }
+    }
+
+    pub fn api_key(&self) -> &str {
+        &self.api_key
     }
 
     pub async fn create_chat_completion(
@@ -132,9 +136,8 @@ impl XaiClient {
         let mut req_builder = self
             .http_client
             .post(format!("{}/chat/completions", XAI_API_BASE))
-            .bearer_auth(&self._api_key);
+            .bearer_auth(&self.api_key);
 
-        // Add conversation routing header if present
         if let Some(config) = cache_config {
             if let Some(conv_id) = &config.xai_conv_id {
                 req_builder = req_builder.header("x-grok-conv-id", conv_id);
@@ -168,9 +171,8 @@ impl XaiClient {
         let mut req_builder = self
             .http_client
             .post(format!("{}/chat/completions", XAI_API_BASE))
-            .bearer_auth(&self._api_key);
+            .bearer_auth(&self.api_key);
 
-        // Add conversation routing header if present
         if let Some(config) = cache_config {
             if let Some(conv_id) = &config.xai_conv_id {
                 req_builder = req_builder.header("x-grok-conv-id", conv_id);
@@ -190,7 +192,6 @@ impl XaiClient {
         Ok(response)
     }
 
-    /// Generate images via POST /v1/images/generations.
     pub async fn create_image_generation(
         &self,
         request: ImageGenerationRequest,
@@ -198,7 +199,7 @@ impl XaiClient {
         let response = self
             .http_client
             .post(format!("{}/images/generations", XAI_API_BASE))
-            .bearer_auth(&self._api_key)
+            .bearer_auth(&self.api_key)
             .json(&request)
             .send()
             .await?;

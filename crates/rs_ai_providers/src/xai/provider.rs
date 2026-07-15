@@ -1,9 +1,10 @@
 use super::client::XaiClient;
 use super::image::XaiImageModel;
 use super::model::XaiModel;
-use super::realtime::XaiRealtimeSession;
+use super::realtime::{create_grok_voice_session, GrokVoiceConfig, GrokVoiceSession};
 use crate::XaiModelId;
-use rs_ai_core::CacheConfig;
+use rs_ai_core::{AiResult, CacheConfig};
+
 
 /// xAI provider for creating Grok models.
 #[derive(Clone)]
@@ -90,8 +91,13 @@ impl XaiProvider {
         self.image_model(XaiModelId::Aurora.as_str())
     }
 
-    /// Create a realtime session stub (xAI Realtime API is not yet available).
-    pub fn realtime_session(&self, model_id: &str) -> XaiRealtimeSession {
-        XaiRealtimeSession::new(model_id.to_string())
+    /// Create a Grok Voice Agent session.
+    ///
+    /// Connects to xAI's Realtime API via WebSocket.
+    pub async fn realtime_session(&self, model_id: &str) -> AiResult<GrokVoiceSession> {
+        let api_key = self.oauth_token.clone().unwrap_or_else(|| self.client.api_key().to_string());
+        let config = GrokVoiceConfig::new(api_key)
+            .with_model(model_id);
+        create_grok_voice_session(config).await
     }
 }
