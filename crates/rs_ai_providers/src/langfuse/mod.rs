@@ -371,6 +371,8 @@ mod tests {
                     completion_tokens: Some(5),
                     total_tokens: Some(15),
                 },
+                steps: Vec::new(),
+                reasoning: None,
                 metadata: ResponseMetadata::default(),
             })
         }
