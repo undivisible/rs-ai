@@ -97,6 +97,7 @@ impl LanguageModel for CloudflareModel {
             usage,
             metadata: Default::default(),
         steps: Vec::new(),
+        reasoning: None,
         })
     }
 

@@ -1062,6 +1062,7 @@ impl LanguageModel for FoundationModel {
                 ..Default::default()
             },
         steps: Vec::new(),
+        reasoning: None,
         })
     }
 

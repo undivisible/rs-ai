@@ -95,6 +95,7 @@ impl LanguageModel for BrowserAiModel {
                 ..Default::default()
             },
         steps: Vec::new(),
+        reasoning: None,
         })
     }
 

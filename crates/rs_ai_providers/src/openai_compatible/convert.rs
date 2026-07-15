@@ -272,6 +272,7 @@ pub(crate) fn response_to_result(
             extra: Default::default(),
         },
     steps: Vec::new(),
+    reasoning: None,
     }
 }
 

@@ -154,6 +154,7 @@ impl OllamaModel {
                 ..ResponseMetadata::default()
             },
         steps: Vec::new(),
+        reasoning: None,
         })
     }
 }

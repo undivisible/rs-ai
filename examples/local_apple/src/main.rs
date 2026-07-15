@@ -118,6 +118,7 @@ impl LanguageModel for FoundationModel {
             finish_reason: FinishReason::Stop,
             usage: Usage::default(),
             steps: Vec::new(),
+            reasoning: None,
             metadata: ResponseMetadata {
                 provider: "apple".into(),
                 model: "apple-foundation-model".into(),

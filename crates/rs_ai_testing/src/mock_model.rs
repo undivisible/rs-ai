@@ -152,6 +152,7 @@ impl MockLanguageModel {
                 usage: Usage::default(),
                 metadata: ResponseMetadata::default(),
             steps: Vec::new(),
+            reasoning: None,
             }),
             MockResponse::ToolCalls(calls) => Ok(GenerateResult {
                 text: None,
@@ -160,6 +161,7 @@ impl MockLanguageModel {
                 usage: Usage::default(),
                 metadata: ResponseMetadata::default(),
             steps: Vec::new(),
+            reasoning: None,
             }),
             MockResponse::Object(value) => {
                 let text = serde_json::to_string(&value)
@@ -171,6 +173,7 @@ impl MockLanguageModel {
                     usage: Usage::default(),
                     metadata: ResponseMetadata::default(),
                 steps: Vec::new(),
+                reasoning: None,
                 })
             }
             MockResponse::Error(err) => Err(err),

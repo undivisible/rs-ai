@@ -291,6 +291,7 @@ mod tests {
                 },
                 metadata: ResponseMetadata::default(),
             steps: Vec::new(),
+            reasoning: None,
             })
         }
 

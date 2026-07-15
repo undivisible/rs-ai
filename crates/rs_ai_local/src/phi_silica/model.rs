@@ -90,6 +90,7 @@ impl LanguageModel for PhiSilicaModel {
                 ..Default::default()
             },
         steps: Vec::new(),
+        reasoning: None,
         })
     }
 

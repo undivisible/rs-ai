@@ -33,3 +33,48 @@ impl OutputSchema {
         &self.schema
     }
 }
+
+/// Structured output strategy for `generate_text` and `stream_text`.
+/// Equivalent to Vercel AI SDK's `Output` type.
+#[derive(Debug, Clone)]
+pub enum Output {
+    /// Generate an enum value from a list of options.
+    /// Vercel: `Output.enum({ values: [...] })`
+    Enum {
+        /// Allowed enum values.
+        values: Vec<String>,
+    },
+    /// Generate an array of objects matching the schema.
+    /// Vercel: `Output.array(schema)`
+    Array(OutputSchema),
+    /// Generate a single object matching the schema.
+    /// Vercel: `Output.object(schema)`
+    Object(OutputSchema),
+    /// Generate text without schema constraints.
+    /// Vercel: `Output.noSchema()`
+    NoSchema,
+}
+
+impl Output {
+    /// Create an enum output strategy.
+    pub fn enum_output(values: Vec<impl Into<String>>) -> Self {
+        Output::Enum {
+            values: values.into_iter().map(|v| v.into()).collect(),
+        }
+    }
+
+    /// Create an array output strategy.
+    pub fn array(schema: OutputSchema) -> Self {
+        Output::Array(schema)
+    }
+
+    /// Create an object output strategy.
+    pub fn object(schema: OutputSchema) -> Self {
+        Output::Object(schema)
+    }
+
+    /// Create a no-schema output strategy (free text).
+    pub fn no_schema() -> Self {
+        Output::NoSchema
+    }
+}

@@ -249,6 +249,7 @@ mod tests {
                 usage: Usage::default(),
                 metadata: ResponseMetadata::default(),
             steps: Vec::new(),
+            reasoning: None,
             })
         }
 

@@ -39,22 +39,23 @@ pub use message::{Message, Role};
 pub use model::{
     agent_loop, EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel,
     LanguageModel, Middleware, MiddlewareNext, ProviderInfo, ReasoningEffort, RealtimeEvent,
-    RealtimeSession, SpeechToTextModel, TextToSpeechModel, ThinkingConfig,
-    VideoGenerationOptions, VideoModel,
+    RealtimeSession, rerank, RerankingModel, RerankOptions, SpeechToTextModel,
+    TextToSpeechModel, ThinkingConfig, VideoGenerationOptions, VideoModel,
 };
+pub use middleware::{extract_reasoning_middleware, ExtractReasoningMiddleware};
 pub use prompt::Prompt;
 pub use provider::Provider;
 pub use registry::{create_provider_registry, ProviderRegistry};
 pub use router::{Route, Router};
-pub use schema::OutputSchema;
-pub use mcp::{mcp_tools, McpConfig, McpTool};
+pub use schema::{Output, OutputSchema};
+pub use mcp::{mcp_tools, McpClient, McpConfig, McpTool};
 pub use stream::{
     AiStream, Chunking, compose_transforms, SmoothStream, SmoothStreamOptions, StreamCollector,
     StreamEvent, StreamTransform, SyntheticStreamer,
 };
 pub use structured::{
     AudioResult, EmbeddingResult, GenerateResult, GeneratedFile, ImageResult, ObjectResult,
-    StepResult, TranscriptionResult, TtsOptions, VideoResult,
+    RerankedDocument, RerankResult, StepResult, TranscriptionResult, TtsOptions, VideoResult,
 };
 pub use tool::{
     ToolCallRequest, ToolCallResult, ToolChoice, ToolContext, ToolDefinition,

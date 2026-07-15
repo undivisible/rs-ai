@@ -6,8 +6,8 @@ use crate::prompt::Prompt;
 use crate::schema::OutputSchema;
 use crate::stream::AiStream;
 use crate::structured::{
-    AudioResult, EmbeddingResult, GenerateResult, ImageResult, ObjectResult, TranscriptionResult,
-    TtsOptions, VideoResult,
+    AudioResult, EmbeddingResult, GenerateResult, ImageResult, ObjectResult, RerankResult,
+    TranscriptionResult, TtsOptions, VideoResult,
 };
 use crate::tool::{ToolChoice, ToolContext, ToolDefinition};
 use crate::types::RequestMetadata;
@@ -289,6 +289,7 @@ pub async fn agent_loop(
                 tool_results: tool_results.clone(),
                 finish_reason: result.finish_reason.clone(),
                 usage: result.usage,
+                reasoning: None,
             });
 
             // Build tool result messages and append to prompt
@@ -313,6 +314,7 @@ pub async fn agent_loop(
                     tool_results: Vec::new(),
                     finish_reason: result.finish_reason.clone(),
                     usage: crate::usage::Usage::default(),
+                    reasoning: None,
                 });
             }
         } else {
@@ -324,6 +326,7 @@ pub async fn agent_loop(
                 tool_results: Vec::new(),
                 finish_reason: result.finish_reason.clone(),
                 usage: result.usage.clone(),
+                reasoning: None,
             });
 
             return Ok(GenerateResult {
@@ -333,6 +336,7 @@ pub async fn agent_loop(
                 usage: aggregated_usage,
                 metadata: result.metadata,
                 steps: all_steps,
+                reasoning: None,
             });
         }
     }
@@ -345,6 +349,7 @@ pub async fn agent_loop(
         tool_results: Vec::new(),
         finish_reason: crate::types::FinishReason::Stop,
         usage: crate::usage::Usage::default(),
+        reasoning: None,
     });
 
     Ok(GenerateResult {
@@ -354,6 +359,7 @@ pub async fn agent_loop(
         usage: aggregated_usage,
         metadata: crate::types::ResponseMetadata::default(),
         steps: all_steps,
+        reasoning: None,
     })
 }
 
@@ -570,4 +576,48 @@ pub trait RealtimeSession: Send + Sync {
 
     /// Close the session.
     async fn close(self: Box<Self>) -> AiResult<()>;
+}
+
+// ─── Reranking ────────────────────────────────────────────────────────────────────
+
+/// Options for reranking documents by relevance to a query.
+/// Matching Vercel AI SDK's `RerankOptions`.
+#[derive(Debug, Clone, Default)]
+pub struct RerankOptions {
+    /// Maximum number of results to return.
+    pub top_k: Option<usize>,
+    /// Include the document text in results.
+    pub return_documents: Option<bool>,
+    /// Model-specific query prefix/instruction.
+    pub query_instruction: Option<String>,
+}
+
+/// A model that reranks documents by relevance to a query.
+/// Equivalent to Vercel AI SDK's `RerankingModel`.
+#[async_trait]
+pub trait RerankingModel: Send + Sync {
+    /// Return the model identifier.
+    fn model_id(&self) -> &str;
+
+    /// Return the provider identifier.
+    fn provider_id(&self) -> &str;
+
+    /// Rerank documents by relevance to the query.
+    async fn rerank(
+        &self,
+        query: &str,
+        documents: Vec<String>,
+        options: RerankOptions,
+    ) -> AiResult<RerankResult>;
+}
+
+/// Rerank documents by relevance to a query.
+/// Equivalent to Vercel AI SDK's `rerank()`.
+pub async fn rerank(
+    model: &dyn RerankingModel,
+    query: &str,
+    documents: Vec<String>,
+    options: RerankOptions,
+) -> AiResult<RerankResult> {
+    model.rerank(query, documents, options).await
 }

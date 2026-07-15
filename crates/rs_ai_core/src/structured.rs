@@ -22,6 +22,9 @@ pub struct StepResult {
     pub finish_reason: FinishReason,
     /// Token usage for this step.
     pub usage: Usage,
+    /// Reasoning content extracted from the model response, if any.
+    #[serde(default)]
+    pub reasoning: Option<String>,
 }
 
 /// The result of a non-streaming generate call.
@@ -42,6 +45,9 @@ pub struct GenerateResult {
     /// Per-step breakdown when using agent loop (maxSteps > 1).
     #[serde(default)]
     pub steps: Vec<StepResult>,
+    /// Reasoning content extracted from the model response, if any.
+    #[serde(default)]
+    pub reasoning: Option<String>,
 }
 
 impl Default for GenerateResult {
@@ -53,6 +59,7 @@ impl Default for GenerateResult {
             usage: Usage::default(),
             metadata: ResponseMetadata::default(),
             steps: Vec::new(),
+            reasoning: None,
         }
     }
 }
@@ -147,4 +154,24 @@ pub struct VideoResult {
     pub usage: Usage,
     /// Response metadata.
     pub metadata: ResponseMetadata,
+}
+
+/// A single reranked document result, matching Vercel's `RerankedDocument`.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RerankedDocument {
+    /// Original index in the input documents array.
+    pub index: usize,
+    /// Relevance score (0.0 to 1.0).
+    pub score: f64,
+    /// The document text (if `return_documents` was true).
+    pub document: Option<String>,
+}
+
+/// Result of a rerank call, matching Vercel's `RerankResult`.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RerankResult {
+    /// Reranked documents in order of relevance (most relevant first).
+    pub results: Vec<RerankedDocument>,
+    /// Token usage.
+    pub usage: Usage,
 }

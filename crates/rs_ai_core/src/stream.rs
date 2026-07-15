@@ -156,6 +156,7 @@ impl StreamCollector {
             usage,
             metadata: ResponseMetadata::default(),
             steps: Vec::new(),
+            reasoning: None,
         })
     }
 }

@@ -101,6 +101,7 @@ impl LanguageModel for PortkeyModel {
             usage,
             metadata: Default::default(),
         steps: Vec::new(),
+        reasoning: None,
         })
     }
 

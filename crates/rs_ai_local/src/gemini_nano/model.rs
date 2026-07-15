@@ -118,6 +118,7 @@ impl LanguageModel for GeminiNanoModel {
                 ..Default::default()
             },
         steps: Vec::new(),
+        reasoning: None,
         })
     }
 
