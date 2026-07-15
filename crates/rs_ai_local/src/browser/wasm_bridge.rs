@@ -61,6 +61,33 @@ extern "C" {
     fn destroy(this: &LanguageModelSession);
 }
 
+/// The `ai.languageModel` namespace (newer Prompt API)
+#[wasm_bindgen]
+extern "C" {
+    /// The `ai` namespace on globalThis
+    type AiNamespace;
+
+    /// `ai.languageModel`
+    #[wasm_bindgen(method, getter, js_name = languageModel)]
+    fn language_model(this: &AiNamespace) -> JsValue;
+
+    /// Opaque type for `ai.languageModel`
+    type LanguageModelNamespace;
+
+    /// `languageModel.availability()`
+    #[wasm_bindgen(method, js_name = availability, catch)]
+    async fn lm_availability(this: &LanguageModelNamespace) -> Result<JsValue, JsValue>;
+
+    /// `languageModel.create(options)`
+    #[wasm_bindgen(method, js_name = create, catch)]
+    async fn lm_create(this: &LanguageModelNamespace, options: &JsValue) -> Result<JsValue, JsValue>;
+
+    /// `ai` global access on globalThis
+    type GlobalAi;
+    #[wasm_bindgen(js_namespace = globalThis, js_name = ai, getter)]
+    fn get_ai() -> JsValue;
+}
+
 // ── User-agent helpers ────────────────────────────────────────────
 
 fn user_agent() -> String {
@@ -81,6 +108,17 @@ fn is_edge() -> bool {
 fn language_model_exists() -> bool {
     let global = js_sys::global();
     Reflect::has(&global, &JsValue::from_str("LanguageModel")).unwrap_or(false)
+}
+
+/// Returns `Some(languageModel)` if the new `self.ai.languageModel` API is available.
+fn language_model_v2() -> Option<JsValue> {
+    let ai_val = get_ai();
+    if ai_val.is_undefined() || ai_val.is_null() {
+        return None;
+    }
+    Reflect::get(&ai_val, &"languageModel".into())
+        .ok()
+        .filter(|v| !v.is_undefined() && !v.is_null())
 }
 
 // ── WasmBrowserBridge ────────────────────────────────────────────────
@@ -113,19 +151,26 @@ impl WasmBrowserBridge {
             BrowserType::Unknown
         };
 
-        if !language_model_exists() {
+        let avail = if let Some(lm) = language_model_v2() {
+            let lm_ns: &LanguageModelNamespace = lm.unchecked_ref();
+            lm_ns.lm_availability()
+                .await
+                .ok()
+                .and_then(|v| v.as_string())
+                .unwrap_or_default()
+        } else if language_model_exists() {
+            LanguageModelGlobal::availability()
+                .await
+                .ok()
+                .and_then(|v| v.as_string())
+                .unwrap_or_default()
+        } else {
             return BrowserAiCapabilities {
                 available: false,
                 browser,
                 ..Default::default()
             };
-        }
-
-        let avail = LanguageModelGlobal::availability()
-            .await
-            .ok()
-            .and_then(|v| v.as_string())
-            .unwrap_or_default();
+        };
 
         let available = matches!(avail.as_str(), "readily" | "after-download");
         let backing_model = if is_edge() {
@@ -199,7 +244,13 @@ async fn create_session(options: &BrowserAiOptions) -> Result<LanguageModelSessi
         Reflect::set(&opts, &"responseConstraint".into(), &s.as_str().into())?;
     }
 
-    let session_val = LanguageModelGlobal::create(&opts.into()).await?;
+    // Try new Prompt API (self.ai.languageModel) first, fall back to legacy
+    let session_val = if let Some(lm) = language_model_v2() {
+        let lm_ns: &LanguageModelNamespace = lm.unchecked_ref();
+        lm_ns.lm_create(&opts.into()).await?
+    } else {
+        LanguageModelGlobal::create(&opts.into()).await?
+    };
     Ok(session_val.unchecked_into::<LanguageModelSession>())
 }
 
