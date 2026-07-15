@@ -28,10 +28,12 @@
 use base64::Engine as _;
 use futures::stream::BoxStream;
 use rs_ai_core::{
-    AiError, AiResult, CacheConfig, ContentPart, FileData, GenerateOptions, ImageData,
-    ImageGenerationOptions, ImageModel, ImageResult, LanguageModel, Message, Prompt,
-    RealtimeSession, StreamEvent, VideoGenerationOptions, VideoModel, VideoResult,
+    agent_loop, AiError, AiResult, CacheConfig, ContentPart, EmbeddingResult, FileData,
+    GenerateOptions, ImageData, ImageGenerationOptions, ImageModel, ImageResult,
+    LanguageModel, LifecycleCallbacks, Message, OnFinish, OnStepFinish, OnToolCall, Prompt,
+    RealtimeSession, RerankResult, StreamEvent, VideoGenerationOptions, VideoModel, VideoResult,
 };
+use rs_ai_core::tool::ToolSet;
 use rs_ai_providers::chatgpt::ChatGptProvider;
 use rs_ai_providers::claude::ClaudeProvider;
 use rs_ai_providers::cloudflare::CloudflareProvider;
@@ -53,6 +55,14 @@ pub struct ClientBuilder {
     cf_gateway: Option<String>,
     /// Cache configuration (prompt caching, conversation routing, etc.)
     cache_config: Option<CacheConfig>,
+    /// Maximum tool-calling steps in the agent loop (default: 1).
+    max_steps: u32,
+    /// Callback after each agent-loop step.
+    on_step_finish: Option<OnStepFinish>,
+    /// Callback before each tool execution.
+    on_tool_call: Option<OnToolCall>,
+    /// Callback after final result.
+    on_finish: Option<OnFinish>,
 }
 
 #[derive(Debug)]
@@ -194,6 +204,33 @@ impl ClientBuilder {
         let mut cache = self.cache_config.unwrap_or_default();
         cache.prompt_cache_key = Some(key.into());
         self.cache_config = Some(cache);
+        self
+    }
+
+    /// Set the maximum number of tool-calling steps in the agent loop.
+    /// When > 1, tool calls are automatically executed and fed back to the model.
+    /// Default: 1 (single-shot, no auto-loop).
+    pub fn max_steps(mut self, n: u32) -> Self {
+        self.max_steps = n;
+        self
+    }
+
+    /// Attach a callback invoked after each step in the agent loop.
+    pub fn with_on_step_finish(mut self, cb: OnStepFinish) -> Self {
+        self.on_step_finish = Some(cb);
+        self
+    }
+
+    /// Attach a callback invoked before each tool execution.
+    /// Return `Err(msg)` from the callback to abort the tool call.
+    pub fn with_on_tool_call(mut self, cb: OnToolCall) -> Self {
+        self.on_tool_call = Some(cb);
+        self
+    }
+
+    /// Attach a callback invoked with the final result before returning.
+    pub fn with_on_finish(mut self, cb: OnFinish) -> Self {
+        self.on_finish = Some(cb);
         self
     }
 
@@ -474,6 +511,53 @@ impl ClientBuilder {
         }
     }
 
+    /// Generate embeddings for a list of texts.
+    ///
+    /// Uses the provider's embedding model. Currently supported:
+    /// - **ChatGPT** (OpenAI `text-embedding-3-small`, `text-embedding-3-large`, etc.)
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let embeddings = rs_ai::chatgpt()
+    ///     .api_key("sk-...")
+    ///     .model("text-embedding-3-small")
+    ///     .embed(vec!["Hello world".into(), "Foo bar".into()])
+    ///     .await?;
+    /// ```
+    pub async fn embed(self, texts: Vec<String>) -> AiResult<EmbeddingResult> {
+        let api_key = self.api_key.clone().ok_or_else(|| AiError::AuthError {
+            message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+        })?;
+        let model_id = self.model_id.clone().unwrap_or_default();
+
+        match self.provider_type {
+            ProviderType::ChatGpt => {
+                use rs_ai_core::Provider as _;
+                let provider = ChatGptProvider::new(api_key);
+                let model = provider.embedding_model(&model_id)?;
+                model.embed(texts).await
+            }
+            _ => Err(AiError::UnsupportedCapability {
+                capability: "embedding".to_string(),
+                provider: format!("{:?}", self.provider_type),
+            }),
+        }
+    }
+
+    /// Rerank documents by relevance to a query (Vercel AI SDK `rerank()`).
+    ///
+    /// Currently no provider implements reranking. This is a placeholder.
+    pub async fn rerank(
+        self,
+        _query: impl Into<String>,
+        _documents: Vec<String>,
+    ) -> AiResult<RerankResult> {
+        Err(AiError::UnsupportedCapability {
+            capability: "reranking".to_string(),
+            provider: format!("{:?}", self.provider_type),
+        })
+    }
+
     /// Transcribe audio bytes into text.
     ///
     /// Builds a `Prompt::Messages` that embeds the audio as a base64-encoded
@@ -649,8 +733,24 @@ impl ClientBuilder {
             }
         };
 
+        let mut options = GenerateOptions::default()
+            .with_max_steps(self.max_steps);
+
+        let callbacks = LifecycleCallbacks {
+            on_step_finish: self.on_step_finish,
+            on_tool_call: self.on_tool_call,
+            on_finish: self.on_finish,
+        };
+        if callbacks.on_step_finish.is_some()
+            || callbacks.on_tool_call.is_some()
+            || callbacks.on_finish.is_some()
+        {
+            options = options.with_callbacks(callbacks);
+        }
+
         Ok(Client {
             model: std::sync::Arc::new(model),
+            options,
         })
     }
 }
@@ -723,6 +823,7 @@ fn build_vision_message(text: String, images: Vec<String>) -> AiResult<Message> 
 #[derive(Clone)]
 pub struct Client {
     model: std::sync::Arc<Box<dyn LanguageModel>>,
+    options: GenerateOptions,
 }
 
 impl Client {
@@ -743,12 +844,22 @@ impl Client {
     }
 
     pub async fn generate_prompt(&self, prompt: Prompt) -> AiResult<String> {
-        let result = self
-            .model
-            .as_ref()
-            .as_ref()
-            .generate(prompt, GenerateOptions::default())
-            .await?;
+        let result = if self.options.max_steps.unwrap_or(1) > 1 {
+            let tools = ToolSet::new();
+            agent_loop(
+                self.model.as_ref().as_ref(),
+                prompt,
+                self.options.clone(),
+                &tools,
+            )
+            .await?
+        } else {
+            self.model
+                .as_ref()
+                .as_ref()
+                .generate(prompt, self.options.clone())
+                .await?
+        };
 
         result.text.ok_or_else(|| AiError::ProviderError {
             provider: self.model.as_ref().as_ref().provider_id().to_string(),
@@ -861,6 +972,10 @@ pub fn claude() -> ClientBuilder {
         images: Vec::new(),
         cf_gateway: None,
         cache_config: None,
+        max_steps: 1,
+        on_step_finish: None,
+        on_tool_call: None,
+        on_finish: None,
     }
 }
 
@@ -882,6 +997,10 @@ pub fn chatgpt() -> ClientBuilder {
         images: Vec::new(),
         cf_gateway: None,
         cache_config: None,
+        max_steps: 1,
+        on_step_finish: None,
+        on_tool_call: None,
+        on_finish: None,
     }
 }
 
@@ -903,6 +1022,10 @@ pub fn gemini() -> ClientBuilder {
         images: Vec::new(),
         cf_gateway: None,
         cache_config: None,
+        max_steps: 1,
+        on_step_finish: None,
+        on_tool_call: None,
+        on_finish: None,
     }
 }
 
@@ -924,6 +1047,10 @@ pub fn xai() -> ClientBuilder {
         images: Vec::new(),
         cf_gateway: None,
         cache_config: None,
+        max_steps: 1,
+        on_step_finish: None,
+        on_tool_call: None,
+        on_finish: None,
     }
 }
 
@@ -950,6 +1077,10 @@ pub fn cloudflare(account_id: impl Into<String>) -> ClientBuilder {
         images: Vec::new(),
         cf_gateway: None,
         cache_config: None,
+        max_steps: 1,
+        on_step_finish: None,
+        on_tool_call: None,
+        on_finish: None,
     }
 }
 
@@ -973,5 +1104,9 @@ pub fn compatible(base_url: impl Into<String>) -> ClientBuilder {
         images: Vec::new(),
         cf_gateway: None,
         cache_config: None,
+        max_steps: 1,
+        on_step_finish: None,
+        on_tool_call: None,
+        on_finish: None,
     }
 }

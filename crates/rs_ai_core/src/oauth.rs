@@ -142,7 +142,7 @@ fn oauth_flow_chatgpt() -> Result<OAuthTokens, OAuthError> {
         redir = urlenc(&redirect),
         s = urlenc(SCOPES),
         ch = urlenc(&challenge),
-        st = urlenc(&"rs_ai_oauth"),
+        st = urlenc("rs_ai_oauth"),
     );
 
     open_browser(&url).map_err(OAuthError::Network)?;
@@ -180,7 +180,7 @@ fn oauth_flow_xai() -> Result<OAuthTokens, OAuthError> {
         redir = urlenc(&redirect),
         s = urlenc(SCOPES),
         ch = urlenc(&challenge),
-        st = urlenc(&"rs_ai_oauth"),
+        st = urlenc("rs_ai_oauth"),
     );
 
     open_browser(&url).map_err(OAuthError::Network)?;

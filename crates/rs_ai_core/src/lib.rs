@@ -40,9 +40,10 @@ pub use message::{Message, Role};
 pub use middleware::{extract_reasoning_middleware, ExtractReasoningMiddleware};
 pub use model::{
     agent_loop, rerank, EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel,
-    LanguageModel, Middleware, MiddlewareNext, ProviderInfo, RealtimeEvent, RealtimeSession,
-    ReasoningEffort, RerankOptions, RerankingModel, SpeechToTextModel, TextToSpeechModel,
-    ThinkingConfig, VideoGenerationOptions, VideoModel,
+    LanguageModel, LifecycleCallbacks, Middleware, MiddlewareNext, ObjectStream, ObjectStreamEvent,
+    OnFinish, OnStepFinish, OnToolCall, ProviderInfo, RealtimeEvent, RealtimeSession,
+    ReasoningEffort, RerankOptions, RerankingModel, SpeechToTextModel, stream_object,
+    TextToSpeechModel, ThinkingConfig, VideoGenerationOptions, VideoModel,
 };
 pub use prompt::Prompt;
 pub use provider::Provider;

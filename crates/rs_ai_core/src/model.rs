@@ -1,16 +1,55 @@
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
+
 use async_trait::async_trait;
 
 use crate::capability::CapabilitySet;
 use crate::error::{AiError, AiResult};
 use crate::prompt::Prompt;
 use crate::schema::OutputSchema;
-use crate::stream::AiStream;
+use crate::stream::{AiStream, StreamEvent};
 use crate::structured::{
     AudioResult, EmbeddingResult, GenerateResult, ImageResult, ObjectResult, RerankResult,
-    TranscriptionResult, TtsOptions, VideoResult,
+    StepResult, TranscriptionResult, TtsOptions, VideoResult,
 };
-use crate::tool::{ToolChoice, ToolContext, ToolDefinition};
+use crate::tool::{
+    ToolCallRequest, ToolCallResult, ToolChoice, ToolContext, ToolDefinition,
+};
 use crate::types::RequestMetadata;
+
+/// Callback invoked after each step in the agent loop.
+pub type OnStepFinish = Arc<dyn Fn(&StepResult) + Send + Sync>;
+
+/// Callback invoked before a tool is executed.
+/// Return `Ok(())` to proceed, or `Err(msg)` to abort the tool call.
+pub type OnToolCall = Arc<dyn Fn(&ToolCallRequest) -> Result<(), String> + Send + Sync>;
+
+/// Callback invoked after the final result is available.
+pub type OnFinish = Arc<dyn Fn(&GenerateResult) + Send + Sync>;
+
+/// Lifecycle callbacks for observing and intervening in the agent loop.
+///
+/// Attach via [`GenerateOptions::with_callbacks`].
+#[derive(Clone, Default)]
+pub struct LifecycleCallbacks {
+    /// Called after each step completes in the agent loop.
+    pub on_step_finish: Option<OnStepFinish>,
+    /// Called before each tool execution. Return `Err(msg)` to abort.
+    pub on_tool_call: Option<OnToolCall>,
+    /// Called with the final result before returning.
+    pub on_finish: Option<OnFinish>,
+}
+
+impl std::fmt::Debug for LifecycleCallbacks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LifecycleCallbacks")
+            .field("on_step_finish", &self.on_step_finish.is_some())
+            .field("on_tool_call", &self.on_tool_call.is_some())
+            .field("on_finish", &self.on_finish.is_some())
+            .finish()
+    }
+}
 
 /// Extended-thinking / reasoning configuration.
 ///
@@ -82,6 +121,8 @@ pub struct GenerateOptions {
     pub tools_context: Option<ToolContext>,
     /// Request metadata.
     pub metadata: RequestMetadata,
+    /// Lifecycle callbacks for the agent loop.
+    pub callbacks: Option<LifecycleCallbacks>,
 }
 
 impl GenerateOptions {
@@ -169,6 +210,12 @@ impl GenerateOptions {
         self
     }
 
+    /// Attach lifecycle callbacks for the agent loop.
+    pub fn with_callbacks(mut self, cbs: LifecycleCallbacks) -> Self {
+        self.callbacks = Some(cbs);
+        self
+    }
+
     /// Enable agent loop with the given max steps.
     /// When > 1, tool calls are automatically executed and fed back to the model.
     pub fn with_max_steps(mut self, max_steps: u32) -> Self {
@@ -236,6 +283,92 @@ pub async fn generate_object<T: serde::de::DeserializeOwned + schemars::JsonSche
     })
 }
 
+/// Stream a structured object from a language model response.
+///
+/// Wraps `model.stream()` to accumulate text deltas and parse the final
+/// output as a typed object. Analogous to Vercel AI SDK's `streamObject()`.
+///
+/// The returned [`ObjectStream`] emits [`ObjectStreamEvent::Delta`] for each
+/// text chunk and [`ObjectStreamEvent::Object`] with the final parsed object
+/// once the stream completes.
+pub async fn stream_object<T: serde::de::DeserializeOwned + Send + 'static>(
+    model: &dyn LanguageModel,
+    prompt: Prompt,
+    options: GenerateOptions,
+) -> AiResult<ObjectStream<T>> {
+    let stream = model.stream(prompt, options).await?;
+    Ok(ObjectStream {
+        stream,
+        buffer: String::new(),
+        done: false,
+        _phantom: std::marker::PhantomData::<fn() -> T>,
+    })
+}
+
+/// A stream that accumulates text deltas and emits the final parsed object.
+///
+/// Yields [`ObjectStreamEvent::Delta`] for each text chunk and
+/// [`ObjectStreamEvent::Object`] once the stream completes.
+pub struct ObjectStream<T> {
+    stream: AiStream,
+    buffer: String,
+    done: bool,
+    _phantom: std::marker::PhantomData<fn() -> T>,
+}
+
+/// Events emitted by [`ObjectStream`].
+#[derive(Debug, Clone)]
+pub enum ObjectStreamEvent<T> {
+    /// A text delta chunk (partial JSON).
+    Delta { text: String },
+    /// The final parsed object.
+    Object(T),
+}
+
+impl<T: serde::de::DeserializeOwned + Send> futures::Stream for ObjectStream<T> {
+    type Item = AiResult<ObjectStreamEvent<T>>;
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
+        // ObjectStream<T> is Unpin — get_mut() is safe
+        let this = self.get_mut();
+
+        if this.done {
+            return Poll::Ready(None);
+        }
+
+        let poll = this.stream.as_mut().poll_next(cx);
+        match poll {
+            Poll::Ready(Some(Ok(StreamEvent::TextDelta { delta }))) => {
+                this.buffer.push_str(&delta);
+                Poll::Ready(Some(Ok(ObjectStreamEvent::Delta { text: delta })))
+            }
+            Poll::Ready(Some(Ok(StreamEvent::MessageEnd { .. }))) => {
+                this.done = true;
+                let object = match serde_json::from_str::<T>(&this.buffer) {
+                    Ok(obj) => obj,
+                    Err(e) => {
+                        return Poll::Ready(Some(Err(AiError::Serialization(
+                            format!("Failed to parse streamed object: {e}"),
+                        ))))
+                    }
+                };
+                Poll::Ready(Some(Ok(ObjectStreamEvent::Object(object))))
+            }
+            Poll::Ready(Some(Ok(_))) => {
+                // Non-text event, re-poll
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
+            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
+            Poll::Ready(None) => Poll::Ready(None),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
 /// Auto-execute tool calls in a loop (Vercel's `maxSteps` agent loop).
 ///
 /// Equivalent to calling `generateText` with `maxSteps > 1` in Vercel AI SDK.
@@ -251,7 +384,6 @@ pub async fn agent_loop(
     tools: &crate::tool::ToolSet,
 ) -> AiResult<GenerateResult> {
     use crate::message::{Message, Role};
-    use crate::structured::StepResult;
     use crate::tool::ToolExecutionOptions;
     use std::collections::HashMap;
 
@@ -275,6 +407,19 @@ pub async fn agent_loop(
             // Execute tool calls
             let mut tool_results = Vec::new();
             for call in &result.tool_calls {
+                // Fire on_tool_call — allows aborting
+                if let Some(ref cbs) = options.callbacks {
+                    if let Some(ref cb) = cbs.on_tool_call {
+                        if let Err(msg) = cb(call) {
+                            tool_results.push(ToolCallResult {
+                                call_id: call.id.clone(),
+                                content: format!("Aborted by on_tool_call: {msg}"),
+                                is_error: true,
+                            });
+                            continue;
+                        }
+                    }
+                }
                 let exec_opts = ToolExecutionOptions {
                     call_id: call.id.clone(),
                     context: tool_context.data.get(&call.name).cloned(),
@@ -293,6 +438,13 @@ pub async fn agent_loop(
                 usage: result.usage,
                 reasoning: None,
             });
+
+            // Fire on_step_finish
+            if let Some(ref cbs) = options.callbacks {
+                if let Some(ref cb) = cbs.on_step_finish {
+                    cb(all_steps.last().unwrap());
+                }
+            }
 
             // Build tool result messages and append to prompt
             let tool_messages: Vec<Message> = tool_results
@@ -321,6 +473,12 @@ pub async fn agent_loop(
                     usage: crate::usage::Usage::default(),
                     reasoning: None,
                 });
+                // Fire on_step_finish
+                if let Some(ref cbs) = options.callbacks {
+                    if let Some(ref cb) = cbs.on_step_finish {
+                        cb(all_steps.last().unwrap());
+                    }
+                }
             }
         } else {
             // No tool calls — done
@@ -334,7 +492,14 @@ pub async fn agent_loop(
                 reasoning: None,
             });
 
-            return Ok(GenerateResult {
+            // Fire on_step_finish
+            if let Some(ref cbs) = options.callbacks {
+                if let Some(ref cb) = cbs.on_step_finish {
+                    cb(all_steps.last().unwrap());
+                }
+            }
+
+            let res = GenerateResult {
                 text: result.text,
                 tool_calls: Vec::new(),
                 finish_reason: result.finish_reason,
@@ -342,7 +507,15 @@ pub async fn agent_loop(
                 metadata: result.metadata,
                 steps: all_steps,
                 reasoning: None,
-            });
+            };
+
+            // Fire on_finish
+            if let Some(ref cbs) = options.callbacks {
+                if let Some(ref cb) = cbs.on_finish {
+                    cb(&res);
+                }
+            }
+            return Ok(res);
         }
     }
 
@@ -357,7 +530,7 @@ pub async fn agent_loop(
         reasoning: None,
     });
 
-    Ok(GenerateResult {
+    let res = GenerateResult {
         text: last.text,
         tool_calls: Vec::new(),
         finish_reason: crate::types::FinishReason::Stop,
@@ -365,7 +538,15 @@ pub async fn agent_loop(
         metadata: crate::types::ResponseMetadata::default(),
         steps: all_steps,
         reasoning: None,
-    })
+    };
+
+    // Fire on_finish
+    if let Some(ref cbs) = options.callbacks {
+        if let Some(ref cb) = cbs.on_finish {
+            cb(&res);
+        }
+    }
+    Ok(res)
 }
 
 /// A model that produces vector embeddings from text.
