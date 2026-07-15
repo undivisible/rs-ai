@@ -222,6 +222,17 @@ impl ClientBuilder {
         }
     }
 
+    pub async fn generate_prompt(self, prompt: Prompt) -> AiResult<String> {
+        if !self.images.is_empty() {
+            return Err(AiError::ProviderError {
+                provider: "rs_ai".to_string(),
+                status: None,
+                message: "Images cannot be combined with a structured prompt".to_string(),
+            });
+        }
+        self.build().await?.generate_prompt(prompt).await
+    }
+
     /// Stream text generation from the configured model.
     ///
     /// When images have been attached via [`with_image`](ClientBuilder::with_image) the
@@ -261,6 +272,20 @@ impl ClientBuilder {
         } else {
             client.stream_with_images(text, images).await
         }
+    }
+
+    pub async fn stream_prompt(
+        self,
+        prompt: Prompt,
+    ) -> AiResult<BoxStream<'static, AiResult<StreamEvent>>> {
+        if !self.images.is_empty() {
+            return Err(AiError::ProviderError {
+                provider: "rs_ai".to_string(),
+                status: None,
+                message: "Images cannot be combined with a structured prompt".to_string(),
+            });
+        }
+        self.build().await?.stream_prompt(prompt).await
     }
 
     /// Synthesize speech from text, returning audio bytes.
@@ -585,12 +610,15 @@ impl Client {
     /// println!("{}", response);
     /// ```
     pub async fn generate(&self, prompt: impl Into<String>) -> AiResult<String> {
-        let prompt_str = prompt.into();
+        self.generate_prompt(Prompt::Text(prompt.into())).await
+    }
+
+    pub async fn generate_prompt(&self, prompt: Prompt) -> AiResult<String> {
         let result = self
             .model
             .as_ref()
             .as_ref()
-            .generate(Prompt::Text(prompt_str), GenerateOptions::default())
+            .generate(prompt, GenerateOptions::default())
             .await?;
 
         result.text.ok_or_else(|| AiError::ProviderError {
@@ -648,11 +676,17 @@ impl Client {
         &self,
         prompt: impl Into<String>,
     ) -> AiResult<BoxStream<'static, AiResult<StreamEvent>>> {
-        let prompt_str = prompt.into();
+        self.stream_prompt(Prompt::Text(prompt.into())).await
+    }
+
+    pub async fn stream_prompt(
+        &self,
+        prompt: Prompt,
+    ) -> AiResult<BoxStream<'static, AiResult<StreamEvent>>> {
         self.model
             .as_ref()
             .as_ref()
-            .stream(Prompt::Text(prompt_str), GenerateOptions::default())
+            .stream(prompt, GenerateOptions::default())
             .await
     }
 
