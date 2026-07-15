@@ -76,3 +76,40 @@ pub struct TtsOptions {
     /// Output audio format (e.g. "mp3", "opus", "aac", "flac", "wav", "pcm").
     pub response_format: Option<String>,
 }
+
+/// A generated file (image, video, audio) matching Vercel's `GeneratedFile`.
+#[derive(Debug, Clone)]
+pub struct GeneratedFile {
+    /// Base64-encoded file data.
+    pub base64: String,
+    /// Raw file bytes.
+    pub bytes: Vec<u8>,
+    /// IANA media type (e.g. "image/png", "video/mp4").
+    pub media_type: String,
+}
+
+/// Result of an image generation call, matching Vercel's `GenerateImageResult`.
+#[derive(Debug, Clone)]
+pub struct ImageResult {
+    /// The first generated image.
+    pub image: GeneratedFile,
+    /// All generated images.
+    pub images: Vec<GeneratedFile>,
+    /// Token usage, if available.
+    pub usage: Usage,
+    /// Response metadata.
+    pub metadata: ResponseMetadata,
+}
+
+/// Result of a video generation call, matching Vercel's `GenerateVideoResult`.
+#[derive(Debug, Clone)]
+pub struct VideoResult {
+    /// The first generated video.
+    pub video: GeneratedFile,
+    /// All generated videos.
+    pub videos: Vec<GeneratedFile>,
+    /// Token usage, if available.
+    pub usage: Usage,
+    /// Response metadata.
+    pub metadata: ResponseMetadata,
+}

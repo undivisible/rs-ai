@@ -6,7 +6,8 @@ use crate::prompt::Prompt;
 use crate::schema::OutputSchema;
 use crate::stream::AiStream;
 use crate::structured::{
-    AudioResult, EmbeddingResult, GenerateResult, ObjectResult, TranscriptionResult, TtsOptions,
+    AudioResult, EmbeddingResult, GenerateResult, ImageResult, ObjectResult, TranscriptionResult,
+    TtsOptions, VideoResult,
 };
 use crate::tool::{ToolChoice, ToolDefinition};
 use crate::types::RequestMetadata;
@@ -306,4 +307,126 @@ pub trait TextToSpeechModel: Send + Sync {
         voice: &str,
         options: TtsOptions,
     ) -> AiResult<AudioResult>;
+}
+
+// ─── Image Generation ───────────────────────────────────────────────────────────
+
+/// Options for image generation, matching Vercel AI SDK `generateImage`.
+#[derive(Debug, Clone, Default)]
+pub struct ImageGenerationOptions {
+    /// Number of images to generate (default: 1).
+    pub n: Option<u32>,
+    /// Size as `{width}x{height}` (e.g. "1024x1024").
+    pub size: Option<String>,
+    /// Aspect ratio as `{width}:{height}` (e.g. "16:9").
+    pub aspect_ratio: Option<String>,
+    /// Random seed for reproducibility.
+    pub seed: Option<u64>,
+    /// Provider-specific options forwarded as body parameters.
+    pub provider_options: Option<std::collections::HashMap<String, serde_json::Value>>,
+}
+
+/// A model that generates images from text prompts.
+#[async_trait]
+pub trait ImageModel: Send + Sync {
+    /// Return the model identifier.
+    fn model_id(&self) -> &str;
+
+    /// Return the provider identifier.
+    fn provider_id(&self) -> &str;
+
+    /// Generate one or more images from a text prompt.
+    async fn generate_image(
+        &self,
+        prompt: &str,
+        options: ImageGenerationOptions,
+    ) -> AiResult<ImageResult>;
+}
+
+// ─── Video Generation ───────────────────────────────────────────────────────────
+
+/// Options for video generation, matching Vercel AI SDK `experimental_generateVideo`.
+#[derive(Debug, Clone, Default)]
+pub struct VideoGenerationOptions {
+    /// Number of videos to generate (default: 1).
+    pub n: Option<u32>,
+    /// Aspect ratio as `{width}:{height}` (e.g. "16:9").
+    pub aspect_ratio: Option<String>,
+    /// Resolution as `{width}x{height}` (e.g. "1920x1080").
+    pub resolution: Option<String>,
+    /// Duration in seconds.
+    pub duration: Option<f32>,
+    /// Frames per second.
+    pub fps: Option<u32>,
+    /// Random seed.
+    pub seed: Option<u64>,
+    /// Whether to generate audio track.
+    pub generate_audio: Option<bool>,
+}
+
+/// A model that generates videos from text prompts.
+#[async_trait]
+pub trait VideoModel: Send + Sync {
+    /// Return the model identifier.
+    fn model_id(&self) -> &str;
+
+    /// Return the provider identifier.
+    fn provider_id(&self) -> &str;
+
+    /// Generate one or more videos from a text prompt.
+    async fn generate_video(
+        &self,
+        prompt: &str,
+        options: VideoGenerationOptions,
+    ) -> AiResult<VideoResult>;
+}
+
+// ─── Realtime Session ───────────────────────────────────────────────────────────
+
+/// Events emitted by a realtime session.
+#[derive(Debug, Clone)]
+pub enum RealtimeEvent {
+    /// Partial text delta from the model.
+    TextDelta { delta: String },
+    /// Complete text response.
+    TextDone { text: String },
+    /// Audio chunk received (PCM or opus bytes).
+    AudioDelta { delta: Vec<u8> },
+    /// Tool call from the model.
+    ToolCall {
+        id: String,
+        name: String,
+        arguments: serde_json::Value,
+    },
+    /// Tool execution result.
+    ToolResult { call_id: String, content: String },
+    /// The session encountered an error.
+    Error { message: String },
+    /// Session closed.
+    Done,
+}
+
+/// A bidirectional realtime session for voice/text interaction.
+///
+/// Analogous to Vercel's `AbstractRealtimeSession` + `RealtimeSession`.
+/// Specific provider implementations (OpenAI Realtime, Gemini Live) implement this.
+#[async_trait]
+pub trait RealtimeSession: Send + Sync {
+    /// Return the model identifier.
+    fn model_id(&self) -> &str;
+
+    /// Return the provider identifier.
+    fn provider_id(&self) -> &str;
+
+    /// Send a text message to the model.
+    async fn send_text(&mut self, text: &str) -> AiResult<()>;
+
+    /// Send audio bytes to the model.
+    async fn send_audio(&mut self, audio: Vec<u8>, mime_type: &str) -> AiResult<()>;
+
+    /// Receive the next event from the session. Blocks until an event is available.
+    async fn recv(&mut self) -> Option<RealtimeEvent>;
+
+    /// Close the session.
+    async fn close(self: Box<Self>) -> AiResult<()>;
 }

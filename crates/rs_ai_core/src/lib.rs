@@ -35,8 +35,9 @@ pub use embedding::cosine_similarity;
 pub use error::{AiError, AiResult};
 pub use message::{Message, Role};
 pub use model::{
-    EmbeddingModel, GenerateOptions, LanguageModel, Middleware, MiddlewareNext, ProviderInfo,
-    ReasoningEffort, SpeechToTextModel, TextToSpeechModel, ThinkingConfig,
+    EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel, LanguageModel, Middleware,
+    MiddlewareNext, ProviderInfo, ReasoningEffort, RealtimeEvent, RealtimeSession,
+    SpeechToTextModel, TextToSpeechModel, ThinkingConfig, VideoGenerationOptions, VideoModel,
 };
 pub use prompt::Prompt;
 pub use provider::Provider;
@@ -44,7 +45,8 @@ pub use router::{Route, Router};
 pub use schema::OutputSchema;
 pub use stream::{AiStream, StreamCollector, StreamEvent, SyntheticStreamer};
 pub use structured::{
-    AudioResult, EmbeddingResult, GenerateResult, ObjectResult, TranscriptionResult, TtsOptions,
+    AudioResult, EmbeddingResult, GenerateResult, GeneratedFile, ImageResult, ObjectResult,
+    TranscriptionResult, TtsOptions, VideoResult,
 };
 pub use tool::{ToolCallRequest, ToolCallResult, ToolChoice, ToolDefinition, ToolSet};
 pub use types::{FinishReason, ModelInfo, ModelRegistry, RequestMetadata, ResponseMetadata};
@@ -86,4 +88,24 @@ pub async fn stream_text(
 /// Embed texts using an embedding model.
 pub async fn embed(model: &dyn EmbeddingModel, texts: Vec<String>) -> AiResult<EmbeddingResult> {
     model.embed(texts).await
+}
+
+/// Generate images from a text prompt using an image model.
+/// Equivalent to Vercel AI SDK `generateImage()`.
+pub async fn generate_image(
+    model: &dyn ImageModel,
+    prompt: &str,
+    options: ImageGenerationOptions,
+) -> AiResult<ImageResult> {
+    model.generate_image(prompt, options).await
+}
+
+/// Generate a video from a text prompt using a video model.
+/// Equivalent to Vercel AI SDK `experimental_generateVideo()`.
+pub async fn generate_video(
+    model: &dyn VideoModel,
+    prompt: &str,
+    options: VideoGenerationOptions,
+) -> AiResult<VideoResult> {
+    model.generate_video(prompt, options).await
 }

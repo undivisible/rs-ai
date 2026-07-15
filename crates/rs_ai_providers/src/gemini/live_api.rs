@@ -605,3 +605,91 @@ impl LiveSession {
         Ok(())
     }
 }
+
+// ─── Unified RealtimeSession trait impl ──────────────────────────────────
+
+use async_trait::async_trait as async_trait_reexport;
+use rs_ai_core::{AiResult, RealtimeEvent};
+
+/// Adapter that wraps Gemini's LiveSession into the unified
+/// [`rs_ai_core::RealtimeSession`] trait.
+pub struct GeminiLiveSessionAdapter {
+    inner: LiveSession,
+    model: String,
+}
+
+impl GeminiLiveSessionAdapter {
+    /// Wrap a [`LiveSession`] into the unified trait.
+    pub fn new(session: LiveSession, model: impl Into<String>) -> Self {
+        Self {
+            inner: session,
+            model: model.into(),
+        }
+    }
+}
+
+#[async_trait_reexport]
+impl rs_ai_core::RealtimeSession for GeminiLiveSessionAdapter {
+    fn model_id(&self) -> &str {
+        &self.model
+    }
+
+    fn provider_id(&self) -> &str {
+        "gemini"
+    }
+
+    async fn send_text(&mut self, text: &str) -> AiResult<()> {
+        self.inner.send_text(text).await.map_err(|e| {
+            rs_ai_core::AiError::BridgeError {
+                bridge: "gemini_live".into(),
+                message: e.to_string(),
+            }
+        })
+    }
+
+    async fn send_audio(&mut self, audio: Vec<u8>, mime_type: &str) -> AiResult<()> {
+        self.inner.send_audio_chunk(&audio, mime_type).await.map_err(|e| {
+            rs_ai_core::AiError::BridgeError {
+                bridge: "gemini_live".into(),
+                message: e.to_string(),
+            }
+        })
+    }
+
+    async fn recv(&mut self) -> Option<RealtimeEvent> {
+        loop {
+            match self.inner.recv().await {
+                Some(Ok(LiveEvent::TextDelta(text))) => {
+                    return Some(RealtimeEvent::TextDelta { delta: text });
+                }
+                Some(Ok(LiveEvent::AudioDelta(pcm))) => {
+                    return Some(RealtimeEvent::AudioDelta { delta: pcm });
+                }
+                Some(Ok(LiveEvent::ToolCall(calls))) => {
+                    if let Some(first) = calls.into_iter().next() {
+                        return Some(RealtimeEvent::ToolCall {
+                            id: first.id,
+                            name: first.name,
+                            arguments: first.args,
+                        });
+                    }
+                }
+                Some(Ok(LiveEvent::SetupComplete)) => continue,
+                Some(Ok(LiveEvent::TurnComplete)) => continue,
+                Some(Ok(LiveEvent::Interrupted)) => continue,
+                Some(Ok(LiveEvent::ToolCallCancelled(_))) => continue,
+                Some(Err(e)) => {
+                    return Some(RealtimeEvent::Error {
+                        message: e.to_string(),
+                    });
+                }
+                None => return None,
+            }
+        }
+    }
+
+    async fn close(self: Box<Self>) -> AiResult<()> {
+        // WebSocket Drop impl sends close frame
+        Ok(())
+    }
+}

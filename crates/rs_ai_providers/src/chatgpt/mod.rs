@@ -16,8 +16,12 @@
 //! let model = provider.language_model("gpt-4o").unwrap();
 //! ```
 
+pub(crate) mod image;
 pub mod realtime_api;
-pub use realtime_api::RealtimeSession;
+pub(crate) mod video;
+pub use image::ChatGptImageModel;
+pub use realtime_api::{ChatGptRealtimeSession, RealtimeSession};
+pub use video::ChatGptVideoModel;
 
 use crate::openai_compatible::{
     OpenAiCompatibleConfig, OpenAiCompatibleModel, OpenAiCompatibleProvider,
@@ -57,6 +61,15 @@ pub const GPT_4O_REALTIME: &str = "gpt-4o-realtime-preview";
 pub const GPT_4O_AUDIO: &str = "gpt-4o-audio-preview";
 /// OpenAI GPT-4o Mini Realtime.
 pub const GPT_4O_MINI_REALTIME: &str = "gpt-4o-mini-realtime-preview";
+
+// ── Image / video model identifiers ──
+
+/// OpenAI DALL-E 3.
+pub const DALL_E_3: &str = "dall-e-3";
+/// OpenAI DALL-E 2.
+pub const DALL_E_2: &str = "dall-e-2";
+/// OpenAI Sora (video generation).
+pub const SORA: &str = "sora-2";
 
 /// A provider pre-configured for the official OpenAI ChatGPT API.
 pub struct ChatGptProvider {
@@ -193,6 +206,27 @@ impl ChatGptProvider {
                     .with(Capability::AudioInput)
                     .with(Capability::AudioOutput)
                     .with(Capability::Streaming),
+            })
+            .with_model_info(ModelInfo {
+                id: DALL_E_3.into(),
+                provider: "chatgpt".into(),
+                display_name: "DALL-E 3".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::ImageGeneration),
+            })
+            .with_model_info(ModelInfo {
+                id: DALL_E_2.into(),
+                provider: "chatgpt".into(),
+                display_name: "DALL-E 2".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::ImageGeneration),
+            })
+            .with_model_info(ModelInfo {
+                id: SORA.into(),
+                provider: "chatgpt".into(),
+                display_name: "Sora".into(),
+                capabilities: CapabilitySet::new()
+                    .with(Capability::VideoGeneration),
             });
         Self { inner, config }
     }
@@ -273,6 +307,40 @@ impl ChatGptProvider {
     ) -> Result<RealtimeSession, realtime_api::RealtimeError> {
         use secrecy::ExposeSecret;
         RealtimeSession::connect(self.config.api_key().expose_secret(), model).await
+    }
+
+    /// Create an image generation model (DALL-E 3 or DALL-E 2).
+    pub fn image_model(&self, model_id: &str) -> ChatGptImageModel {
+        use secrecy::ExposeSecret;
+        let mut m = ChatGptImageModel::new(
+            model_id,
+            self.config.api_key().expose_secret(),
+            self.config.base_url(),
+        );
+        if let Some(ref org) = self.config.org_id {
+            m = m.with_org(org);
+        }
+        m
+    }
+
+    /// Create a video generation model (Sora).
+    pub fn video_model(&self, model_id: &str) -> ChatGptVideoModel {
+        ChatGptVideoModel::new(model_id)
+    }
+
+    /// Open a unified realtime session by wrapping the provider-specific
+    /// [`RealtimeSession`] behind [`rs_ai_core::RealtimeSession`].
+    pub async fn unified_realtime_session(
+        &self,
+        model: &str,
+    ) -> rs_ai_core::AiResult<Box<dyn rs_ai_core::RealtimeSession>> {
+        let session = self.realtime_session(model).await.map_err(|e| {
+            rs_ai_core::AiError::BridgeError {
+                bridge: "chatgpt_realtime".into(),
+                message: e.to_string(),
+            }
+        })?;
+        Ok(Box::new(ChatGptRealtimeSession::new(session, model)))
     }
 
     /// Fetch the list of models from the OpenAI API.

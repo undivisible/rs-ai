@@ -46,6 +46,27 @@ pub trait LanguageModel: Send + Sync {
     async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream>;
 }
 
+pub trait ImageModel: Send + Sync {
+    fn model_id(&self) -> &str;
+    fn provider_id(&self) -> &str;
+    async fn generate_image(&self, prompt: &str, options: ImageGenerationOptions) -> AiResult<ImageResult>;
+}
+
+pub trait VideoModel: Send + Sync {
+    fn model_id(&self) -> &str;
+    fn provider_id(&self) -> &str;
+    async fn generate_video(&self, prompt: &str, options: VideoGenerationOptions) -> AiResult<VideoResult>;
+}
+
+pub trait RealtimeSession: Send + Sync {
+    fn model_id(&self) -> &str;
+    fn provider_id(&self) -> &str;
+    async fn send_text(&mut self, text: &str) -> AiResult<()>;
+    async fn send_audio(&mut self, audio: Vec<u8>, mime_type: &str) -> AiResult<()>;
+    async fn recv(&mut self) -> Option<RealtimeEvent>;
+    async fn close(self: Box<Self>) -> AiResult<()>;
+}
+
 pub trait Provider {
     fn id(&self) -> &str;
     fn name(&self) -> &str;
@@ -60,6 +81,9 @@ Also re-exports:
 - `middleware::{CacheMiddleware, LoggingMiddleware, RetryMiddleware, MiddlewareChain}`
 - `ui_stream::{UiStreamEvent, NdjsonEncoder, SseEncoder}`
 - `observability::{with_observability, ObservableModel}`
+- `model::{ImageModel, VideoModel, RealtimeSession, ImageGenerationOptions, VideoGenerationOptions}`
+- `structured::{ImageResult, VideoResult, GeneratedFile}`
+- `RealtimeEvent` enum: `TextDelta`, `TextDone`, `AudioDelta`, `ToolCall`, `ToolResult`, `Error`, `Done`
 
 ## Providers Crate: `rs_ai_providers`
 
@@ -195,6 +219,14 @@ Console.WriteLine(response);
 | `rs_ai_cloudflare(account_id)` | Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN` |
 | `rs_ai_compatible(base_url)` | Any OpenAI-compatible | `OPENAI_API_KEY` |
 
+### Builder methods (new in v0.2.3)
+
+| Method | Description |
+|---|---|
+| `.generate_image(prompt, options)` | Generate image via DALL-E, Grok Imagine, or Imagen |
+| `.generate_video(prompt, options)` | Generate video via Sora or Veo |
+| `.realtime_session()` | Open bidirectional voice/text session (ChatGPT, Gemini) |
+
 ### `ClientBuilder` methods
 
 ```
@@ -217,6 +249,33 @@ Console.WriteLine(response);
 If `.api_key()` is not called, `build()` reads the provider's env var. If the env var is absent, an empty string is sent (server will return 401 which surfaces as `AiError`).
 
 ## Provider Details
+
+### ChatGPT — `rs_ai_providers::chatgpt`
+
+- `ChatGptProvider::new(api_key)` / `.with_org(org_id)`
+- Convenience: `.gpt4o()`, `.gpt4o_mini()`, `.gpt54()`, `.gpt54_mini()`, `.gpt54_nano()`
+- Realtime API (`RealtimeSession`) for voice agents
+- Structured output, vision, audio I/O
+- **Image generation**: `ChatGptImageModel` — DALL-E 3 / DALL-E 2 via `provider.image_model()` or builder `.generate_image()`
+- **Video generation**: `ChatGptVideoModel` — Sora via `provider.video_model()`
+- **Unified realtime**: `ChatGptRealtimeSession` wraps RealtimeSession into `rs_ai_core::RealtimeSession` trait
+
+### xAI — `rs_ai_providers::xai`
+
+- `XaiProvider::new(api_key)`
+- Convenience: `.grok_4()`, `.grok_4_20_reasoning()`
+- **Image generation**: `XaiImageModel` — Grok Imagine / Aurora via `provider.image_model()` or builder `.generate_image()`
+- Cache support via `.with_conv_id()`, `.with_prompt_cache_key()`
+
+### Gemini — `rs_ai_providers::gemini`
+
+- `GeminiProvider::new(api_key)`
+- Convenience: `.gemini_flash()`, `.gemini_pro()`, `.gemini_flash_lite()`, `.gemini_3_flash()`, `.gemini_31_pro()`
+- `.model_with_base_url(id, url)` for proxy/CF gateway
+- Live API (`provider.live_session(model_id)`) for low-latency voice/video
+- **Image generation**: `GeminiImageModel` — Imagen via `provider.image_model()` or builder `.generate_image()`
+- **Video generation**: `GeminiVideoModel` — Veo via `provider.video_model()`
+- **Unified realtime**: `GeminiLiveSessionAdapter` wraps LiveSession into `rs_ai_core::RealtimeSession` trait
 
 ### Claude — `rs_ai_providers::claude`
 

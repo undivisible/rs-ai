@@ -32,17 +32,34 @@
 
 mod client;
 mod error;
+mod image;
 mod model;
 mod provider;
+mod realtime;
 
 pub use error::{XaiError, XaiResult};
+pub use image::XaiImageModel;
 pub use model::XaiModel;
 pub use provider::XaiProvider;
+pub use realtime::XaiRealtimeSession;
+pub use client::{AURORA, GROK_4_IMAGINE};
+
+pub const XAI_OAUTH_MODEL_IDS: &[&str] = &[
+    "grok-4.5",
+    "grok-4.3",
+    "grok-build",
+    "grok-composer-2.5-fast",
+    "grok-4.20-0309-reasoning",
+    "grok-4.20-0309-non-reasoning",
+    "grok-4.20-multi-agent-0309",
+];
 
 #[derive(Debug, Clone, Copy)]
 pub enum XaiModelId {
     Grok420Reasoning,
     Grok4,
+    Grok4Imagine,
+    Aurora,
 }
 
 impl XaiModelId {
@@ -50,6 +67,23 @@ impl XaiModelId {
         match self {
             XaiModelId::Grok420Reasoning => "grok-4.20-reasoning",
             XaiModelId::Grok4 => "grok-4",
+            XaiModelId::Grok4Imagine => GROK_4_IMAGINE,
+            XaiModelId::Aurora => AURORA,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::XAI_OAUTH_MODEL_IDS;
+
+    #[test]
+    fn oauth_catalog_includes_grok_4_5() {
+        assert!(XAI_OAUTH_MODEL_IDS.contains(&"grok-4.5"));
+    }
+
+    #[test]
+    fn oauth_catalog_includes_grok_build() {
+        assert!(XAI_OAUTH_MODEL_IDS.contains(&"grok-build"));
     }
 }

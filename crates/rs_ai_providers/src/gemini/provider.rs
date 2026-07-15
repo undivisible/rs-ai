@@ -1,6 +1,8 @@
 use secrecy::SecretString;
 
+use super::image::GeminiImageModel;
 use super::model::GeminiModel;
+use super::video::GeminiVideoModel;
 
 // ── Latest model aliases ──
 
@@ -69,6 +71,30 @@ impl GeminiProvider {
         GeminiModel::new(self.api_key.expose_secret(), model_id).with_base_url(base_url)
     }
 
+    /// Get an image generation model using Google Imagen.
+    pub fn image_model(&self, model_id: &str) -> GeminiImageModel {
+        use secrecy::ExposeSecret;
+        GeminiImageModel::new(self.api_key.expose_secret(), model_id)
+    }
+
+    /// Get the default Gemini Imagen 3 model.
+    pub fn imagen_3(&self) -> GeminiImageModel {
+        self.image_model(super::image::IMAGEN_3)
+    }
+
+    /// Get the fast Gemini Imagen 3 model.
+    pub fn imagen_3_fast(&self) -> GeminiImageModel {
+        self.image_model(super::image::IMAGEN_3_FAST)
+    }
+
+    /// Get a video generation model using Google Veo.
+    ///
+    /// Note: Veo video generation is currently a stub and will return an
+    /// `AiError::Unsupported` error when called.
+    pub fn video_model(&self) -> GeminiVideoModel {
+        GeminiVideoModel::new()
+    }
+
     /// Open a Gemini Live API session for bidirectional voice/video streaming.
     ///
     /// # Example
@@ -109,6 +135,23 @@ impl GeminiProvider {
             tools: None,
         };
         super::live_api::LiveSession::connect(self.api_key.expose_secret(), model_id, setup).await
+    }
+
+    /// Open a unified realtime session by wrapping the LiveSession behind
+    /// [`rs_ai_core::RealtimeSession`].
+    pub async fn unified_realtime_session(
+        &self,
+        model_id: &str,
+    ) -> rs_ai_core::AiResult<Box<dyn rs_ai_core::RealtimeSession>> {
+        let session = self.live_session(model_id).await.map_err(|e| {
+            rs_ai_core::AiError::BridgeError {
+                bridge: "gemini_live".into(),
+                message: e.to_string(),
+            }
+        })?;
+        Ok(Box::new(
+            super::live_api::GeminiLiveSessionAdapter::new(session, model_id),
+        ))
     }
 
     /// Fetch the list of models from the Gemini API.

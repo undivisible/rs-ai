@@ -4,6 +4,11 @@ use serde::{Deserialize, Serialize};
 
 use super::error::{XaiError, XaiResult};
 
+/// Model ID for image generation: Grok Imagine
+pub const GROK_4_IMAGINE: &str = "grok-4-imagine";
+/// Model ID for image generation: Aurora
+pub const AURORA: &str = "aurora";
+
 const XAI_API_BASE: &str = "https://api.x.ai/v1";
 
 #[derive(Debug, Clone, Serialize)]
@@ -78,6 +83,32 @@ pub struct StreamChoice {
 pub struct Delta {
     pub role: Option<String>,
     pub content: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ImageGenerationRequest {
+    pub model: String,
+    pub prompt: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub n: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
+pub struct ImageGenerationResponse {
+    pub created: i64,
+    pub data: Vec<ImageData>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
+pub struct ImageData {
+    pub url: Option<String>,
+    pub b64_json: Option<String>,
 }
 
 pub struct XaiClient {
@@ -157,5 +188,29 @@ impl XaiClient {
         }
 
         Ok(response)
+    }
+
+    /// Generate images via POST /v1/images/generations.
+    pub async fn create_image_generation(
+        &self,
+        request: ImageGenerationRequest,
+    ) -> XaiResult<ImageGenerationResponse> {
+        let response = self
+            .http_client
+            .post(format!("{}/images/generations", XAI_API_BASE))
+            .bearer_auth(&self._api_key)
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(XaiError::ApiError {
+                message: format!("HTTP {}: {}", status, text),
+            });
+        }
+
+        response.json().await.map_err(Into::into)
     }
 }

@@ -1,5 +1,7 @@
 use super::client::XaiClient;
+use super::image::XaiImageModel;
 use super::model::XaiModel;
+use super::realtime::XaiRealtimeSession;
 use crate::XaiModelId;
 use rs_ai_core::CacheConfig;
 
@@ -55,5 +57,25 @@ impl XaiProvider {
     /// Grok 4 with cache configuration.
     pub fn grok_4_with_cache(&self, cache_config: CacheConfig) -> XaiModel {
         self.model_with_cache(XaiModelId::Grok4.as_str(), cache_config)
+    }
+
+    /// Create an image generation model for the given model ID.
+    pub fn image_model(&self, model_id: &str) -> XaiImageModel {
+        XaiImageModel::new(model_id.to_string(), self.client.clone())
+    }
+
+    /// Grok 4 Imagine — xAI's image generation model.
+    pub fn grok_4_imagine(&self) -> XaiImageModel {
+        self.image_model(XaiModelId::Grok4Imagine.as_str())
+    }
+
+    /// Aurora — xAI's image generation model.
+    pub fn aurora(&self) -> XaiImageModel {
+        self.image_model(XaiModelId::Aurora.as_str())
+    }
+
+    /// Create a realtime session stub (xAI Realtime API is not yet available).
+    pub fn realtime_session(&self, model_id: &str) -> XaiRealtimeSession {
+        XaiRealtimeSession::new(model_id.to_string())
     }
 }

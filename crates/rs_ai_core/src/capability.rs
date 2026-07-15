@@ -37,6 +37,14 @@ pub enum Capability {
     AudioInput,
     /// Produce audio output.
     AudioOutput,
+    /// Generate images from text prompts.
+    ImageGeneration,
+    /// Generate videos from text prompts.
+    VideoGeneration,
+    /// Realtime voice/audio conversation.
+    RealtimeVoice,
+    /// Realtime video conversation.
+    RealtimeVideo,
 }
 
 /// An ordered set of capabilities.

@@ -29,7 +29,8 @@ use base64::Engine as _;
 use futures::stream::BoxStream;
 use rs_ai_core::{
     AiError, AiResult, CacheConfig, ContentPart, FileData, GenerateOptions, ImageData,
-    LanguageModel, Message, Prompt, StreamEvent,
+    ImageGenerationOptions, ImageModel, ImageResult, LanguageModel, Message, Prompt, RealtimeSession,
+    StreamEvent, VideoGenerationOptions, VideoModel, VideoResult,
 };
 use rs_ai_providers::chatgpt::ChatGptProvider;
 use rs_ai_providers::claude::ClaudeProvider;
@@ -37,6 +38,8 @@ use rs_ai_providers::cloudflare::CloudflareProvider;
 use rs_ai_providers::gemini::GeminiProvider;
 use rs_ai_providers::openai_compatible::{OpenAiCompatibleConfig, OpenAiCompatibleProvider};
 use rs_ai_providers::xai::XaiProvider;
+
+pub use rs_ai_providers::xai::XAI_OAUTH_MODEL_IDS;
 
 /// Fluent builder for creating and configuring AI clients.
 pub struct ClientBuilder {
@@ -52,6 +55,7 @@ pub struct ClientBuilder {
     cache_config: Option<CacheConfig>,
 }
 
+#[derive(Debug)]
 enum ProviderType {
     Claude,
     ChatGpt,
@@ -343,6 +347,140 @@ impl ClientBuilder {
         // Degraded path: return text as UTF-8 bytes.
         let spoken_text = result.text.unwrap_or(text_str);
         Ok(spoken_text.into_bytes())
+    }
+
+    /// Generate an image from a text prompt.
+    ///
+    /// Uses the provider's image model (DALL-E, Grok Imagine, Imagen, etc.).
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let result = rs_ai::chatgpt()
+    ///     .api_key("sk-...")
+    ///     .model("dall-e-3")
+    ///     .generate_image("A cat wearing a hat", rs_ai_core::ImageGenerationOptions::default())
+    ///     .await?;
+    /// println!("Got {} image(s)", result.images.len());
+    /// ```
+    pub async fn generate_image(
+        self,
+        prompt: impl Into<String>,
+        options: ImageGenerationOptions,
+    ) -> AiResult<ImageResult> {
+        let text = prompt.into();
+        let api_key = self
+            .api_key
+            .clone()
+            .ok_or_else(|| AiError::AuthError {
+                message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+            })?;
+
+        match self.provider_type {
+            ProviderType::ChatGpt => {
+                let provider = ChatGptProvider::new(api_key);
+                let model = provider.image_model(&self.model_id.unwrap_or_default());
+                model.generate_image(&text, options).await
+            }
+            ProviderType::Xai => {
+                let provider = XaiProvider::new(api_key);
+                let model = provider.image_model(&self.model_id.unwrap_or_default());
+                model.generate_image(&text, options).await
+            }
+            ProviderType::Gemini => {
+                let provider = GeminiProvider::new(api_key);
+                let model = provider.image_model(&self.model_id.unwrap_or_default());
+                model.generate_image(&text, options).await
+            }
+            _ => Err(AiError::UnsupportedCapability {
+                capability: "image_generation".to_string(),
+                provider: format!("{:?}", self.provider_type),
+            }),
+        }
+    }
+
+    /// Generate a video from a text prompt.
+    ///
+    /// Uses the provider's video model (Sora, Veo, etc.).
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let result = rs_ai::gemini()
+    ///     .api_key("AIzaSy...")
+    ///     .model("veo-3.0-generate-001")
+    ///     .generate_video("A dog playing in a park", rs_ai_core::VideoGenerationOptions::default())
+    ///     .await?;
+    /// ```
+    pub async fn generate_video(
+        self,
+        prompt: impl Into<String>,
+        options: VideoGenerationOptions,
+    ) -> AiResult<VideoResult> {
+        let text = prompt.into();
+        let api_key = self
+            .api_key
+            .clone()
+            .ok_or_else(|| AiError::AuthError {
+                message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+            })?;
+
+        match self.provider_type {
+            ProviderType::ChatGpt => {
+                let provider = ChatGptProvider::new(api_key);
+                let model = provider.video_model(&self.model_id.unwrap_or_default());
+                model.generate_video(&text, options).await
+            }
+            ProviderType::Gemini => {
+                let provider = GeminiProvider::new(api_key);
+                let model = provider.video_model();
+                model.generate_video(&text, options).await
+            }
+            _ => Err(AiError::UnsupportedCapability {
+                capability: "video_generation".to_string(),
+                provider: format!("{:?}", self.provider_type),
+            }),
+        }
+    }
+
+    /// Open a realtime voice/text session.
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let mut session = rs_ai::chatgpt()
+    ///     .api_key("sk-...")
+    ///     .model("gpt-4o-realtime-preview")
+    ///     .realtime_session()
+    ///     .await?;
+    /// session.send_text("Hello!").await?;
+    /// while let Some(event) = session.recv().await {
+    ///     match event {
+    ///         RealtimeEvent::TextDelta { delta } => print!("{delta}"),
+    ///         _ => {}
+    ///     }
+    /// }
+    /// ```
+    pub async fn realtime_session(self) -> AiResult<Box<dyn RealtimeSession>> {
+        let api_key = self
+            .api_key
+            .clone()
+            .ok_or_else(|| AiError::AuthError {
+                message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+            })?;
+        let model_id = self.model_id.clone().unwrap_or_default();
+
+        match self.provider_type {
+            ProviderType::ChatGpt => {
+                let provider = ChatGptProvider::new(api_key);
+                provider.unified_realtime_session(&model_id).await
+            }
+            ProviderType::Gemini => {
+                let provider = GeminiProvider::new(api_key);
+                provider.unified_realtime_session(&model_id).await
+            }
+            _ => Err(AiError::UnsupportedCapability {
+                capability: "realtime_session".to_string(),
+                provider: format!("{:?}", self.provider_type),
+            }),
+        }
     }
 
     /// Transcribe audio bytes into text.

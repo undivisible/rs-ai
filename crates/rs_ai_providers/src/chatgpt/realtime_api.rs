@@ -606,3 +606,104 @@ impl RealtimeSession {
         Ok(())
     }
 }
+
+// ─── Unified RealtimeSession trait impl ──────────────────────────────────
+
+use async_trait::async_trait as async_trait_reexport;
+use rs_ai_core::{AiResult, RealtimeEvent};
+
+/// Adapter that wraps ChatGPT's RealtimeSession into the unified
+/// [`rs_ai_core::RealtimeSession`] trait.
+pub struct ChatGptRealtimeSession {
+    inner: RealtimeSession,
+    model: String,
+}
+
+impl ChatGptRealtimeSession {
+    /// Wrap a [`RealtimeSession`] into the unified trait.
+    pub fn new(session: RealtimeSession, model: impl Into<String>) -> Self {
+        Self {
+            inner: session,
+            model: model.into(),
+        }
+    }
+}
+
+#[async_trait_reexport]
+impl rs_ai_core::RealtimeSession for ChatGptRealtimeSession {
+    fn model_id(&self) -> &str {
+        &self.model
+    }
+
+    fn provider_id(&self) -> &str {
+        "chatgpt"
+    }
+
+    async fn send_text(&mut self, text: &str) -> AiResult<()> {
+        self.inner.send_text(text).await.map_err(|e| {
+            rs_ai_core::AiError::BridgeError {
+                bridge: "chatgpt_realtime".into(),
+                message: e.to_string(),
+            }
+        })
+    }
+
+    async fn send_audio(&mut self, audio: Vec<u8>, _mime_type: &str) -> AiResult<()> {
+        self.inner.send_audio(&audio).await.map_err(|e| {
+            rs_ai_core::AiError::BridgeError {
+                bridge: "chatgpt_realtime".into(),
+                message: e.to_string(),
+            }
+        })
+    }
+
+    async fn recv(&mut self) -> Option<RealtimeEvent> {
+        loop {
+            match self.inner.recv().await {
+                Some(Ok(ServerEvent::TextDelta { delta, .. })) => {
+                    return Some(RealtimeEvent::TextDelta { delta });
+                }
+                Some(Ok(ServerEvent::TextDone { text, .. })) => {
+                    return Some(RealtimeEvent::TextDone { text });
+                }
+                Some(Ok(ServerEvent::AudioDelta { delta, .. })) => {
+                    if let Ok(bytes) = RealtimeSession::decode_audio(&delta) {
+                        return Some(RealtimeEvent::AudioDelta { delta: bytes });
+                    }
+                }
+                Some(Ok(ServerEvent::FunctionCallArgumentsDone {
+                    call_id,
+                    name,
+                    arguments,
+                    ..
+                })) => {
+                    let args: serde_json::Value =
+                        serde_json::from_str(&arguments).unwrap_or(serde_json::Value::Null);
+                    return Some(RealtimeEvent::ToolCall {
+                        id: call_id,
+                        name,
+                        arguments: args,
+                    });
+                }
+                Some(Ok(ServerEvent::ResponseDone { .. })) => return Some(RealtimeEvent::Done),
+                Some(Ok(ServerEvent::Error { error })) => {
+                    return Some(RealtimeEvent::Error {
+                        message: error.message,
+                    });
+                }
+                Some(Ok(_)) => continue, // transient events
+                Some(Err(e)) => {
+                    return Some(RealtimeEvent::Error {
+                        message: e.to_string(),
+                    });
+                }
+                None => return None,
+            }
+        }
+    }
+
+    async fn close(self: Box<Self>) -> AiResult<()> {
+        // WebSocket Drop impl sends close frame
+        Ok(())
+    }
+}
