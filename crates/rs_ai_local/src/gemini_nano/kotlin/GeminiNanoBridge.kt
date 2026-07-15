@@ -1,171 +1,145 @@
 /**
- * Kotlin bridge for Android's Gemini Nano Prompt API.
+ * Kotlin helper for Android's ML Kit GenAI Prompt API (Gemini Nano on-device).
  *
- * This interface must be implemented by your Android app and passed to Rust
- * via JNI. The Rust side will call these methods through the JNI bridge.
+ * This is a companion helper called from Rust via JNI. Include this class
+ * in your Android app's source tree so the Rust JNI bridge can find it.
  *
- * # Example implementation
+ * # Using from Rust
  *
- * ```kotlin
- * import android.content.Context
- * import com.google.android.gms.common.ConnectionResult
- * import com.google.android.gms.common.GoogleApiAvailability
- * import com.google.ai.edge.aicore.GenerativeModel
- * import com.google.ai.edge.aicore.generationConfig
- * import kotlinx.coroutines.Dispatchers
- * import kotlinx.coroutines.withContext
+ * The Rust `JniGeminiNanoBridge` calls:
+ * - `GenAI.getClient().isAvailable()` directly via JNI
+ * - `GeminiNanoBridge.generate(requestJson)` via this helper
  *
- * class GeminiNanoBridgeImpl(private val context: Context) : GeminiNanoBridge {
+ * # Adding to your Android app
  *
- *     private var model: GenerativeModel? = null
- *     private val sessions = mutableMapOf<String, Chat>()
- *
- *     override fun isAvailable(): Boolean {
- *         return GoogleApiAvailability.getInstance()
- *             .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
- *     }
- *
- *     override fun downloadState(): Int {
- *         // Check if model is downloaded via AI Core
- *         return when (AiCoreStatus.getStatus(context)) {
- *             AiCoreStatus.DOWNLOADED -> 2
- *             AiCoreStatus.DOWNLOADING -> 1
- *             else -> 0
- *         }
- *     }
- *
- *     override fun requestDownload(): Boolean {
- *         // Trigger model download via AI Core
- *         return AiCoreManager.requestDownload(context)
- *     }
- *
- *     override fun capabilities(): Map<String, Boolean> {
- *         return mapOf(
- *             "textGeneration" to true,
- *             "summarization" to false,
- *             "rewriting" to false
- *         )
- *     }
- *
- *     override fun generate(prompt: String, configJson: String): String {
- *         return runBlocking(Dispatchers.IO) {
- *             val config = parseConfig(configJson)
- *             val model = getOrCreateModel(config)
- *             val response = model.generateContent(prompt)
- *             response.text ?: ""
- *         }
- *     }
- *
- *     override fun createSession(configJson: String): String {
- *         val config = parseConfig(configJson)
- *         val model = getOrCreateModel(config)
- *         val sessionId = UUID.randomUUID().toString()
- *         sessions[sessionId] = model.startChat()
- *         return sessionId
- *     }
- *
- *     override fun sendMessage(sessionId: String, message: String): String {
- *         val chat = sessions[sessionId]
- *             ?: throw IllegalArgumentException("Session not found: $sessionId")
- *         return runBlocking(Dispatchers.IO) {
- *             val response = chat.sendMessage(message)
- *             response.text ?: ""
- *         }
- *     }
- *
- *     override fun closeSession(sessionId: String): Boolean {
- *         sessions.remove(sessionId)
- *         return true
- *     }
- *
- *     private fun parseConfig(configJson: String): GenerationConfig {
- *         val json = JSONObject(configJson)
- *         return generationConfig {
- *             temperature = json.optDouble("temperature", 0.7).toFloat()
- *             topK = json.optInt("topK", 40)
- *             maxOutputTokens = json.optInt("maxTokens", 1024)
- *         }
- *     }
- *
- *     private fun getOrCreateModel(config: GenerationConfig): GenerativeModel {
- *         return model ?: GenerativeModel.from(
- *             modelName = "gemini-nano",
- *             config = config
- *         ).also { model = it }
- *     }
- * }
- * ```
- *
- * # Building
- *
- * Add to your `build.gradle.kts`:
+ * Place this file somewhere in your app's Kotlin source (e.g.,
+ * `app/src/main/java/com/rs_ai/GeminiNanoBridge.kt`) and add the dependency:
  *
  * ```kotlin
+ * // build.gradle.kts
  * dependencies {
- *     implementation("com.google.ai.edge.aicore:aicore:0.1.0")
+ *     implementation("com.google.mlkit:genai-prompt:1.0.0")
  * }
- * ```
- *
- * # Usage from Rust
- *
- * ```rust,no_run
- * use std::sync::Arc;
- * use jni::JavaVM;
- * use rs_ai_gemini_nano::{GeminiNanoProvider, JniGeminiNanoBridge};
- *
- * let vm = /* get JavaVM from Android */;
- * let bridge = /* create Kotlin bridge instance */;
- * let jni_bridge = Arc::new(JniGeminiNanoBridge::new(Arc::new(vm), bridge));
- * let provider = GeminiNanoProvider::new(jni_bridge);
- * let model = provider.model();
  * ```
  */
-interface GeminiNanoBridge {
-    /** Returns true if Gemini Nano is available on this device. */
-    fun isAvailable(): Boolean
+package com.rs_ai
+
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
+import com.google.mlkit.genai.prompt.GenAI
+import com.google.mlkit.genai.prompt.GenerateContentRequest
+import com.google.mlkit.genai.prompt.GenerationConfig
+import com.google.mlkit.genai.prompt.ImagePart
+import com.google.mlkit.genai.prompt.TextPart
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+/**
+ * Static helper for the ML Kit GenAI Prompt API, called from Rust via JNI.
+ */
+object GeminiNanoBridge {
 
     /**
-     * Returns the current download state:
-     * - 0 = NotDownloaded
-     * - 1 = Downloading
-     * - 2 = Downloaded
-     * - 3 = Failed
+     * Generate content from a JSON-serialized request.
+     *
+     * Request JSON format:
+     * ```json
+     * {
+     *   "parts": [
+     *     {"text": "Hello"},
+     *     {"base64": "...", "mime_type": "image/jpeg"}
+     *   ],
+     *   "config": {
+     *     "temperature": 0.2,
+     *     "candidate_count": 1,
+     *     "max_output_tokens": 100
+     *   }
+     * }
+     * ```
+     *
+     * Response JSON format:
+     * ```json
+     * {"text": "Generated response text"}
+     * ```
      */
-    fun downloadState(): Int
+    @JvmStatic
+    fun generate(requestJson: String): String {
+        val request = JSONObject(requestJson)
 
-    /** Requests model download. Returns true if the request was accepted. */
-    fun requestDownload(): Boolean
+        // Parse config
+        val genConfig = GenerationConfig().apply {
+            val cfg = request.optJSONObject("config")
+            if (cfg != null) {
+                if (cfg.has("temperature")) {
+                    temperature = cfg.getDouble("temperature").toFloat()
+                }
+                if (cfg.has("candidate_count")) {
+                    candidateCount = cfg.getInt("candidate_count")
+                }
+                if (cfg.has("max_output_tokens")) {
+                    maxOutputTokens = cfg.getInt("max_output_tokens")
+                }
+            }
+        }
 
-    /** Returns a map of capability names to availability. */
-    fun capabilities(): Map<String, Boolean>
+        // Build content parts
+        val partsArray: JSONArray = request.optJSONArray("parts") ?: JSONArray()
+        val contentParts = mutableListOf<Any>()
 
-    /**
-     * Generates text from a prompt.
-     * @param prompt The input prompt
-     * @param configJson JSON string with NanoSessionConfig fields
-     * @return The generated text
-     */
-    fun generate(prompt: String, configJson: String): String
+        for (i in 0 until partsArray.length()) {
+            val part = partsArray.getJSONObject(i)
+            when {
+                part.has("text") -> {
+                    contentParts.add(TextPart(part.getString("text")))
+                }
+                part.has("base64") -> {
+                    val base64 = part.getString("base64")
+                    val mimeType = part.optString("mime_type", "image/jpeg")
+                    val bytes = Base64.decode(base64, Base64.DEFAULT)
+                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    if (bitmap != null) {
+                        contentParts.add(ImagePart(bitmap, mimeType))
+                    }
+                }
+            }
+        }
 
-    /**
-     * Creates a new multi-turn session.
-     * @param configJson JSON string with NanoSessionConfig fields
-     * @return A unique session identifier
-     */
-    fun createSession(configJson: String): String
+        val contentRequest = GenerateContentRequest(
+            parts = contentParts,
+            config = genConfig
+        )
 
-    /**
-     * Sends a message in an existing session.
-     * @param sessionId The session identifier
-     * @param message The message to send
-     * @return The model's response
-     */
-    fun sendMessage(sessionId: String, message: String): String
+        // The ML Kit API uses listeners, so we block with a latch
+        val latch = CountDownLatch(1)
+        var resultText = ""
+        var errorText: String? = null
 
-    /**
-     * Closes a session and frees resources.
-     * @param sessionId The session identifier
-     * @return true if the session was closed successfully
-     */
-    fun closeSession(sessionId: String): Boolean
+        GenAI.getClient().generateContent(contentRequest)
+            .addOnSuccessListener { response ->
+                resultText = response.text ?: ""
+                latch.countDown()
+            }
+            .addOnFailureListener { exception ->
+                errorText = exception.message ?: "Unknown error in ML Kit API"
+                latch.countDown()
+            }
+
+        // Wait up to 30 seconds
+        val finished = latch.await(30, TimeUnit.SECONDS)
+
+        if (!finished) {
+            throw RuntimeException("ML Kit generateContent timed out after 30s")
+        }
+
+        if (errorText != null) {
+            throw RuntimeException(errorText)
+        }
+
+        return JSONObject().apply {
+            put("text", resultText)
+        }.toString()
+    }
 }

@@ -21,14 +21,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = generate_text(&model, "Summarize the Rust programming language").await?;
     println!("Response: {result}");
 
-    // Multi-turn session
-    let session = provider
-        .create_session(NanoSessionConfig::default())
-        .await?;
-    let reply1 = session.send("What is Rust?").await?;
-    println!("Session reply 1: {reply1}");
-    let reply2 = session.send("What about its memory safety?").await?;
-    println!("Session reply 2: {reply2}");
+    // Multi-turn: use generate_content for each turn
+    let reply1 = provider.model().generate(
+        rs_ai_core::Prompt::Text("What is Rust?".into()),
+        rs_ai_core::GenerateOptions::default(),
+    ).await?;
+    println!("Reply 1: {}", reply1.text.unwrap_or_default());
+    
+    let reply2 = provider.model().generate(
+        rs_ai_core::Prompt::Text("What about its memory safety?".into()),
+        rs_ai_core::GenerateOptions::default(),
+    ).await?;
+    println!("Reply 2: {}", reply2.text.unwrap_or_default());
 
     Ok(())
 }

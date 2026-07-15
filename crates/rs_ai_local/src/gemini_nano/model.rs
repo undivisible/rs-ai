@@ -4,19 +4,19 @@ use async_trait::async_trait;
 
 use rs_ai_core::{
     AiError, AiResult, AiStream, Capability, CapabilitySet, ContentPart, FinishReason,
-    GenerateOptions, GenerateResult, LanguageModel, Message, Prompt, ResponseMetadata, Role,
+    GenerateOptions, GenerateResult, ImageData, LanguageModel, Message, Prompt, ResponseMetadata,
     SyntheticStreamer, Usage,
 };
 
 use super::bridge::GeminiNanoBridge;
-use super::types::NanoSessionConfig;
+use super::types::{NanoContentPart, NanoGenerationConfig};
 
-/// A language model backed by Gemini Nano running on-device via the Android
-/// Prompt API.
+/// A language model backed by Gemini Nano running on-device via the
+/// ML Kit GenAI Prompt API.
 ///
-/// Streaming is synthetic -- the full response is generated first and then
-/// chunked into a stream, because Gemini Nano does not support native
-/// streaming on Android.
+/// Streaming is synthetic — the full response is generated first and then
+/// chunked into a stream, because the GenAI Prompt API does not support
+/// native streaming.
 pub struct GeminiNanoModel {
     bridge: Arc<dyn GeminiNanoBridge>,
     capabilities: CapabilitySet,
@@ -28,8 +28,8 @@ impl GeminiNanoModel {
         let capabilities = CapabilitySet::new()
             .with(Capability::TextInput)
             .with(Capability::TextOutput)
+            .with(Capability::ImageInput)
             .with(Capability::LocalExecution)
-            .with(Capability::SessionSupport)
             .with(Capability::PlatformNative);
 
         Self {
@@ -38,12 +38,12 @@ impl GeminiNanoModel {
         }
     }
 
-    /// Build a [`NanoSessionConfig`] from the generic [`GenerateOptions`].
-    fn build_config(options: &GenerateOptions) -> NanoSessionConfig {
-        NanoSessionConfig {
-            temperature: options.temperature,
-            top_k: options.top_k,
-            max_tokens: options.max_tokens,
+    /// Build a [`NanoGenerationConfig`] from the generic [`GenerateOptions`].
+    fn build_config(options: &GenerateOptions) -> NanoGenerationConfig {
+        NanoGenerationConfig {
+            temperature: options.temperature.map(|t| t as f32),
+            max_output_tokens: options.max_tokens,
+            ..Default::default()
         }
     }
 
@@ -54,23 +54,7 @@ impl GeminiNanoModel {
                 platform: "android/gemini_nano".into(),
             });
         }
-
-        let state = self.bridge.download_state().await;
-        match state {
-            super::types::ModelDownloadState::Downloaded => Ok(()),
-            super::types::ModelDownloadState::NotDownloaded => Err(AiError::ModelUnavailable {
-                model: "gemini-nano (not downloaded)".into(),
-            }),
-            super::types::ModelDownloadState::Downloading { progress_percent } => {
-                Err(AiError::ModelUnavailable {
-                    model: format!("gemini-nano (downloading: {progress_percent}%)"),
-                })
-            }
-            super::types::ModelDownloadState::Failed { reason } => Err(AiError::BridgeError {
-                bridge: "gemini_nano".into(),
-                message: format!("Model download failed: {reason}"),
-            }),
-        }
+        Ok(())
     }
 }
 
@@ -92,12 +76,12 @@ impl LanguageModel for GeminiNanoModel {
         self.ensure_available().await?;
 
         let config = Self::build_config(&options);
-        let prompt_text = extract_prompt_text(prompt);
+        let parts = extract_content_parts(prompt);
         let start = std::time::Instant::now();
 
-        let text = self
+        let result = self
             .bridge
-            .generate(&prompt_text, &config)
+            .generate_content(parts, &config)
             .await
             .map_err(|e| AiError::BridgeError {
                 bridge: "gemini_nano".into(),
@@ -107,7 +91,7 @@ impl LanguageModel for GeminiNanoModel {
         let latency_ms = start.elapsed().as_millis() as u64;
 
         Ok(GenerateResult {
-            text: Some(text),
+            text: Some(result.text),
             tool_calls: Vec::new(),
             finish_reason: FinishReason::Stop,
             usage: Usage::default(),
@@ -129,36 +113,54 @@ impl LanguageModel for GeminiNanoModel {
     }
 }
 
-/// Extract a single prompt string from a [`Prompt`] for the bridge.
-fn extract_prompt_text(prompt: Prompt) -> String {
+/// Extract content parts from a [`Prompt`] for the bridge.
+///
+/// Handles text and base64-encoded images. URL images are skipped with a
+/// warning log (would require downloading before passing to ML Kit).
+fn extract_content_parts(prompt: Prompt) -> Vec<NanoContentPart> {
     match prompt {
-        Prompt::Text(text) => text,
-        Prompt::Messages(messages) => messages_to_text(&messages),
+        Prompt::Text(text) => vec![NanoContentPart::Text(text)],
+        Prompt::Messages(messages) => messages_to_parts(&messages),
     }
 }
 
-/// Concatenate messages into a single string.
-fn messages_to_text(messages: &[Message]) -> String {
+/// Convert [`Message`]s into [`NanoContentPart`]s.
+fn messages_to_parts(messages: &[Message]) -> Vec<NanoContentPart> {
     let mut parts = Vec::new();
 
     for msg in messages {
-        let prefix = match msg.role {
-            Role::System => "System: ",
-            Role::User => "",
-            Role::Assistant => "Assistant: ",
-            Role::Tool => "Tool: ",
-        };
-
         for part in &msg.content {
-            if let ContentPart::Text { text } = part {
-                if prefix.is_empty() {
-                    parts.push(text.clone());
-                } else {
-                    parts.push(format!("{prefix}{text}"));
+            match part {
+                ContentPart::Text { text } => {
+                    if !parts.is_empty() {
+                        // Separate messages with newline
+                        parts.push(NanoContentPart::Text("\n".to_string()));
+                    }
+                    parts.push(NanoContentPart::Text(text.clone()));
+                }
+                ContentPart::Image { data } => match data {
+                    ImageData::Base64 { media_type, data } => {
+                        parts.push(NanoContentPart::Image {
+                            base64: data.clone(),
+                            mime_type: media_type.clone(),
+                        });
+                    }
+                    ImageData::Url { url, .. } => {
+                        // ponytail: skip URL images — would need to download
+                        // before passing bitmap to ML Kit. Add when URL fetch
+                        // is plumbed through the bridge.
+                        tracing::warn!(
+                            "Skipping URL image in Gemini Nano prompt: {url}. \
+                             Only base64-encoded images are supported."
+                        );
+                    }
+                },
+                _ => {
+                    // Skip tool calls, tool results, files
                 }
             }
         }
     }
 
-    parts.join("\n")
+    parts
 }

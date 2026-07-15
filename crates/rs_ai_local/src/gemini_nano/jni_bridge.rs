@@ -1,127 +1,126 @@
-//! Self-contained JNI bridge for Android's Gemini Nano.
+//! JNI bridge for Android's Gemini Nano via the ML Kit GenAI Prompt API.
 //!
-//! Zero user Kotlin required! Just add the crate and enable the feature.
-//!
-//! The JNI initialization happens automatically via JNI_OnLoad when the library is loaded.
+//! Calls `GenAI.getClient()` for availability checks and a static Kotlin
+//! helper (`com.rs_ai.GeminiNanoBridge`) for generate content.
 
 use std::sync::Arc;
 
-#[cfg(target_os = "android")]
-use jni::objects::JObject;
-
-#[cfg(target_os = "android")]
+use jni::objects::{JClass, JObject, JString, JValue};
+use jni::sys::jint;
 use jni::JavaVM;
-
-#[cfg(target_os = "android")]
 use once_cell::sync::OnceCell;
-
-use crate::types::{ModelDownloadState, NanoCapabilities, NanoSessionConfig};
 
 static JVM: OnceCell<Arc<JavaVM>> = OnceCell::new();
 
-/// Initialize the JNI bridge - called automatically via JNI_OnLoad.
-/// For manual initialization with a context, use `init_with_context()`.
-#[cfg(target_os = "android")]
-pub fn init() -> Result<(), String> {
-    let vm = jni::JNIEnv::new()
-        .get_java_vm()
-        .map_err(|e| format!("Failed to get JVM: {e}"))?;
+/// JNI bridge for Gemini Nano on Android.
+pub struct JniGeminiNanoBridge {
+    jvm: Arc<JavaVM>,
+}
 
+impl JniGeminiNanoBridge {
+    /// Create a new bridge with the given Java VM reference.
+    pub fn new(jvm: Arc<JavaVM>) -> Self {
+        Self { jvm }
+    }
+
+    /// Check if Gemini Nano is available on this device.
+    ///
+    /// Calls `GenAI.getClient().isAvailable()` via JNI.
+    pub fn is_available(&self) -> bool {
+        let Ok(mut env) = self.jvm.attach_current_thread() else {
+            return false;
+        };
+
+        let genai_class = match env.find_class("com/google/mlkit/genai/prompt/GenAI") {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
+
+        let result: Result<bool, jni::errors::Error> = (|| {
+            let client = env
+                .call_static_method(
+                    &genai_class,
+                    "getClient",
+                    "()Lcom/google/mlkit/genai/prompt/GenAI;",
+                    &[],
+                )?
+                .l()?;
+
+            env.call_method(&client, "isAvailable", "()Z", &[])?.z()
+        })();
+
+        result.unwrap_or(false)
+    }
+
+    /// Generate content via the Kotlin static helper.
+    ///
+    /// Serializes the request to JSON, calls
+    /// `com.rs_ai.GeminiNanoBridge.generate(json)`, and returns the
+    /// JSON result string.
+    pub fn generate_content_json(&self, request_json: &str) -> Result<String, String> {
+        let mut env = self
+            .jvm
+            .attach_current_thread()
+            .map_err(|e| format!("JNI attach failed: {e}"))?;
+
+        let bridge_class = env
+            .find_class("com/rs_ai/GeminiNanoBridge")
+            .map_err(|e| format!("Failed to find com.rs_ai.GeminiNanoBridge: {e}"))?;
+
+        let j_request = env
+            .new_string(request_json)
+            .map_err(|e| format!("Failed to create JNI string: {e}"))?;
+
+        let j_result = env
+            .call_static_method(
+                &bridge_class,
+                "generate",
+                "(Ljava/lang/String;)Ljava/lang/String;",
+                &[JValue::Object(&j_request.into())],
+            )
+            .map_err(|e| format!("JNI call to GeminiNanoBridge.generate() failed: {e}"))?;
+
+        let j_result_obj = j_result
+            .l()
+            .map_err(|e| format!("Failed to extract result object: {e}"))?;
+
+        let result_str: String = env
+            .get_string(&JString::from(j_result_obj))
+            .map_err(|e| format!("Failed to read result string: {e}"))?
+            .into();
+
+        Ok(result_str)
+    }
+}
+
+// ─── Auto-init via JNI_OnLoad ─────────────────────────────────────────────
+
+#[no_mangle]
+pub extern "system" fn JNI_OnLoad(
+    vm: jni::JavaVM,
+    _reserved: *mut std::ffi::c_void,
+) -> jint {
     let vm = Arc::new(vm);
-    let _ = JVM.set(vm);
-
+    JVM.set(vm).ok();
     tracing::info!("Gemini Nano JNI bridge initialized via JNI_OnLoad");
+    jni::sys::JNI_VERSION_1_6
+}
+
+/// Initialize the JNI bridge (called automatically via JNI_OnLoad).
+pub fn init() -> Result<(), String> {
+    let vm = JVM
+        .get()
+        .ok_or_else(|| "JVM not initialized. JNI_OnLoad may not have been called.".to_string())?;
+    let _ = vm.clone();
+    tracing::info!("Gemini Nano JNI bridge ready");
     Ok(())
 }
 
-/// Initialize with an Android Context (for cases where auto-init doesn't work).
+/// Initialize with an Android Context (alias for init when auto-init works).
 ///
 /// # Safety
-/// The context must be a valid Android Context.
-#[cfg(target_os = "android")]
+/// The context reference must be a valid Android Context object.
+#[allow(unused_variables)]
 pub unsafe fn init_with_context(context: jni::objects::JObject) -> Result<(), String> {
-    let vm = jni::JNIEnv::new()
-        .get_java_vm()
-        .map_err(|e| format!("Failed to get JVM: {e}"))?;
-
-    let vm = Arc::new(vm);
-    let _ = JVM.set(vm);
-
-    tracing::info!("Gemini Nano JNI bridge initialized with context");
-    Ok(())
-}
-
-#[cfg(target_os = "android")]
-pub fn is_available() -> bool {
-    false // Stub until JNI is properly set up
-}
-
-#[cfg(target_os = "android")]
-pub fn download_state() -> ModelDownloadState {
-    ModelDownloadState::NotDownloaded
-}
-
-#[cfg(target_os = "android")]
-pub fn capabilities() -> NanoCapabilities {
-    NanoCapabilities {
-        text_generation: false,
-        summarization: false,
-        rewriting: false,
-    }
-}
-
-#[cfg(target_os = "android")]
-pub fn generate(_prompt: &str, _config: &NanoSessionConfig) -> Result<String, String> {
-    Err("JNI not initialized. Call init() or init_with_context() first.".into())
-}
-
-#[cfg(target_os = "android")]
-pub fn create_session(_config: &NanoSessionConfig) -> Result<String, String> {
-    Err("JNI not initialized. Call init() or init_with_context() first.".into())
-}
-
-#[cfg(target_os = "android")]
-pub fn send_message(_session_id: &str, _message: &str) -> Result<String, String> {
-    Err("JNI not initialized. Call init() or init_with_context() first.".into())
-}
-
-#[cfg(target_os = "android")]
-pub fn close_session(_session_id: &str) -> Result<(), String> {
-    Err("JNI not initialized. Call init() or init_with_context() first.".into())
-}
-
-#[cfg(target_os = "android")]
-pub fn request_download() -> Result<(), String> {
-    Ok(())
-}
-
-// ─── Non-Android stubs ───────────────────────────────────────────────────────────────────
-
-#[cfg(not(target_os = "android"))]
-pub fn init() -> Result<(), String> {
-    Ok(())
-}
-
-#[cfg(not(target_os = "android"))]
-pub fn is_available() -> bool {
-    false
-}
-
-#[cfg(not(target_os = "android"))]
-pub fn download_state() -> ModelDownloadState {
-    ModelDownloadState::NotDownloaded
-}
-
-#[cfg(not(target_os = "android"))]
-pub fn capabilities() -> NanoCapabilities {
-    NanoCapabilities {
-        text_generation: false,
-        summarization: false,
-        rewriting: false,
-    }
-}
-
-#[cfg(not(target_os = "android"))]
-pub fn generate(_prompt: &str, _config: &NanoSessionConfig) -> Result<String, String> {
-    Err("Not Android".into())
+    init()
 }

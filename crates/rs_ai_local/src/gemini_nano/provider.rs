@@ -8,9 +8,10 @@ use rs_ai_core::{
 use super::bridge::GeminiNanoBridge;
 use super::model::GeminiNanoModel;
 use super::session::NanoSession;
-use super::types::{ModelDownloadState, NanoSessionConfig};
+#[allow(deprecated)]
+use super::types::NanoSessionConfig;
 
-/// Provider for Gemini Nano on-device inference via the Android Prompt API.
+/// Provider for Gemini Nano on-device inference via the ML Kit GenAI Prompt API.
 pub struct GeminiNanoProvider {
     bridge: Arc<dyn GeminiNanoBridge>,
 }
@@ -34,11 +35,17 @@ impl GeminiNanoProvider {
     }
 
     /// Get the current download state of the model.
-    pub async fn download_state(&self) -> ModelDownloadState {
+    ///
+    /// ⚠️ Deprecated — AICore manages downloads automatically.
+    #[allow(deprecated)]
+    pub async fn download_state(&self) -> super::types::ModelDownloadState {
         self.bridge.download_state().await
     }
 
     /// Request model download if not already downloaded.
+    ///
+    /// ⚠️ Deprecated — AICore manages downloads automatically.
+    #[allow(deprecated)]
     pub async fn request_download(&self) -> AiResult<()> {
         self.bridge
             .request_download()
@@ -50,15 +57,16 @@ impl GeminiNanoProvider {
     }
 
     /// Create a new multi-turn session.
+    ///
+    /// ⚠️ Deprecated — The ML Kit GenAI Prompt API does not support sessions.
+    #[allow(deprecated)]
     pub async fn create_session(&self, config: NanoSessionConfig) -> AiResult<NanoSession> {
-        let session_id =
-            self.bridge
-                .create_session(&config)
-                .await
-                .map_err(|e| AiError::BridgeError {
-                    bridge: "gemini_nano".into(),
-                    message: e,
-                })?;
+        let session_id = self.bridge.create_session(&config).await.map_err(|e| {
+            AiError::BridgeError {
+                bridge: "gemini_nano".into(),
+                message: e,
+            }
+        })?;
         Ok(NanoSession::new(session_id, self.bridge.clone(), config))
     }
 }
@@ -91,8 +99,8 @@ impl Provider for GeminiNanoProvider {
             capabilities: CapabilitySet::new()
                 .with(Capability::TextInput)
                 .with(Capability::TextOutput)
+                .with(Capability::ImageInput)
                 .with(Capability::LocalExecution)
-                .with(Capability::SessionSupport)
                 .with(Capability::PlatformNative),
         }]
     }
