@@ -78,3 +78,49 @@ impl Output {
         Output::NoSchema
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_output_schema_from_value() {
+        let schema = OutputSchema::from_value(serde_json::json!({"type": "object"}));
+        assert_eq!(schema.schema, serde_json::json!({"type": "object"}));
+    }
+
+    #[test]
+    fn test_output_enum_variant() {
+        let output = Output::enum_output(vec!["red", "green", "blue"]);
+        match output {
+            Output::Enum { values } => assert_eq!(values, vec!["red", "green", "blue"]),
+            _ => panic!("expected Enum"),
+        }
+    }
+
+    #[test]
+    fn test_output_array_variant() {
+        let schema = OutputSchema::from_value(serde_json::json!({}));
+        match Output::array(schema) {
+            Output::Array(_) => {}
+            _ => panic!("expected Array"),
+        }
+    }
+
+    #[test]
+    fn test_output_object_variant() {
+        let schema = OutputSchema::from_value(serde_json::json!({}));
+        match Output::object(schema) {
+            Output::Object(_) => {}
+            _ => panic!("expected Object"),
+        }
+    }
+
+    #[test]
+    fn test_output_no_schema() {
+        match Output::no_schema() {
+            Output::NoSchema => {}
+            _ => panic!("expected NoSchema"),
+        }
+    }
+}

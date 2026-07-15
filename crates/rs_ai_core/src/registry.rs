@@ -92,3 +92,80 @@ impl Default for ProviderRegistry {
 pub fn create_provider_registry() -> ProviderRegistry {
     ProviderRegistry::new()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use crate::capability::CapabilitySet;
+    use crate::error::AiResult;
+    use crate::model::{EmbeddingModel, LanguageModel};
+
+    struct MockProvider {
+        id: String,
+    }
+
+    #[async_trait]
+    impl Provider for MockProvider {
+        fn id(&self) -> &str {
+            &self.id
+        }
+        fn name(&self) -> &str {
+            &self.id
+        }
+        fn language_model(&self, model_id: &str) -> AiResult<Box<dyn LanguageModel>> {
+            Err(crate::error::AiError::ModelUnavailable {
+                model: model_id.into(),
+            })
+        }
+        fn embedding_model(&self, _mid: &str) -> AiResult<Box<dyn EmbeddingModel>> {
+            Err(crate::error::AiError::UnsupportedCapability {
+                capability: "embedding".into(),
+                provider: self.id.clone(),
+            })
+        }
+        fn available_models(&self) -> Vec<ModelInfo> {
+            vec![ModelInfo {
+                id: format!("{}/m1", self.id),
+                provider: self.id.clone(),
+                display_name: "M1".into(),
+                capabilities: CapabilitySet::new(),
+            }]
+        }
+    }
+
+    #[test]
+    fn test_registry_new_empty() {
+        let registry = ProviderRegistry::new();
+        assert!(registry.available_models().is_empty());
+    }
+
+    #[test]
+    fn test_registry_register() {
+        let registry = ProviderRegistry::new()
+            .register("test", MockProvider { id: "test".into() });
+        assert_eq!(registry.available_models().len(), 1);
+        assert_eq!(registry.available_models()[0].id, "test/m1");
+    }
+
+    #[test]
+    fn test_registry_model_invalid_format() {
+        let registry = ProviderRegistry::new();
+        match registry.model("invalid") {
+            Err(e) => assert!(
+                e.to_string().contains("Invalid model ID"),
+                "expected Invalid model ID error, got: {}",
+                e
+            ),
+            Ok(_) => panic!("expected error"),
+        }
+    }
+
+    #[test]
+    fn test_registry_get_provider() {
+        let registry = ProviderRegistry::new()
+            .register("test", MockProvider { id: "test".into() });
+        assert!(registry.get_provider("test").is_some());
+        assert!(registry.get_provider("missing").is_none());
+    }
+}

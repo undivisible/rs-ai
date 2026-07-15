@@ -22,7 +22,7 @@ pub mod types;
 pub mod usage;
 
 pub mod cache;
-pub mod mcp;
+
 pub mod observability;
 // middleware and ui_stream are already declared above from the old traits crate,
 // but we need to make sure they point to the right thing. The old traits crate
@@ -48,10 +48,9 @@ pub use provider::Provider;
 pub use registry::{create_provider_registry, ProviderRegistry};
 pub use router::{Route, Router};
 pub use schema::{Output, OutputSchema};
-pub use mcp::{mcp_tools, McpClient, McpConfig, McpTool};
+
 pub use stream::{
-    AiStream, Chunking, compose_transforms, SmoothStream, SmoothStreamOptions, StreamCollector,
-    StreamEvent, StreamTransform, SyntheticStreamer,
+    AiStream, StreamCollector, StreamEvent, SyntheticStreamer,
 };
 pub use structured::{
     AudioResult, EmbeddingResult, GenerateResult, GeneratedFile, ImageResult, ObjectResult,

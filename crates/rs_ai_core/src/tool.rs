@@ -149,3 +149,134 @@ impl Default for ToolSet {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+
+    struct AddTool;
+
+    #[async_trait]
+    impl Tool for AddTool {
+        fn definition(&self) -> ToolDefinition {
+            ToolDefinition {
+                name: "add".into(),
+                description: "Add two numbers".into(),
+                parameters: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "a": {"type": "number"},
+                        "b": {"type": "number"}
+                    }
+                }),
+            }
+        }
+        async fn execute(&self, args: serde_json::Value) -> Result<String, AiError> {
+            let a = args["a"].as_f64().unwrap_or(0.0);
+            let b = args["b"].as_f64().unwrap_or(0.0);
+            Ok((a + b).to_string())
+        }
+    }
+
+    #[test]
+    fn test_tool_definition_creation() {
+        let def = ToolDefinition {
+            name: "test".into(),
+            description: "desc".into(),
+            parameters: serde_json::json!({}),
+        };
+        assert_eq!(def.name, "test");
+    }
+
+    #[test]
+    fn test_tool_call_request() {
+        let req = ToolCallRequest {
+            id: "call_1".into(),
+            name: "test".into(),
+            arguments: serde_json::json!({}),
+        };
+        assert_eq!(req.id, "call_1");
+    }
+
+    #[test]
+    fn test_tool_call_result() {
+        let res = ToolCallResult {
+            call_id: "call_1".into(),
+            content: "ok".into(),
+            is_error: false,
+        };
+        assert!(!res.is_error);
+        assert_eq!(res.content, "ok");
+    }
+
+    #[test]
+    fn test_tool_execution_options_default() {
+        let opts = ToolExecutionOptions::default();
+        assert!(opts.call_id.is_empty());
+        assert!(opts.context.is_none());
+    }
+
+    #[test]
+    fn test_tool_context() {
+        let mut ctx = ToolContext::default();
+        ctx.data.insert("key".into(), serde_json::json!("value"));
+        assert_eq!(ctx.data["key"], serde_json::json!("value"));
+    }
+
+    #[test]
+    fn test_tool_choice_variants() {
+        match ToolChoice::Auto {
+            ToolChoice::Auto => {}
+            _ => panic!("expected Auto"),
+        }
+        match ToolChoice::None {
+            ToolChoice::None => {}
+            _ => panic!("expected None"),
+        }
+        match ToolChoice::Required {
+            ToolChoice::Required => {}
+            _ => panic!("expected Required"),
+        }
+        if let ToolChoice::Specific(name) = ToolChoice::Specific("func".into()) {
+            assert_eq!(name, "func");
+        } else {
+            panic!("expected Specific");
+        }
+    }
+
+    #[test]
+    fn test_tool_set_new_and_get() {
+        let mut set = ToolSet::new();
+        set.add(AddTool);
+        assert!(set.get("add").is_some());
+        assert_eq!(set.get("add").unwrap().definition().name, "add");
+        assert!(set.get("missing").is_none());
+    }
+
+    #[tokio::test]
+    async fn test_tool_set_execute() {
+        let mut set = ToolSet::new();
+        set.add(AddTool);
+        let req = ToolCallRequest {
+            id: "c1".into(),
+            name: "add".into(),
+            arguments: serde_json::json!({"a": 2, "b": 3}),
+        };
+        let result = set.execute(&req).await.unwrap();
+        assert_eq!(result.content, "5");
+        assert!(!result.is_error);
+    }
+
+    #[tokio::test]
+    async fn test_tool_set_execute_missing() {
+        let set = ToolSet::new();
+        let req = ToolCallRequest {
+            id: "c1".into(),
+            name: "nonexistent".into(),
+            arguments: serde_json::json!({}),
+        };
+        let result = set.execute(&req).await;
+        assert!(result.is_err());
+    }
+}

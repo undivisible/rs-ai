@@ -621,3 +621,113 @@ pub async fn rerank(
 ) -> AiResult<RerankResult> {
     model.rerank(query, documents, options).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use crate::capability::CapabilitySet;
+    use crate::tool::ToolSet;
+    use crate::types::{FinishReason, ResponseMetadata};
+    use crate::Usage;
+
+    struct TestModel {
+        model_id: String,
+        provider_id: String,
+        response_text: String,
+    }
+
+    #[async_trait]
+    impl LanguageModel for TestModel {
+        fn model_id(&self) -> &str {
+            &self.model_id
+        }
+        fn provider_id(&self) -> &str {
+            &self.provider_id
+        }
+        fn capabilities(&self) -> &CapabilitySet {
+            unimplemented!()
+        }
+        async fn generate(
+            &self,
+            _prompt: Prompt,
+            _options: GenerateOptions,
+        ) -> AiResult<GenerateResult> {
+            Ok(GenerateResult {
+                text: Some(self.response_text.clone()),
+                tool_calls: vec![],
+                finish_reason: FinishReason::Stop,
+                usage: Usage::default(),
+                metadata: ResponseMetadata::default(),
+                steps: vec![],
+                reasoning: None,
+            })
+        }
+        async fn stream(
+            &self,
+            _prompt: Prompt,
+            _options: GenerateOptions,
+        ) -> AiResult<AiStream> {
+            unimplemented!()
+        }
+    }
+
+    #[test]
+    fn test_generate_options_default() {
+        let opts = GenerateOptions::default();
+        assert!(opts.temperature.is_none());
+        assert!(opts.stop_sequences.is_empty());
+    }
+
+    #[test]
+    fn test_generate_options_builder() {
+        let opts = GenerateOptions::default()
+            .with_temperature(0.5)
+            .with_max_tokens(100)
+            .with_seed(42);
+        assert_eq!(opts.temperature, Some(0.5));
+        assert_eq!(opts.max_tokens, Some(100));
+        assert_eq!(opts.seed, Some(42));
+    }
+
+    #[test]
+    fn test_thinking_config_variants() {
+        match ThinkingConfig::Adaptive {
+            ThinkingConfig::Adaptive => {}
+            _ => panic!("expected Adaptive"),
+        }
+        match (ThinkingConfig::Budget { tokens: 1000 }) {
+            ThinkingConfig::Budget { tokens } => assert_eq!(tokens, 1000),
+            _ => panic!("expected Budget"),
+        }
+        match ThinkingConfig::Enabled {
+            ThinkingConfig::Enabled => {}
+            _ => panic!("expected Enabled"),
+        }
+    }
+
+    #[test]
+    fn test_rerank_options_default() {
+        let opts = RerankOptions::default();
+        assert!(opts.top_k.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_agent_loop_no_tools() {
+        let model = TestModel {
+            model_id: "test".into(),
+            provider_id: "test".into(),
+            response_text: "Hello".into(),
+        };
+        let tools = ToolSet::new();
+        let result = agent_loop(
+            &model,
+            Prompt::Text("Hi".into()),
+            GenerateOptions::default(),
+            &tools,
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.text.as_deref(), Some("Hello"));
+    }
+}

@@ -175,3 +175,128 @@ pub struct RerankResult {
     /// Token usage.
     pub usage: Usage,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_step_result_creation() {
+        let step = StepResult {
+            step_number: 0,
+            text: Some("hello".into()),
+            tool_calls: vec![],
+            tool_results: vec![],
+            finish_reason: FinishReason::Stop,
+            usage: Usage::default(),
+            reasoning: None,
+        };
+        assert_eq!(step.step_number, 0);
+        assert_eq!(step.text.as_deref(), Some("hello"));
+    }
+
+    #[test]
+    fn test_generate_result_default() {
+        let result = GenerateResult::default();
+        assert_eq!(result.finish_reason, FinishReason::Stop);
+        assert!(result.text.is_none());
+    }
+
+    #[test]
+    fn test_generate_result_with_steps() {
+        let step = StepResult {
+            step_number: 0,
+            text: Some("step1".into()),
+            tool_calls: vec![],
+            tool_results: vec![],
+            finish_reason: FinishReason::Stop,
+            usage: Usage::default(),
+            reasoning: None,
+        };
+        let result = GenerateResult {
+            text: Some("final".into()),
+            tool_calls: vec![],
+            finish_reason: FinishReason::Stop,
+            usage: Usage::default(),
+            metadata: ResponseMetadata::default(),
+            steps: vec![step],
+            reasoning: None,
+        };
+        assert_eq!(result.text.as_deref(), Some("final"));
+        assert_eq!(result.steps.len(), 1);
+    }
+
+    #[test]
+    fn test_image_result_creation() {
+        let file = GeneratedFile {
+            base64: "AAAA".into(),
+            bytes: vec![0, 0, 0, 0],
+            media_type: "image/png".into(),
+        };
+        let result = ImageResult {
+            image: file.clone(),
+            images: vec![file],
+            usage: Usage::default(),
+            metadata: ResponseMetadata::default(),
+        };
+        assert_eq!(result.image.media_type, "image/png");
+        assert_eq!(result.images.len(), 1);
+    }
+
+    #[test]
+    fn test_video_result_creation() {
+        let file = GeneratedFile {
+            base64: "AAAA".into(),
+            bytes: vec![0, 0, 0, 0],
+            media_type: "video/mp4".into(),
+        };
+        let result = VideoResult {
+            video: file.clone(),
+            videos: vec![file],
+            usage: Usage::default(),
+            metadata: ResponseMetadata::default(),
+        };
+        assert_eq!(result.video.media_type, "video/mp4");
+        assert_eq!(result.videos.len(), 1);
+    }
+
+    #[test]
+    fn test_reranked_document_serde() {
+        let doc = RerankedDocument {
+            index: 0,
+            score: 0.95,
+            document: Some("text".into()),
+        };
+        let json = serde_json::to_string(&doc).unwrap();
+        let back: RerankedDocument = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.index, 0);
+        assert!((back.score - 0.95).abs() < 1e-6);
+        assert_eq!(back.document, Some("text".into()));
+    }
+
+    #[test]
+    fn test_rerank_result() {
+        let result = RerankResult {
+            results: vec![RerankedDocument {
+                index: 0,
+                score: 0.8,
+                document: None,
+            }],
+            usage: Usage::default(),
+        };
+        assert_eq!(result.results.len(), 1);
+        assert_eq!(result.results[0].index, 0);
+    }
+
+    #[test]
+    fn test_object_result() {
+        let obj: ObjectResult<i32> = ObjectResult {
+            object: 42,
+            text: "42".into(),
+            usage: Usage::default(),
+            metadata: ResponseMetadata::default(),
+        };
+        assert_eq!(obj.object, 42);
+        assert_eq!(obj.text, "42");
+    }
+}

@@ -41,3 +41,69 @@ impl std::ops::Add for Usage {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default() {
+        let u = Usage::default();
+        assert!(u.prompt_tokens.is_none());
+        assert!(u.completion_tokens.is_none());
+        assert!(u.total_tokens.is_none());
+    }
+
+    #[test]
+    fn test_add() {
+        let a = Usage {
+            prompt_tokens: Some(10),
+            completion_tokens: Some(20),
+            total_tokens: Some(30),
+        };
+        let b = Usage {
+            prompt_tokens: Some(5),
+            completion_tokens: Some(5),
+            total_tokens: Some(10),
+        };
+        let sum = a + b;
+        assert_eq!(sum.prompt_tokens, Some(15));
+        assert_eq!(sum.completion_tokens, Some(25));
+        assert_eq!(sum.total_tokens, Some(40));
+    }
+
+    #[test]
+    fn test_add_with_none() {
+        let a = Usage {
+            prompt_tokens: Some(10),
+            completion_tokens: None,
+            total_tokens: None,
+        };
+        let b = Usage {
+            prompt_tokens: None,
+            completion_tokens: Some(5),
+            total_tokens: None,
+        };
+        let sum = a + b;
+        assert_eq!(sum.prompt_tokens, Some(10));
+        assert_eq!(sum.completion_tokens, Some(5));
+        assert!(sum.total_tokens.is_none());
+    }
+
+    #[test]
+    fn test_merge() {
+        let mut a = Usage {
+            prompt_tokens: Some(10),
+            completion_tokens: Some(20),
+            total_tokens: Some(30),
+        };
+        a.merge(&Usage {
+            prompt_tokens: Some(5),
+            completion_tokens: Some(5),
+            total_tokens: Some(10),
+        });
+        assert_eq!(a.prompt_tokens, Some(15));
+        assert_eq!(a.completion_tokens, Some(25));
+        assert_eq!(a.total_tokens, Some(40));
+    }
+}
