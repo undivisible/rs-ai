@@ -303,6 +303,7 @@ mod tests {
             name: "search".into(),
             description: "web search".into(),
             parameters: serde_json::json!({}),
+            examples: None,
         }]);
         let result = router
             .generate(Prompt::from("search for rust"), options)
@@ -328,6 +329,7 @@ mod tests {
             name: "search".into(),
             description: "web search".into(),
             parameters: serde_json::json!({}),
+            examples: None,
         }]);
         let result = router
             .generate(Prompt::from("use tool"), options)

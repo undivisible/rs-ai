@@ -77,6 +77,7 @@ async fn different_tools_is_a_cache_miss() {
                 name: "search".into(),
                 description: "search the web".into(),
                 parameters: serde_json::json!({}),
+                examples: None,
             }]),
         )
         .await

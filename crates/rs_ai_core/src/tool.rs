@@ -16,6 +16,16 @@ pub struct ToolDefinition {
     pub description: String,
     /// JSON Schema describing the parameters object.
     pub parameters: serde_json::Value,
+    /// Optional few-shot examples of valid tool inputs.
+    pub examples: Option<Vec<serde_json::Value>>,
+}
+
+impl ToolDefinition {
+    /// Set few-shot examples of valid tool inputs.
+    pub fn with_examples(mut self, examples: Vec<serde_json::Value>) -> Self {
+        self.examples = Some(examples);
+        self
+    }
 }
 
 /// A request from the model to invoke a tool.
@@ -171,6 +181,7 @@ mod tests {
                         "b": {"type": "number"}
                     }
                 }),
+                examples: None,
             }
         }
         async fn execute(&self, args: serde_json::Value) -> Result<String, AiError> {
@@ -186,6 +197,7 @@ mod tests {
             name: "test".into(),
             description: "desc".into(),
             parameters: serde_json::json!({}),
+            examples: None,
         };
         assert_eq!(def.name, "test");
     }

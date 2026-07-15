@@ -21,6 +21,7 @@ impl Tool for CalculatorTool {
                 },
                 "required": ["operation", "a", "b"]
             }),
+            examples: None,
         }
     }
 
@@ -61,6 +62,7 @@ impl Tool for WeatherTool {
                 },
                 "required": ["city"]
             }),
+            examples: None,
         }
     }
 

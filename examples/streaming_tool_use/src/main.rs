@@ -62,11 +62,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             name: "get_weather".into(),
             description: "Get the current weather for a location.".into(),
             parameters: serde_json::to_value(schema_for!(WeatherInput))?,
+            examples: None,
         },
         ToolDefinition {
             name: "search_web".into(),
             description: "Search the web for information.".into(),
             parameters: serde_json::to_value(schema_for!(SearchInput))?,
+            examples: None,
         },
     ];
 

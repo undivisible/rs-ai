@@ -25,6 +25,7 @@ fn get_weather_tool() -> ToolDefinition {
         description: "Get the current weather for a location. Returns temperature in Celsius."
             .into(),
         parameters: serde_json::to_value(schema_for!(WeatherInput)).unwrap(),
+        examples: None,
     }
 }
 
@@ -33,6 +34,7 @@ fn search_tool() -> ToolDefinition {
         name: "search".into(),
         description: "Search for information about a topic.".into(),
         parameters: serde_json::to_value(schema_for!(SearchInput)).unwrap(),
+        examples: None,
     }
 }
 
