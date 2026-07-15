@@ -219,6 +219,90 @@ pub mod anthropic {
     pub const CLAUDE_OPUS: &str = "claude-opus-4-20250514";
 }
 
+/// Groq — Ultra-fast LPU inference for open-source models
+pub mod groq {
+    use super::*;
+
+    /// Create configuration for Groq.
+    pub fn config(api_key: impl Into<String>) -> OpenAiCompatibleConfig {
+        OpenAiCompatibleConfig::new("https://api.groq.com/openai/v1", api_key)
+    }
+
+    /// Llama 3.3 70B model identifier.
+    pub const LLAMA_3_3_70B: &str = "llama-3.3-70b-versatile";
+    /// Llama 3.1 8B model identifier.
+    pub const LLAMA_3_1_8B: &str = "llama-3.1-8b-instant";
+    /// Mixtral 8x7B model identifier.
+    pub const MIXTRAL_8X7B: &str = "mixtral-8x7b-32768";
+    /// DeepSeek R1 distilled Llama 70B model identifier.
+    pub const DEEPSEEK_R1: &str = "deepseek-r1-distill-llama-70b";
+}
+
+/// DeepSeek — Powerful open-weight models
+pub mod deepseek {
+    use super::*;
+
+    /// Create configuration for DeepSeek.
+    pub fn config(api_key: impl Into<String>) -> OpenAiCompatibleConfig {
+        OpenAiCompatibleConfig::new("https://api.deepseek.com/v1", api_key)
+            .with_header("HTTP-Referer", "https://rai.example.com")
+    }
+
+    /// DeepSeek Chat model identifier.
+    pub const CHAT: &str = "deepseek-chat";
+    /// DeepSeek Reasoner model identifier.
+    pub const REASONER: &str = "deepseek-reasoner";
+}
+
+/// Mistral AI — Open-weight European models
+pub mod mistral {
+    use super::*;
+
+    /// Create configuration for Mistral AI.
+    pub fn config(api_key: impl Into<String>) -> OpenAiCompatibleConfig {
+        OpenAiCompatibleConfig::new("https://api.mistral.ai/v1", api_key)
+    }
+
+    /// Mistral Large model identifier.
+    pub const LARGE: &str = "mistral-large-latest";
+    /// Mistral Small model identifier.
+    pub const SMALL: &str = "mistral-small-latest";
+    /// Codestral model identifier.
+    pub const CODESTRAL: &str = "codestral-latest";
+}
+
+/// Perplexity AI — Search-augmented language models
+pub mod perplexity {
+    use super::*;
+
+    /// Create configuration for Perplexity AI.
+    pub fn config(api_key: impl Into<String>) -> OpenAiCompatibleConfig {
+        OpenAiCompatibleConfig::new("https://api.perplexity.ai", api_key)
+    }
+
+    /// Sonar Pro model identifier.
+    pub const SONAR_PRO: &str = "sonar-pro";
+    /// Sonar model identifier.
+    pub const SONAR: &str = "sonar";
+}
+
+/// Fireworks AI — Fast inference for open-source models
+pub mod fireworks {
+    use super::*;
+
+    /// Create configuration for Fireworks AI.
+    pub fn config(api_key: impl Into<String>) -> OpenAiCompatibleConfig {
+        OpenAiCompatibleConfig::new("https://api.fireworks.ai/inference/v1", api_key)
+    }
+
+    /// Llama 3.3 70B model identifier.
+    pub const LLAMA_3_3_70B: &str = "accounts/fireworks/models/llama-v3p3-70b-instruct";
+    /// Firefunction v2 model identifier.
+    pub const FIREFUNCTION_V2: &str = "accounts/fireworks/models/firefunction-v2";
+    /// DeepSeek R1 model identifier.
+    pub const DEEPSEEK_R1: &str = "accounts/fireworks/models/deepseek-r1";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,5 +335,35 @@ mod tests {
     fn test_anthropic_config() {
         let config = anthropic::config("test-key");
         assert_eq!(config.base_url(), "https://api.anthropic.com/v1");
+    }
+
+    #[test]
+    fn test_groq_config() {
+        let config = groq::config("test-key");
+        assert_eq!(config.base_url(), "https://api.groq.com/openai/v1");
+    }
+
+    #[test]
+    fn test_deepseek_config() {
+        let config = deepseek::config("test-key");
+        assert_eq!(config.base_url(), "https://api.deepseek.com/v1");
+    }
+
+    #[test]
+    fn test_mistral_config() {
+        let config = mistral::config("test-key");
+        assert_eq!(config.base_url(), "https://api.mistral.ai/v1");
+    }
+
+    #[test]
+    fn test_perplexity_config() {
+        let config = perplexity::config("test-key");
+        assert_eq!(config.base_url(), "https://api.perplexity.ai");
+    }
+
+    #[test]
+    fn test_fireworks_config() {
+        let config = fireworks::config("test-key");
+        assert_eq!(config.base_url(), "https://api.fireworks.ai/inference/v1");
     }
 }
