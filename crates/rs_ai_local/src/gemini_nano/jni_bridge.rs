@@ -96,10 +96,7 @@ impl JniGeminiNanoBridge {
 // ─── Auto-init via JNI_OnLoad ─────────────────────────────────────────────
 
 #[no_mangle]
-pub extern "system" fn JNI_OnLoad(
-    vm: jni::JavaVM,
-    _reserved: *mut std::ffi::c_void,
-) -> jint {
+pub extern "system" fn JNI_OnLoad(vm: jni::JavaVM, _reserved: *mut std::ffi::c_void) -> jint {
     let vm = Arc::new(vm);
     JVM.set(vm).ok();
     tracing::info!("Gemini Nano JNI bridge initialized via JNI_OnLoad");

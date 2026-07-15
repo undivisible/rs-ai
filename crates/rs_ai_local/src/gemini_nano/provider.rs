@@ -61,12 +61,14 @@ impl GeminiNanoProvider {
     /// ⚠️ Deprecated — The ML Kit GenAI Prompt API does not support sessions.
     #[allow(deprecated)]
     pub async fn create_session(&self, config: NanoSessionConfig) -> AiResult<NanoSession> {
-        let session_id = self.bridge.create_session(&config).await.map_err(|e| {
-            AiError::BridgeError {
-                bridge: "gemini_nano".into(),
-                message: e,
-            }
-        })?;
+        let session_id =
+            self.bridge
+                .create_session(&config)
+                .await
+                .map_err(|e| AiError::BridgeError {
+                    bridge: "gemini_nano".into(),
+                    message: e,
+                })?;
         Ok(NanoSession::new(session_id, self.bridge.clone(), config))
     }
 }

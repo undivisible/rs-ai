@@ -80,7 +80,10 @@ extern "C" {
 
     /// `languageModel.create(options)`
     #[wasm_bindgen(method, js_name = create, catch)]
-    async fn lm_create(this: &LanguageModelNamespace, options: &JsValue) -> Result<JsValue, JsValue>;
+    async fn lm_create(
+        this: &LanguageModelNamespace,
+        options: &JsValue,
+    ) -> Result<JsValue, JsValue>;
 
     /// `ai` global access on globalThis
     type GlobalAi;
@@ -153,7 +156,8 @@ impl WasmBrowserBridge {
 
         let avail = if let Some(lm) = language_model_v2() {
             let lm_ns: &LanguageModelNamespace = lm.unchecked_ref();
-            lm_ns.lm_availability()
+            lm_ns
+                .lm_availability()
                 .await
                 .ok()
                 .and_then(|v| v.as_string())

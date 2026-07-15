@@ -22,16 +22,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Response: {result}");
 
     // Multi-turn: use generate_content for each turn
-    let reply1 = provider.model().generate(
-        rs_ai_core::Prompt::Text("What is Rust?".into()),
-        rs_ai_core::GenerateOptions::default(),
-    ).await?;
+    let reply1 = provider
+        .model()
+        .generate(
+            rs_ai_core::Prompt::Text("What is Rust?".into()),
+            rs_ai_core::GenerateOptions::default(),
+        )
+        .await?;
     println!("Reply 1: {}", reply1.text.unwrap_or_default());
-    
-    let reply2 = provider.model().generate(
-        rs_ai_core::Prompt::Text("What about its memory safety?".into()),
-        rs_ai_core::GenerateOptions::default(),
-    ).await?;
+
+    let reply2 = provider
+        .model()
+        .generate(
+            rs_ai_core::Prompt::Text("What about its memory safety?".into()),
+            rs_ai_core::GenerateOptions::default(),
+        )
+        .await?;
     println!("Reply 2: {}", reply2.text.unwrap_or_default());
 
     Ok(())

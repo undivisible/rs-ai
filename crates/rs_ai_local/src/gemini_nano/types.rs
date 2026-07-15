@@ -37,7 +37,7 @@ pub struct NanoGenerateResult {
 /// The download state of the Gemini Nano model on the device.
 ///
 /// ⚠️ Deprecated in favor of the ML Kit GenAI Prompt API which handles
-/// model download automatically. Use [`is_available`] to check readiness.
+/// model download automatically. Use `is_available` to check readiness.
 #[deprecated(
     since = "0.3.0",
     note = "AICore handles model download automatically; use is_available()"
@@ -61,12 +61,7 @@ pub enum ModelDownloadState {
 }
 
 /// Capabilities exposed by Gemini Nano on the current device.
-///
-/// ⚠️ Deprecated — the ML Kit API exposes availability via [`is_available()`].
-#[deprecated(
-    since = "0.3.0",
-    note = "Use is_available() to check device readiness"
-)]
+#[deprecated(since = "0.3.0", note = "Use is_available() to check device readiness")]
 #[derive(Debug, Clone)]
 pub struct NanoCapabilities {
     /// Whether text generation is supported.
@@ -79,8 +74,8 @@ pub struct NanoCapabilities {
 
 /// Configuration for a Gemini Nano session.
 ///
-/// ⚠️ Deprecated — the new ML Kit API uses [`NanoGenerationConfig`]
-/// and does not support sessions. Use [`generate_content`] instead.
+/// ⚠️ Deprecated — the new ML Kit API uses `NanoGenerationConfig`
+/// and does not support sessions. Use `generate_content` instead.
 #[deprecated(
     since = "0.3.0",
     note = "Use NanoGenerationConfig with generate_content instead"

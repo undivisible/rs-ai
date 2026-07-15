@@ -18,8 +18,8 @@ use super::types::{ModelDownloadState, NanoCapabilities, NanoSessionConfig};
 ///
 /// # New API (preferred)
 ///
-/// - [`is_available`](GeminiNanoBridge::is_available) — check if AICore is ready
-/// - [`generate_content`](GeminiNanoBridge::generate_content) — generate from text + optional images
+/// - `is_available` — check if AICore is ready
+/// - `generate_content` — generate from text + optional images
 ///
 /// # Deprecated
 ///
@@ -45,7 +45,10 @@ pub trait GeminiNanoBridge: Send + Sync {
     /// Get the current download state of the model.
     ///
     /// ⚠️ Deprecated — AICore manages downloads automatically.
-    #[deprecated(since = "0.3.0", note = "AICore handles downloads; use is_available() to check readiness")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "AICore handles downloads; use is_available() to check readiness"
+    )]
     #[allow(deprecated)]
     async fn download_state(&self) -> ModelDownloadState {
         ModelDownloadState::Downloaded
@@ -74,8 +77,11 @@ pub trait GeminiNanoBridge: Send + Sync {
 
     /// Generate text from a prompt (single-turn).
     ///
-    /// ⚠️ Deprecated — use `generate_content()` instead.
-    #[deprecated(since = "0.3.0", note = "Use generate_content with NanoContentPart::Text")]
+    /// ⚠️ Deprecated — use `generate_content` instead.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use generate_content with NanoContentPart::Text"
+    )]
     #[allow(deprecated)]
     async fn generate(&self, prompt: &str, config: &NanoSessionConfig) -> Result<String, String> {
         let parts = vec![NanoContentPart::Text(prompt.to_string())];
@@ -84,22 +90,30 @@ pub trait GeminiNanoBridge: Send + Sync {
             max_output_tokens: config.max_tokens,
             ..Default::default()
         };
-        self.generate_content(parts, &gen_config).await.map(|r| r.text)
+        self.generate_content(parts, &gen_config)
+            .await
+            .map(|r| r.text)
     }
 
     /// Create a new session for multi-turn conversation.
     ///
     /// ⚠️ Deprecated — sessions are not supported by the new ML Kit API.
-    #[deprecated(since = "0.3.0", note = "Sessions not supported by ML Kit GenAI Prompt API")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Sessions not supported by ML Kit GenAI Prompt API"
+    )]
     #[allow(deprecated)]
     async fn create_session(&self, _config: &NanoSessionConfig) -> Result<String, String> {
-        Err("create_session is deprecated. ML Kit GenAI Prompt API does not support sessions. Use generate_content instead.".into())
+        Err("create_session is deprecated. ML Kit GenAI Prompt API does not support sessions. Use the generate_content method instead.".into())
     }
 
     /// Send a message in an existing session.
     ///
     /// ⚠️ Deprecated — sessions are not supported by the new ML Kit API.
-    #[deprecated(since = "0.3.0", note = "Sessions not supported by ML Kit GenAI Prompt API")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Sessions not supported by ML Kit GenAI Prompt API"
+    )]
     async fn send_message(&self, _session_id: &str, _message: &str) -> Result<String, String> {
         Err("send_message is deprecated. ML Kit GenAI Prompt API does not support sessions. Use generate_content instead.".into())
     }
@@ -107,7 +121,10 @@ pub trait GeminiNanoBridge: Send + Sync {
     /// Close/destroy a session.
     ///
     /// ⚠️ Deprecated — sessions are not supported by the new ML Kit API.
-    #[deprecated(since = "0.3.0", note = "Sessions not supported by ML Kit GenAI Prompt API")]
+    #[deprecated(
+        since = "0.3.0",
+        note = "Sessions not supported by ML Kit GenAI Prompt API"
+    )]
     async fn close_session(&self, _session_id: &str) -> Result<(), String> {
         Ok(())
     }
@@ -155,7 +172,10 @@ fn parse_result_json(json: &str) -> Result<NanoGenerateResult, String> {
 
 /// Helper to serialize parts + config to JSON for the JNI bridge.
 #[cfg(target_os = "android")]
-fn serialize_request(parts: &[NanoContentPart], config: &NanoGenerationConfig) -> Result<String, String> {
+fn serialize_request(
+    parts: &[NanoContentPart],
+    config: &NanoGenerationConfig,
+) -> Result<String, String> {
     #[derive(serde::Serialize)]
     struct Request<'a> {
         parts: &'a [NanoContentPart],

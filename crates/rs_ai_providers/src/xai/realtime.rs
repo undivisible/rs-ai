@@ -1,7 +1,7 @@
 //! xAI Grok Voice Agent API — WebSocket voice streaming.
 //!
 //! Compatible with OpenAI Realtime API message format.
-//! Reference: https://docs.x.ai/developers/model-capabilities/audio/voice-agent
+//! Reference: <https://docs.x.ai/developers/model-capabilities/audio/voice-agent>
 //!
 //! # Models
 //! - `grok-voice-latest` (recommended, alias for the latest flagship)

@@ -726,9 +726,7 @@ pub async fn embed_many(
 
 /// Wrap a generate-only model to add streaming support.
 /// Text is generated first, then streamed as synthetic chunks.
-pub fn wrap_with_streaming(
-    inner: Box<dyn LanguageModel>,
-) -> StreamEnabledModel {
+pub fn wrap_with_streaming(inner: Box<dyn LanguageModel>) -> StreamEnabledModel {
     StreamEnabledModel { inner }
 }
 
@@ -739,9 +737,15 @@ pub struct StreamEnabledModel {
 
 #[async_trait]
 impl LanguageModel for StreamEnabledModel {
-    fn model_id(&self) -> &str { self.inner.model_id() }
-    fn provider_id(&self) -> &str { self.inner.provider_id() }
-    fn capabilities(&self) -> &CapabilitySet { self.inner.capabilities() }
+    fn model_id(&self) -> &str {
+        self.inner.model_id()
+    }
+    fn provider_id(&self) -> &str {
+        self.inner.provider_id()
+    }
+    fn capabilities(&self) -> &CapabilitySet {
+        self.inner.capabilities()
+    }
 
     async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
         self.inner.generate(prompt, options).await
