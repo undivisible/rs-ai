@@ -1,33 +1,23 @@
-use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::{AiResult, GenerateOptions, GenerateResult, Middleware, MiddlewareNext, Prompt};
 use async_trait::async_trait;
 
-/// A cached generate result together with its insertion timestamp.
-struct CacheEntry {
-    result: GenerateResult,
-    inserted_at: Instant,
-}
-
 /// In-memory caching middleware for non-streaming generate calls.
 ///
-/// Caches responses keyed on a hash of the prompt. Entries expire after
-/// the configured TTL.  The cache is thread-safe via `Arc<Mutex<_>>`.
+/// Caches responses keyed on a hash of the prompt + options.
+/// Uses `moka` internally for concurrent lock-free access with TTL eviction.
 pub struct CacheMiddleware {
-    cache: Arc<Mutex<HashMap<u64, CacheEntry>>>,
-    ttl: Duration,
+    cache: moka::sync::Cache<u64, GenerateResult>,
 }
 
 impl CacheMiddleware {
     /// Create a new `CacheMiddleware` with the specified time-to-live.
-    pub fn new(ttl: Duration) -> Self {
+    pub fn new(ttl: std::time::Duration) -> Self {
         Self {
-            cache: Arc::new(Mutex::new(HashMap::new())),
-            ttl,
+            cache: moka::sync::Cache::builder()
+                .time_to_live(ttl)
+                .build(),
         }
     }
 
@@ -54,10 +44,7 @@ impl CacheMiddleware {
         options.top_p.map(f64::to_bits).hash(&mut hasher);
         options.top_k.hash(&mut hasher);
         options.stop_sequences.hash(&mut hasher);
-        options
-            .frequency_penalty
-            .map(f64::to_bits)
-            .hash(&mut hasher);
+        options.frequency_penalty.map(f64::to_bits).hash(&mut hasher);
         options.presence_penalty.map(f64::to_bits).hash(&mut hasher);
         options.seed.hash(&mut hasher);
 
@@ -93,15 +80,10 @@ impl Middleware for CacheMiddleware {
             return next.run(prompt, options).await;
         };
 
-        // Check cache.
-        {
-            let cache = self.cache.lock().expect("cache lock poisoned");
-            if let Some(entry) = cache.get(&key) {
-                if entry.inserted_at.elapsed() < self.ttl {
-                    tracing::debug!(cache_key = key, "cache hit");
-                    return Ok(entry.result.clone());
-                }
-            }
+        // Check cache (moka is thread-safe, no lock needed)
+        if let Some(cached) = self.cache.get(&key) {
+            tracing::debug!(cache_key = key, "cache hit");
+            return Ok(cached);
         }
 
         tracing::debug!(cache_key = key, "cache miss");
@@ -109,21 +91,8 @@ impl Middleware for CacheMiddleware {
         // Execute the downstream chain.
         let result = next.run(prompt, options).await?;
 
-        // Store in cache.
-        {
-            let mut cache = self.cache.lock().expect("cache lock poisoned");
-
-            // Evict expired entries opportunistically.
-            cache.retain(|_, entry| entry.inserted_at.elapsed() < self.ttl);
-
-            cache.insert(
-                key,
-                CacheEntry {
-                    result: result.clone(),
-                    inserted_at: Instant::now(),
-                },
-            );
-        }
+        // Store in cache (moka handles TTL eviction automatically)
+        self.cache.insert(key, result.clone());
 
         Ok(result)
     }
