@@ -43,11 +43,11 @@ pub use middleware::{
     extract_reasoning_middleware, ExtractReasoningMiddleware, GuardrailConfig, GuardrailMiddleware,
 };
 pub use model::{
-    agent_loop, rerank, EmbeddingModel, GenerateOptions, ImageGenerationOptions, ImageModel,
-    LanguageModel, LifecycleCallbacks, Middleware, MiddlewareNext, OnFinish, OnStepFinish,
-    OnToolCall, ProviderInfo, RealtimeEvent, RealtimeSession, ReasoningEffort, RerankOptions,
-    RerankingModel, SpeechToTextModel, TextToSpeechModel, ThinkingConfig, VideoGenerationOptions,
-    VideoModel,
+    agent_loop, embed_many, rerank, wrap_with_streaming, EmbeddingModel, GenerateOptions,
+    ImageGenerationOptions, ImageModel, LanguageModel, LifecycleCallbacks, Middleware,
+    MiddlewareNext, OnFinish, OnStepFinish, OnToolCall, ProviderInfo, RealtimeEvent,
+    RealtimeSession, ReasoningEffort, RerankOptions, RerankingModel, SpeechToTextModel,
+    StreamEnabledModel, TextToSpeechModel, ThinkingConfig, VideoGenerationOptions, VideoModel,
 };
 pub use prompt::Prompt;
 pub use provider::Provider;

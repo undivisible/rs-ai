@@ -594,6 +594,11 @@ impl ClientBuilder {
         }
     }
 
+    /// Embed multiple texts (batch).
+    pub async fn embed_many(self, texts: Vec<String>) -> AiResult<EmbeddingResult> {
+        self.embed(texts).await
+    }
+
     /// Rerank documents by relevance to a query (Vercel AI SDK `rerank()`).
     ///
     /// Currently no provider implements reranking. This is a placeholder.

@@ -167,6 +167,13 @@ impl StreamCollector {
 pub struct SyntheticStreamer;
 
 impl SyntheticStreamer {
+    /// Create a synthetic stream builder from text.
+    pub fn from_text(text: &str) -> SyntheticStreamBuilder {
+        SyntheticStreamBuilder {
+            text: text.to_owned(),
+        }
+    }
+
     /// Create a synthetic stream by chunking the given text.
     pub fn stream(text: String, chunk_size: usize) -> AiStream {
         let chunk_size = chunk_size.max(1);
@@ -208,5 +215,17 @@ impl SyntheticStreamer {
         };
 
         Box::pin(stream::iter(chunks))
+    }
+}
+
+/// Builder returned by [`SyntheticStreamer::from_text`].
+pub struct SyntheticStreamBuilder {
+    text: String,
+}
+
+impl SyntheticStreamBuilder {
+    /// Build an `AiStream` that emits the text in chunks.
+    pub fn stream(self) -> AiStream {
+        SyntheticStreamer::stream(self.text, 50)
     }
 }

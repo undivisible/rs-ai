@@ -716,6 +716,45 @@ pub async fn rerank(
     model.rerank(query, documents, options).await
 }
 
+/// Embed multiple texts in a batch.
+pub async fn embed_many(
+    model: &dyn EmbeddingModel,
+    texts: Vec<String>,
+) -> AiResult<EmbeddingResult> {
+    model.embed(texts).await
+}
+
+/// Wrap a generate-only model to add streaming support.
+/// Text is generated first, then streamed as synthetic chunks.
+pub fn wrap_with_streaming(
+    inner: Box<dyn LanguageModel>,
+) -> StreamEnabledModel {
+    StreamEnabledModel { inner }
+}
+
+/// A model wrapper that adds streaming to generate-only models.
+pub struct StreamEnabledModel {
+    inner: Box<dyn LanguageModel>,
+}
+
+#[async_trait]
+impl LanguageModel for StreamEnabledModel {
+    fn model_id(&self) -> &str { self.inner.model_id() }
+    fn provider_id(&self) -> &str { self.inner.provider_id() }
+    fn capabilities(&self) -> &CapabilitySet { self.inner.capabilities() }
+
+    async fn generate(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<GenerateResult> {
+        self.inner.generate(prompt, options).await
+    }
+
+    async fn stream(&self, prompt: Prompt, options: GenerateOptions) -> AiResult<AiStream> {
+        use crate::stream::SyntheticStreamer;
+        let result = self.inner.generate(prompt, options).await?;
+        let text = result.text.unwrap_or_default();
+        Ok(SyntheticStreamer::from_text(&text).stream())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
