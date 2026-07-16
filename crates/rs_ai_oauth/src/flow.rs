@@ -298,18 +298,27 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
 
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
+    let state = generate_state();
+
     let scopes = provider.scopes();
     let authorize_url = {
         let mut url = format!(
-            "{}?response_type=code&client_id={}&redirect_uri={}&code_challenge={}&code_challenge_method=S256",
+            "{}?response_type=code&client_id={}&redirect_uri={}&code_challenge={}&code_challenge_method=S256&state={}",
             provider.auth_url(),
             url_encode(&provider.client_id()),
             url_encode(&redirect_uri_str),
             url_encode(pkce_challenge.as_str()),
+            url_encode(&state),
         );
         for scope in scopes {
             url.push_str("&scope=");
             url.push_str(&url_encode(scope));
+        }
+        // xAI's OIDC flow requires a nonce parameter.
+        if matches!(provider, OAuthProvider::Xai) {
+            let nonce = generate_state();
+            url.push_str("&nonce=");
+            url.push_str(&url_encode(&nonce));
         }
         url
     };
@@ -322,10 +331,12 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
         listener.set_nonblocking(true).ok();
 
         open_browser(&authorize_url).map_err(OAuthError::Network)?;
-        let code = wait_for_callback(&listener)?;
+        let code = wait_for_callback(&listener, &state)?;
         exchange_code(&provider, &code, pkce_verifier.secret(), &redirect_uri_str)
     } else {
         // Non-localhost flow: user opens the URL manually and pastes the code.
+        // State validation isn't possible here since the user pastes the code
+        // back directly, but we still include it in the authorize URL.
         println!("\nOpen this URL in your browser to authorize:\n");
         println!("{authorize_url}");
         println!("\nAfter authorizing, paste the redirect URL (or just the code) here:");
@@ -333,6 +344,14 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
         let code = read_code_from_stdin()?;
         exchange_code(&provider, &code, pkce_verifier.secret(), &redirect_uri_str)
     }
+}
+
+fn generate_state() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    format!("{now:032x}")
 }
 
 fn read_code_from_stdin() -> Result<String, OAuthError> {
@@ -359,7 +378,7 @@ fn read_code_from_stdin() -> Result<String, OAuthError> {
     Ok(line.to_string())
 }
 
-fn wait_for_callback(listener: &TcpListener) -> Result<String, OAuthError> {
+fn wait_for_callback(listener: &TcpListener, expected_state: &str) -> Result<String, OAuthError> {
     let start = std::time::Instant::now();
     let timeout = std::time::Duration::from_secs(180);
 
@@ -387,6 +406,23 @@ fn wait_for_callback(listener: &TcpListener) -> Result<String, OAuthError> {
                         Some((k, v))
                     })
                     .collect();
+
+                // Validate the state parameter for CSRF protection. If the
+                // provider echoes back a state that doesn't match the one we
+                // sent, reject the callback. If there's no state param at all,
+                // proceed (some providers might not echo it back).
+                if let Some(returned_state) = params.get("state") {
+                    if returned_state != expected_state {
+                        let body = "<html><body><h1>Error</h1><p>State mismatch.</p></body></html>";
+                        let resp = format!(
+                            "HTTP/1.1 400 Bad Request\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                            body.len(),
+                            body
+                        );
+                        let _ = stream.write_all(resp.as_bytes());
+                        return Err(OAuthError::Auth("State mismatch in callback".into()));
+                    }
+                }
 
                 if let Some(code) = params.get("code") {
                     let body = "<html><body style='font-family:sans-serif;background:#111;color:#eee;padding:40px'><h1>Connected</h1><p>You can close this tab.</p></body></html>";
