@@ -301,19 +301,17 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
     let state = generate_state();
 
     let scopes = provider.scopes();
+    let scope_str = scopes.join(" ");
     let authorize_url = {
         let mut url = format!(
-            "{}?response_type=code&client_id={}&redirect_uri={}&code_challenge={}&code_challenge_method=S256&state={}",
+            "{}?response_type=code&client_id={}&redirect_uri={}&scope={}&code_challenge={}&code_challenge_method=S256&state={}",
             provider.auth_url(),
             url_encode(&provider.client_id()),
             url_encode(&redirect_uri_str),
+            url_encode(&scope_str),
             url_encode(pkce_challenge.as_str()),
             url_encode(&state),
         );
-        for scope in scopes {
-            url.push_str("&scope=");
-            url.push_str(&url_encode(scope));
-        }
         // xAI's OIDC flow requires a nonce parameter.
         if matches!(provider, OAuthProvider::Xai) {
             let nonce = generate_state();
