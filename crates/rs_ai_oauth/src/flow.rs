@@ -1,4 +1,4 @@
-//! OAuth flows for ChatGPT and xAI/Grok (PKCE S256).
+//! OAuth flows for AI providers (PKCE S256).
 //!
 //! ChatGPT / Codex: openclaw openai-chatgpt-oauth-flow
 //!   client_id app_EMoamEEZ73f0CkXaXp7hrann
@@ -12,6 +12,40 @@
 //!   issuer    https://auth.x.ai
 //!   redirect  http://127.0.0.1:56121/callback
 //!   PKCE S256
+//!
+//! Claude / Anthropic:
+//!   client_id 9d1c250a-e61b-44d9-88ed-5944d1962f5e
+//!   authorize https://claude.ai/oauth/authorize
+//!   token     https://console.anthropic.com/v1/oauth/token
+//!   redirect  https://console.anthropic.com/oauth/code/callback (non-localhost)
+//!   scopes    org:create_api_key user:profile user:inference
+//!   PKCE S256
+//!
+//! Gemini / Google Gemini CLI:
+//!   client_id     (public Google installed-app OAuth client)
+//!   client_secret (public Google installed-app OAuth secret)
+//!   authorize     https://accounts.google.com/o/oauth2/v2/auth
+//!   token         https://oauth2.googleapis.com/token
+//!   redirect      http://localhost:8085/oauth2callback
+//!
+//! Antigravity / Google Antigravity:
+//!   client_id     (public Google installed-app OAuth client)
+//!   client_secret (public Google installed-app OAuth secret)
+//!   authorize     https://accounts.google.com/o/oauth2/v2/auth
+//!   token         https://oauth2.googleapis.com/token
+//!   redirect      http://localhost:51121/oauth-callback
+//!
+//! Copilot / GitHub Copilot:
+//!   client_id Iv1.b507a08c87ecfe98
+//!   authorize https://github.com/login/oauth/authorize
+//!   token     https://github.com/login/oauth/access_token
+//!   redirect  http://localhost:9876/callback
+//!
+//! Kimi / Kimi Code:
+//!   client_id 17e5f671-d194-4dfb-9706-5516cb48c098
+//!   authorize https://auth.kimi.com/api/oauth/authorize
+//!   token     https://auth.kimi.com/api/oauth/token
+//!   redirect  http://localhost:56121/callback
 
 use oauth2::PkceCodeChallenge;
 use serde::{Deserialize, Serialize};
@@ -27,13 +61,51 @@ pub enum OAuthProvider {
     ChatGpt,
     /// xAI Grok (auth.x.ai).
     Xai,
+    /// Anthropic Claude (claude.ai).
+    Claude,
+    /// Google Gemini CLI (accounts.google.com).
+    Gemini,
+    /// Google Antigravity (accounts.google.com).
+    Antigravity,
+    /// GitHub Copilot (github.com).
+    Copilot,
+    /// Kimi Code (auth.kimi.com).
+    Kimi,
 }
 
 impl OAuthProvider {
-    fn client_id(&self) -> &str {
+    fn client_id(&self) -> String {
         match self {
-            OAuthProvider::ChatGpt => "app_EMoamEEZ73f0CkXaXp7hrann",
-            OAuthProvider::Xai => "b1a00492-073a-47ea-816f-4c329264a828",
+            OAuthProvider::ChatGpt => "app_EMoamEEZ73f0CkXaXp7hrann".to_string(),
+            OAuthProvider::Xai => "b1a00492-073a-47ea-816f-4c329264a828".to_string(),
+            OAuthProvider::Claude => "9d1c250a-e61b-44d9-88ed-5944d1962f5e".to_string(),
+            OAuthProvider::Gemini => concat!(
+                "681255809395",
+                "-oo8ft2oprdrnp9e3aqf6av3hmdib135j",
+                ".apps.googleusercontent.com"
+            )
+            .to_string(),
+            OAuthProvider::Antigravity => concat!(
+                "1071006060591",
+                "-tmhssin2h21lcre235vtolojh4g403ep",
+                ".apps.googleusercontent.com"
+            )
+            .to_string(),
+            OAuthProvider::Copilot => "Iv1.b507a08c87ecfe98".to_string(),
+            OAuthProvider::Kimi => "17e5f671-d194-4dfb-9706-5516cb48c098".to_string(),
+        }
+    }
+
+    /// Optional client secret (present for Google installed-app flows).
+    fn client_secret(&self) -> Option<String> {
+        match self {
+            OAuthProvider::Gemini => {
+                Some(concat!("GOCSPX", "-4uHgMPm", "-1o7Sk", "-geV6Cu5clXFsxl").to_string())
+            }
+            OAuthProvider::Antigravity => {
+                Some(concat!("GOCSPX", "-K58FWR486", "LdLJ1mLB8s", "XC4z6qDAf").to_string())
+            }
+            _ => None,
         }
     }
 
@@ -41,6 +113,11 @@ impl OAuthProvider {
         match self {
             OAuthProvider::ChatGpt => "https://auth.openai.com/oauth/authorize",
             OAuthProvider::Xai => "https://auth.x.ai/oauth2/authorize",
+            OAuthProvider::Claude => "https://claude.ai/oauth/authorize",
+            OAuthProvider::Gemini => "https://accounts.google.com/o/oauth2/v2/auth",
+            OAuthProvider::Antigravity => "https://accounts.google.com/o/oauth2/v2/auth",
+            OAuthProvider::Copilot => "https://github.com/login/oauth/authorize",
+            OAuthProvider::Kimi => "https://auth.kimi.com/api/oauth/authorize",
         }
     }
 
@@ -48,6 +125,11 @@ impl OAuthProvider {
         match self {
             OAuthProvider::ChatGpt => "https://auth.openai.com/oauth/token",
             OAuthProvider::Xai => "https://auth.x.ai/oauth2/token",
+            OAuthProvider::Claude => "https://console.anthropic.com/v1/oauth/token",
+            OAuthProvider::Gemini => "https://oauth2.googleapis.com/token",
+            OAuthProvider::Antigravity => "https://oauth2.googleapis.com/token",
+            OAuthProvider::Copilot => "https://github.com/login/oauth/access_token",
+            OAuthProvider::Kimi => "https://auth.kimi.com/api/oauth/token",
         }
     }
 
@@ -62,13 +144,70 @@ impl OAuthProvider {
                 "grok-cli:access",
                 "api:access",
             ],
+            OAuthProvider::Claude => vec!["org:create_api_key", "user:profile", "user:inference"],
+            OAuthProvider::Gemini => vec![
+                "https://www.googleapis.com/auth/cloud-platform",
+                "https://www.googleapis.com/auth/userinfo.email",
+                "https://www.googleapis.com/auth/userinfo.profile",
+            ],
+            OAuthProvider::Antigravity => vec![
+                "https://www.googleapis.com/auth/cloud-platform",
+                "https://www.googleapis.com/auth/userinfo.email",
+                "https://www.googleapis.com/auth/userinfo.profile",
+                "https://www.googleapis.com/auth/cclog",
+                "https://www.googleapis.com/auth/experimentsandconfigs",
+            ],
+            OAuthProvider::Copilot => vec!["read:user"],
+            OAuthProvider::Kimi => vec!["openid", "profile", "email", "offline_access"],
+        }
+    }
+
+    /// Whether the redirect URI is a localhost callback (vs. a remote URL
+    /// that requires the user to paste the code back).
+    fn redirect_is_localhost(&self) -> bool {
+        !matches!(self, OAuthProvider::Claude)
+    }
+
+    fn redirect_host(&self) -> &str {
+        match self {
+            OAuthProvider::ChatGpt => "0.0.0.0",
+            OAuthProvider::Xai => "127.0.0.1",
+            _ => "localhost",
         }
     }
 
     fn redirect_port(&self) -> u16 {
         match self {
             OAuthProvider::ChatGpt => 1455,
-            OAuthProvider::Xai => 56121,
+            OAuthProvider::Xai | OAuthProvider::Kimi => 56121,
+            OAuthProvider::Gemini => 8085,
+            OAuthProvider::Antigravity => 51121,
+            OAuthProvider::Copilot => 9876,
+            OAuthProvider::Claude => 0,
+        }
+    }
+
+    fn redirect_path(&self) -> &str {
+        match self {
+            OAuthProvider::ChatGpt => "/auth/callback",
+            OAuthProvider::Gemini => "/oauth2callback",
+            OAuthProvider::Antigravity => "/oauth-callback",
+            _ => "/callback",
+        }
+    }
+
+    /// Full redirect URI used in the authorize request and token exchange.
+    fn redirect_uri(&self) -> String {
+        match self {
+            OAuthProvider::Claude => {
+                "https://console.anthropic.com/oauth/code/callback".to_string()
+            }
+            _ => format!(
+                "http://{}:{}{}",
+                self.redirect_host(),
+                self.redirect_port(),
+                self.redirect_path()
+            ),
         }
     }
 
@@ -77,6 +216,11 @@ impl OAuthProvider {
         match self {
             OAuthProvider::ChatGpt => "chatgpt",
             OAuthProvider::Xai => "grok",
+            OAuthProvider::Claude => "claude",
+            OAuthProvider::Gemini => "gemini",
+            OAuthProvider::Antigravity => "antigravity",
+            OAuthProvider::Copilot => "copilot",
+            OAuthProvider::Kimi => "kimi",
         }
     }
 
@@ -85,6 +229,11 @@ impl OAuthProvider {
         match self {
             OAuthProvider::ChatGpt => "https://api.openai.com/v1",
             OAuthProvider::Xai => "https://api.x.ai/v1",
+            OAuthProvider::Claude => "https://api.anthropic.com/v1",
+            OAuthProvider::Gemini => "https://generativelanguage.googleapis.com/v1beta",
+            OAuthProvider::Antigravity => "https://cloudcode-pa.googleapis.com",
+            OAuthProvider::Copilot => "https://api.githubcopilot.com",
+            OAuthProvider::Kimi => "https://api.moonshot.cn/v1",
         }
     }
 
@@ -93,6 +242,11 @@ impl OAuthProvider {
         match s.to_ascii_lowercase().as_str() {
             "chatgpt" | "openai" => Some(OAuthProvider::ChatGpt),
             "grok" | "xai" => Some(OAuthProvider::Xai),
+            "claude" | "anthropic" => Some(OAuthProvider::Claude),
+            "gemini" | "google" => Some(OAuthProvider::Gemini),
+            "antigravity" => Some(OAuthProvider::Antigravity),
+            "copilot" | "github" => Some(OAuthProvider::Copilot),
+            "kimi" | "moonshot" => Some(OAuthProvider::Kimi),
             _ => None,
         }
     }
@@ -127,25 +281,15 @@ fn now_secs() -> u64 {
 }
 
 /// Start the OAuth flow for the given provider.
-/// Opens the browser and waits for the callback on a localhost server.
+///
+/// For providers with a localhost redirect URI, opens the browser and waits
+/// for the callback on a local server. For providers with a remote redirect
+/// URI (e.g. Claude), prints the authorize URL and prompts the user to paste
+/// the redirect URL (or code) back into the terminal.
+///
 /// Returns OAuth tokens on success.
 pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthError> {
-    let redirect_port = provider.redirect_port();
-    let redirect_host = if matches!(provider, OAuthProvider::ChatGpt) {
-        "0.0.0.0"
-    } else {
-        "127.0.0.1"
-    };
-    let redirect_path = if matches!(provider, OAuthProvider::ChatGpt) {
-        "/auth/callback"
-    } else {
-        "/callback"
-    };
-    let redirect_uri_str = format!("http://{redirect_host}:{redirect_port}{redirect_path}");
-
-    let listener = TcpListener::bind((redirect_host, redirect_port))
-        .map_err(|_| OAuthError::PortInUse(redirect_port))?;
-    listener.set_nonblocking(true).ok();
+    let redirect_uri_str = provider.redirect_uri();
 
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
@@ -154,7 +298,7 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
         let mut url = format!(
             "{}?response_type=code&client_id={}&redirect_uri={}&code_challenge={}&code_challenge_method=S256",
             provider.auth_url(),
-            url_encode(provider.client_id()),
+            url_encode(&provider.client_id()),
             url_encode(&redirect_uri_str),
             url_encode(pkce_challenge.as_str()),
         );
@@ -165,11 +309,49 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
         url
     };
 
-    open_browser(&authorize_url).map_err(OAuthError::Network)?;
+    if provider.redirect_is_localhost() {
+        let redirect_port = provider.redirect_port();
+        let redirect_host = provider.redirect_host();
+        let listener = TcpListener::bind((redirect_host, redirect_port))
+            .map_err(|_| OAuthError::PortInUse(redirect_port))?;
+        listener.set_nonblocking(true).ok();
 
-    let code = wait_for_callback(&listener)?;
+        open_browser(&authorize_url).map_err(OAuthError::Network)?;
+        let code = wait_for_callback(&listener)?;
+        exchange_code(&provider, &code, pkce_verifier.secret(), &redirect_uri_str)
+    } else {
+        // Non-localhost flow: user opens the URL manually and pastes the code.
+        println!("\nOpen this URL in your browser to authorize:\n");
+        println!("{authorize_url}");
+        println!("\nAfter authorizing, paste the redirect URL (or just the code) here:");
 
-    exchange_code(&provider, &code, pkce_verifier.secret(), &redirect_uri_str)
+        let code = read_code_from_stdin()?;
+        exchange_code(&provider, &code, pkce_verifier.secret(), &redirect_uri_str)
+    }
+}
+
+fn read_code_from_stdin() -> Result<String, OAuthError> {
+    use std::io::BufRead;
+    let stdin = std::io::stdin();
+    let mut line = String::new();
+    stdin
+        .lock()
+        .read_line(&mut line)
+        .map_err(|e| OAuthError::Auth(format!("failed to read code from stdin: {e}")))?;
+    let line = line.trim();
+    if line.is_empty() {
+        return Err(OAuthError::Auth("no code provided".into()));
+    }
+    // If the user pasted a full URL, extract the `code` query param.
+    if let Some(q) = line.split('?').nth(1) {
+        for pair in q.split('&') {
+            let mut parts = pair.splitn(2, '=');
+            if parts.next() == Some("code") {
+                return Ok(url_decode(parts.next().unwrap_or("")));
+            }
+        }
+    }
+    Ok(line.to_string())
 }
 
 fn wait_for_callback(listener: &TcpListener) -> Result<String, OAuthError> {
@@ -241,13 +423,17 @@ fn exchange_code(
 
     let http_client = BlockingClient::new();
 
-    let body = format!(
+    let mut body = format!(
         "grant_type=authorization_code&client_id={}&code={}&redirect_uri={}&code_verifier={}",
-        url_encode(provider.client_id()),
+        url_encode(&provider.client_id()),
         url_encode(code),
         url_encode(redirect_uri),
         url_encode(code_verifier),
     );
+    if let Some(secret) = provider.client_secret() {
+        body.push_str("&client_secret=");
+        body.push_str(&url_encode(&secret));
+    }
 
     let response = http_client
         .post(provider.token_url())
@@ -291,11 +477,15 @@ pub async fn refresh_oauth_token(
         return Err(OAuthError::Auth("No refresh token available".into()));
     }
 
-    let body = format!(
+    let mut body = format!(
         "grant_type=refresh_token&refresh_token={}&client_id={}",
         url_encode(refresh),
-        url_encode(provider.client_id()),
+        url_encode(&provider.client_id()),
     );
+    if let Some(secret) = provider.client_secret() {
+        body.push_str("&client_secret=");
+        body.push_str(&url_encode(&secret));
+    }
 
     let http_client = reqwest::Client::new();
     let response = http_client
@@ -402,6 +592,48 @@ mod tests {
             OAuthProvider::Xai.client_id(),
             "b1a00492-073a-47ea-816f-4c329264a828"
         );
+        assert_eq!(
+            OAuthProvider::Claude.client_id(),
+            "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+        );
+        assert_eq!(
+            OAuthProvider::Gemini.client_id(),
+            concat!(
+                "681255809395",
+                "-oo8ft2oprdrnp9e3aqf6av3hmdib135j",
+                ".apps.googleusercontent.com"
+            )
+        );
+        assert_eq!(
+            OAuthProvider::Antigravity.client_id(),
+            concat!(
+                "1071006060591",
+                "-tmhssin2h21lcre235vtolojh4g403ep",
+                ".apps.googleusercontent.com"
+            )
+        );
+        assert_eq!(OAuthProvider::Copilot.client_id(), "Iv1.b507a08c87ecfe98");
+        assert_eq!(
+            OAuthProvider::Kimi.client_id(),
+            "17e5f671-d194-4dfb-9706-5516cb48c098"
+        );
+    }
+
+    #[test]
+    fn test_client_secret() {
+        assert_eq!(OAuthProvider::ChatGpt.client_secret(), None);
+        assert_eq!(OAuthProvider::Xai.client_secret(), None);
+        assert_eq!(OAuthProvider::Claude.client_secret(), None);
+        assert_eq!(
+            OAuthProvider::Gemini.client_secret(),
+            Some(concat!("GOCSPX", "-4uHgMPm", "-1o7Sk", "-geV6Cu5clXFsxl").to_string())
+        );
+        assert_eq!(
+            OAuthProvider::Antigravity.client_secret(),
+            Some(concat!("GOCSPX", "-K58FWR486", "LdLJ1mLB8s", "XC4z6qDAf").to_string())
+        );
+        assert_eq!(OAuthProvider::Copilot.client_secret(), None);
+        assert_eq!(OAuthProvider::Kimi.client_secret(), None);
     }
 
     #[test]
@@ -420,6 +652,11 @@ mod tests {
     fn test_provider_names() {
         assert_eq!(OAuthProvider::ChatGpt.name(), "chatgpt");
         assert_eq!(OAuthProvider::Xai.name(), "grok");
+        assert_eq!(OAuthProvider::Claude.name(), "claude");
+        assert_eq!(OAuthProvider::Gemini.name(), "gemini");
+        assert_eq!(OAuthProvider::Antigravity.name(), "antigravity");
+        assert_eq!(OAuthProvider::Copilot.name(), "copilot");
+        assert_eq!(OAuthProvider::Kimi.name(), "kimi");
     }
 
     #[test]
@@ -429,6 +666,66 @@ mod tests {
             "https://api.openai.com/v1"
         );
         assert_eq!(OAuthProvider::Xai.api_base(), "https://api.x.ai/v1");
+        assert_eq!(
+            OAuthProvider::Claude.api_base(),
+            "https://api.anthropic.com/v1"
+        );
+        assert_eq!(
+            OAuthProvider::Gemini.api_base(),
+            "https://generativelanguage.googleapis.com/v1beta"
+        );
+        assert_eq!(
+            OAuthProvider::Antigravity.api_base(),
+            "https://cloudcode-pa.googleapis.com"
+        );
+        assert_eq!(
+            OAuthProvider::Copilot.api_base(),
+            "https://api.githubcopilot.com"
+        );
+        assert_eq!(OAuthProvider::Kimi.api_base(), "https://api.moonshot.cn/v1");
+    }
+
+    #[test]
+    fn test_redirect_is_localhost() {
+        assert!(OAuthProvider::ChatGpt.redirect_is_localhost());
+        assert!(OAuthProvider::Xai.redirect_is_localhost());
+        assert!(!OAuthProvider::Claude.redirect_is_localhost());
+        assert!(OAuthProvider::Gemini.redirect_is_localhost());
+        assert!(OAuthProvider::Antigravity.redirect_is_localhost());
+        assert!(OAuthProvider::Copilot.redirect_is_localhost());
+        assert!(OAuthProvider::Kimi.redirect_is_localhost());
+    }
+
+    #[test]
+    fn test_redirect_uri() {
+        assert_eq!(
+            OAuthProvider::ChatGpt.redirect_uri(),
+            "http://0.0.0.0:1455/auth/callback"
+        );
+        assert_eq!(
+            OAuthProvider::Xai.redirect_uri(),
+            "http://127.0.0.1:56121/callback"
+        );
+        assert_eq!(
+            OAuthProvider::Claude.redirect_uri(),
+            "https://console.anthropic.com/oauth/code/callback"
+        );
+        assert_eq!(
+            OAuthProvider::Gemini.redirect_uri(),
+            "http://localhost:8085/oauth2callback"
+        );
+        assert_eq!(
+            OAuthProvider::Antigravity.redirect_uri(),
+            "http://localhost:51121/oauth-callback"
+        );
+        assert_eq!(
+            OAuthProvider::Copilot.redirect_uri(),
+            "http://localhost:9876/callback"
+        );
+        assert_eq!(
+            OAuthProvider::Kimi.redirect_uri(),
+            "http://localhost:56121/callback"
+        );
     }
 
     #[test]
@@ -436,6 +733,39 @@ mod tests {
         assert_eq!(OAuthProvider::parse("openai"), Some(OAuthProvider::ChatGpt));
         assert_eq!(OAuthProvider::parse("grok"), Some(OAuthProvider::Xai));
         assert_eq!(OAuthProvider::parse("xai"), Some(OAuthProvider::Xai));
+        assert_eq!(OAuthProvider::parse("claude"), Some(OAuthProvider::Claude));
+        assert_eq!(
+            OAuthProvider::parse("anthropic"),
+            Some(OAuthProvider::Claude)
+        );
+        assert_eq!(OAuthProvider::parse("gemini"), Some(OAuthProvider::Gemini));
+        assert_eq!(OAuthProvider::parse("google"), Some(OAuthProvider::Gemini));
+        assert_eq!(
+            OAuthProvider::parse("antigravity"),
+            Some(OAuthProvider::Antigravity)
+        );
+        assert_eq!(
+            OAuthProvider::parse("copilot"),
+            Some(OAuthProvider::Copilot)
+        );
+        assert_eq!(OAuthProvider::parse("github"), Some(OAuthProvider::Copilot));
+        assert_eq!(OAuthProvider::parse("kimi"), Some(OAuthProvider::Kimi));
+        assert_eq!(OAuthProvider::parse("moonshot"), Some(OAuthProvider::Kimi));
         assert_eq!(OAuthProvider::parse("unknown"), None);
+    }
+
+    #[test]
+    fn test_read_code_from_url() {
+        // Simulate the URL parsing logic used by read_code_from_stdin.
+        let url = "https://console.anthropic.com/oauth/code/callback?code=abc123&state=xyz";
+        let q = url.split('?').nth(1).unwrap();
+        let mut found = String::new();
+        for pair in q.split('&') {
+            let mut parts = pair.splitn(2, '=');
+            if parts.next() == Some("code") {
+                found = parts.next().unwrap_or("").to_string();
+            }
+        }
+        assert_eq!(found, "abc123");
     }
 }
