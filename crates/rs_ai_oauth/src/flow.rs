@@ -1,5 +1,10 @@
 //! OAuth flows for AI providers (PKCE S256).
 //!
+//! WARNING: Gemini CLI and Antigravity OAuth flows use Google's public
+//! installed-app client credentials. Using third-party clients with these
+//! providers may violate their terms of service and can result in account
+//! bans. Use at your own risk.
+//!
 //! ChatGPT / Codex: openclaw openai-chatgpt-oauth-flow
 //!   client_id app_EMoamEEZ73f0CkXaXp7hrann
 //!   authorize https://auth.openai.com/oauth/authorize
