@@ -49,11 +49,12 @@ pub use speech::XaiSpeechModel;
 pub use transcription::XaiTranscriptionModel;
 pub use video::XaiVideoModel;
 
+/// Fallback model IDs for xAI OAuth when the `/v1/models` endpoint is unreachable.
+/// For the current list, use `rs_ai_oauth::fetch_models()` at runtime.
 pub const XAI_OAUTH_MODEL_IDS: &[&str] = &[
     "grok-4.5",
     "grok-4.3",
-    "grok-build",
-    "grok-composer-2.5-fast",
+    "grok-build-0.1",
     "grok-4.20-0309-reasoning",
     "grok-4.20-0309-non-reasoning",
     "grok-4.20-multi-agent-0309",
@@ -89,6 +90,6 @@ mod tests {
 
     #[test]
     fn oauth_catalog_includes_grok_build() {
-        assert!(XAI_OAUTH_MODEL_IDS.contains(&"grok-build"));
+        assert!(XAI_OAUTH_MODEL_IDS.contains(&"grok-build-0.1"));
     }
 }

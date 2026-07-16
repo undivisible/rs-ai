@@ -1,0 +1,22 @@
+[package]
+name = "rs_ai_oauth"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "MIT"
+description = "OAuth flows and runtime model discovery for AI providers (xAI Grok, OpenAI ChatGPT)"
+repository = "https://github.com/undivisible/rs_ai"
+keywords = ["oauth", "ai", "xai", "grok", "openai"]
+categories = ["authentication", "api-bindings"]
+
+[features]
+default = ["browser"]
+browser = []
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+oauth2 = { version = "5.0", default-features = false, features = ["reqwest", "rustls-tls"] }
+reqwest = { version = "0.12", features = ["blocking", "json"], default-features = false }
+url = "2"

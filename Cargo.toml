@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/rs_ai_oauth",
     "crates/rs_ai_core",
     "crates/rs_ai_providers",
     "crates/rs_ai_local",

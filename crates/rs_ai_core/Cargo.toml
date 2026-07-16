@@ -9,7 +9,7 @@ description = "(UNSTABLE; in active development) Core traits, types, middleware,
 
 [features]
 default = []
-oauth = ["dep:oauth2", "dep:url"]
+oauth = ["dep:rs_ai_oauth"]
 telemetry = [
     "dep:opentelemetry",
     "dep:opentelemetry_sdk",
@@ -37,7 +37,7 @@ mime = { workspace = true }
 moka = { workspace = true }
 secrecy = { workspace = true }
 reqwest = { workspace = true }
-oauth2 = { version = "5.0", optional = true, default-features = false, features = ["reqwest", "rustls-tls"] }
+rs_ai_oauth = { path = "../rs_ai_oauth", optional = true }
 
 # telemetry (optional)
 opentelemetry = { version = "0.27", optional = true, features = ["trace"] }
