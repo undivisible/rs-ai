@@ -3,6 +3,7 @@ name = "example_streaming_tool_use"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description.workspace = true
 
 [dependencies]
 rs_ai_core = { workspace = true }
