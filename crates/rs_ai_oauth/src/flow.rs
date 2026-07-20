@@ -7,49 +7,49 @@
 //!
 //! ChatGPT / Codex: openclaw openai-chatgpt-oauth-flow
 //!   client_id app_EMoamEEZ73f0CkXaXp7hrann
-//!   authorize https://auth.openai.com/oauth/authorize
-//!   token     https://auth.openai.com/oauth/token
+//!   authorize <https://auth.openai.com/oauth/authorize>
+//!   token     <https://auth.openai.com/oauth/token>
 //!   redirect  http://localhost:1455/auth/callback
 //!   PKCE S256
 //!
 //! xAI / Grok: pi-xai-oauth
 //!   client_id b1a00492-073a-47ea-816f-4c329264a828
-//!   issuer    https://auth.x.ai
+//!   issuer    <https://auth.x.ai>
 //!   redirect  http://127.0.0.1:56121/callback
 //!   PKCE S256
 //!
 //! Claude / Anthropic:
 //!   client_id 9d1c250a-e61b-44d9-88ed-5944d1962f5e
-//!   authorize https://claude.ai/oauth/authorize
-//!   token     https://console.anthropic.com/v1/oauth/token
-//!   redirect  https://console.anthropic.com/oauth/code/callback (non-localhost)
+//!   authorize <https://claude.ai/oauth/authorize>
+//!   token     <https://console.anthropic.com/v1/oauth/token>
+//!   redirect  <https://console.anthropic.com/oauth/code/callback> (non-localhost)
 //!   scopes    org:create_api_key user:profile user:inference
 //!   PKCE S256
 //!
 //! Gemini / Google Gemini CLI:
 //!   client_id     (public Google installed-app OAuth client)
 //!   client_secret (public Google installed-app OAuth secret)
-//!   authorize     https://accounts.google.com/o/oauth2/v2/auth
-//!   token         https://oauth2.googleapis.com/token
+//!   authorize     <https://accounts.google.com/o/oauth2/v2/auth>
+//!   token         <https://oauth2.googleapis.com/token>
 //!   redirect      http://localhost:8085/oauth2callback
 //!
 //! Antigravity / Google Antigravity:
 //!   client_id     (public Google installed-app OAuth client)
 //!   client_secret (public Google installed-app OAuth secret)
-//!   authorize     https://accounts.google.com/o/oauth2/v2/auth
-//!   token         https://oauth2.googleapis.com/token
+//!   authorize     <https://accounts.google.com/o/oauth2/v2/auth>
+//!   token         <https://oauth2.googleapis.com/token>
 //!   redirect      http://localhost:51121/oauth-callback
 //!
 //! Copilot / GitHub Copilot:
 //!   client_id Iv1.b507a08c87ecfe98
-//!   authorize https://github.com/login/oauth/authorize
-//!   token     https://github.com/login/oauth/access_token
+//!   authorize <https://github.com/login/oauth/authorize>
+//!   token     <https://github.com/login/oauth/access_token>
 //!   redirect  http://localhost:9876/callback
 //!
 //! Kimi / Kimi Code:
 //!   client_id 17e5f671-d194-4dfb-9706-5516cb48c098
-//!   authorize https://auth.kimi.com/api/oauth/authorize
-//!   token     https://auth.kimi.com/api/oauth/token
+//!   authorize <https://auth.kimi.com/api/oauth/authorize>
+//!   token     <https://auth.kimi.com/api/oauth/token>
 //!   redirect  http://localhost:56121/callback
 
 use oauth2::PkceCodeChallenge;
