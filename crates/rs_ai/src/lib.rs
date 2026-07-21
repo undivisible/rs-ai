@@ -27,7 +27,7 @@
 
 use base64::Engine as _;
 use futures::stream::BoxStream;
-use rs_ai_core::tool::ToolSet;
+use rs_ai_core::tool::{ToolChoice, ToolDefinition, ToolSet};
 use rs_ai_core::{
     agent_loop, AiError, AiResult, CacheConfig, ContentPart, EmbeddingResult, FileData,
     GenerateOptions, ImageData, ImageGenerationOptions, ImageModel, ImageResult, LanguageModel,
@@ -59,6 +59,8 @@ pub struct ClientBuilder {
     cache_config: Option<CacheConfig>,
     /// Maximum tool-calling steps in the agent loop (default: 1).
     max_steps: u32,
+    tools: Option<Vec<ToolDefinition>>,
+    tool_choice: Option<ToolChoice>,
     /// Callback after each agent-loop step.
     on_step_finish: Option<OnStepFinish>,
     /// Callback before each tool execution.
@@ -227,6 +229,16 @@ impl ClientBuilder {
     /// Default: 1 (single-shot, no auto-loop).
     pub fn max_steps(mut self, n: u32) -> Self {
         self.max_steps = n;
+        self
+    }
+
+    pub fn with_tools(mut self, tools: Vec<ToolDefinition>) -> Self {
+        self.tools = Some(tools);
+        self
+    }
+
+    pub fn with_tool_choice(mut self, choice: ToolChoice) -> Self {
+        self.tool_choice = Some(choice);
         self
     }
 
@@ -815,6 +827,13 @@ impl ClientBuilder {
 
         let mut options = GenerateOptions::default().with_max_steps(self.max_steps);
 
+        if let Some(tools) = self.tools {
+            options = options.with_tools(tools);
+        }
+        if let Some(tool_choice) = self.tool_choice {
+            options = options.with_tool_choice(tool_choice);
+        }
+
         let callbacks = LifecycleCallbacks {
             on_step_finish: self.on_step_finish,
             on_tool_call: self.on_tool_call,
@@ -1007,7 +1026,7 @@ impl Client {
         self.model
             .as_ref()
             .as_ref()
-            .stream(prompt, GenerateOptions::default())
+            .stream(prompt, self.options.clone())
             .await
     }
 
@@ -1054,6 +1073,8 @@ pub fn claude() -> ClientBuilder {
         cf_gateway: None,
         cache_config: None,
         max_steps: 1,
+        tools: None,
+        tool_choice: None,
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
@@ -1081,6 +1102,8 @@ pub fn chatgpt() -> ClientBuilder {
         cf_gateway: None,
         cache_config: None,
         max_steps: 1,
+        tools: None,
+        tool_choice: None,
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
@@ -1108,6 +1131,8 @@ pub fn gemini() -> ClientBuilder {
         cf_gateway: None,
         cache_config: None,
         max_steps: 1,
+        tools: None,
+        tool_choice: None,
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
@@ -1135,6 +1160,8 @@ pub fn xai() -> ClientBuilder {
         cf_gateway: None,
         cache_config: None,
         max_steps: 1,
+        tools: None,
+        tool_choice: None,
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
@@ -1167,6 +1194,8 @@ pub fn cloudflare(account_id: impl Into<String>) -> ClientBuilder {
         cf_gateway: None,
         cache_config: None,
         max_steps: 1,
+        tools: None,
+        tool_choice: None,
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
@@ -1196,10 +1225,43 @@ pub fn compatible(base_url: impl Into<String>) -> ClientBuilder {
         cf_gateway: None,
         cache_config: None,
         max_steps: 1,
+        tools: None,
+        tool_choice: None,
         on_step_finish: None,
         on_tool_call: None,
         on_finish: None,
         oauth_token: None,
         rerank_model_id: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn builder_preserves_tool_configuration() {
+        let tool = ToolDefinition {
+            name: "click".to_string(),
+            description: "Click a point".to_string(),
+            parameters: serde_json::json!({"type": "object"}),
+            examples: None,
+        };
+        let client = compatible("https://example.com")
+            .api_key("test")
+            .model("test")
+            .with_tools(vec![tool])
+            .with_tool_choice(ToolChoice::Required)
+            .build()
+            .await
+            .unwrap();
+
+        let tools = client.options.tools.as_ref().unwrap();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0].name, "click");
+        assert!(matches!(
+            client.options.tool_choice,
+            Some(ToolChoice::Required)
+        ));
     }
 }
