@@ -125,4 +125,4 @@ cargo test     # same
 
 ## License
 
-MPL-2.0
+ISC
