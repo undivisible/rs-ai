@@ -323,8 +323,14 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
 
     if provider.redirect_is_localhost() {
         let redirect_port = provider.redirect_port();
-        let redirect_host = provider.redirect_host();
-        let listener = TcpListener::bind((redirect_host, redirect_port))
+        // Bind loopback, never the advertised host. ChatGpt advertises
+        // 0.0.0.0, and binding that would put the callback listener on every
+        // interface: anyone on the network could deliver a callback during the
+        // login window and have the CLI exchange *their* authorization code,
+        // ending up with a token for the attacker's account. Connections to
+        // localhost and to 0.0.0.0 both arrive on 127.0.0.1, so the flow is
+        // unaffected.
+        let listener = TcpListener::bind(("127.0.0.1", redirect_port))
             .map_err(|_| OAuthError::PortInUse(redirect_port))?;
         listener.set_nonblocking(true).ok();
 
@@ -424,12 +430,13 @@ fn wait_for_callback(listener: &TcpListener, expected_state: &str) -> Result<Str
                     })
                     .collect();
 
-                // Validate the state parameter for CSRF protection. If the
-                // provider echoes back a state that doesn't match the one we
-                // sent, reject the callback. If there's no state param at all,
-                // proceed (some providers might not echo it back).
-                if let Some(returned_state) = params.get("state") {
-                    if returned_state != expected_state {
+                // Validate the state parameter for CSRF protection. We always
+                // send one, and OAuth 2.0 requires it to be echoed back, so a
+                // callback without it is not a reply to our request — treating
+                // that as good enough is what makes authorization-code
+                // injection possible.
+                if params.get("state").map(String::as_str) != Some(expected_state) {
+                    {
                         let body = "<html><body><h1>Error</h1><p>State mismatch.</p></body></html>";
                         let resp = format!(
                             "HTTP/1.1 400 Bad Request\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
