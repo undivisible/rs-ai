@@ -378,11 +378,23 @@ fn read_code_from_stdin() -> Result<String, OAuthError> {
         for pair in q.split('&') {
             let mut parts = pair.splitn(2, '=');
             if parts.next() == Some("code") {
-                return Ok(url_decode(parts.next().unwrap_or("")));
+                return Ok(strip_state_fragment(&url_decode(
+                    parts.next().unwrap_or(""),
+                )));
             }
         }
     }
-    Ok(line.to_string())
+    Ok(strip_state_fragment(line))
+}
+
+/// Drop the `#state` suffix Anthropic's console callback appends to the code.
+///
+/// Its redirect hands back `<code>#<state>` as one string, so pasting what the
+/// page shows sends the state along as part of the code and the exchange fails
+/// with "no access_token in response" — which points at the response rather
+/// than at the malformed request that caused it.
+fn strip_state_fragment(code: &str) -> String {
+    code.split('#').next().unwrap_or(code).trim().to_string()
 }
 
 fn wait_for_callback(listener: &TcpListener, expected_state: &str) -> Result<String, OAuthError> {
@@ -698,6 +710,15 @@ mod tests {
 
     /// State must be unguessable — it was a hex nanosecond timestamp, and
     /// consecutive calls could return the same value.
+    /// Anthropic's console callback returns `<code>#<state>`; sending that
+    /// whole string as the code fails the exchange.
+    #[test]
+    fn a_pasted_code_drops_the_state_fragment() {
+        assert_eq!(strip_state_fragment("abc123#deadbeef"), "abc123");
+        assert_eq!(strip_state_fragment("abc123"), "abc123");
+        assert_eq!(strip_state_fragment("  abc123#x  ".trim()), "abc123");
+    }
+
     #[test]
     fn state_is_random_and_not_a_timestamp() {
         let a = generate_state();
