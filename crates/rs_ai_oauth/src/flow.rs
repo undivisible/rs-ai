@@ -394,6 +394,25 @@ fn wait_for_callback(listener: &TcpListener, expected_state: &str) -> Result<Str
                     .nth(1)
                     .unwrap_or("");
 
+                // Browsers open speculative and preconnect sockets, and fetch
+                // /favicon.ico, before or alongside the real redirect. Any of
+                // those arrive here first. Answering them and returning would
+                // drop the listener, so the actual callback then hits a closed
+                // port — the user sees "can't connect to the server" while the
+                // CLI reports a missing code it never had a chance to read.
+                // Anything that is not the callback gets a 404 and we keep
+                // waiting.
+                if !req_path.contains("code=") && !req_path.contains("error=") {
+                    let body = "<html><body>Waiting for the authorization redirect…</body></html>";
+                    let resp = format!(
+                        "HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                        body.len(),
+                        body
+                    );
+                    let _ = stream.write_all(resp.as_bytes());
+                    continue;
+                }
+
                 let query = req_path.split('?').nth(1).unwrap_or("");
                 let params: HashMap<&str, String> = query
                     .split('&')
@@ -433,15 +452,25 @@ fn wait_for_callback(listener: &TcpListener, expected_state: &str) -> Result<Str
                     return Ok(code.clone());
                 }
 
-                let body =
-                    "<html><body><h1>Error</h1><p>Missing authorization code.</p></body></html>";
+                // The provider rejected the request — report its reason rather
+                // than a generic missing-code, which sends people looking in
+                // the wrong place.
+                let detail = match (params.get("error"), params.get("error_description")) {
+                    (Some(code), Some(description)) => format!("{code}: {description}"),
+                    (Some(code), None) => code.clone(),
+                    (None, _) => "callback carried neither a code nor an error".to_string(),
+                };
+                let body = format!(
+                    "<html><body><h1>Error</h1><p>{}</p></body></html>",
+                    html_escape(&detail)
+                );
                 let resp = format!(
-                    "HTTP/1.1 400 Bad Request\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                     body.len(),
                     body
                 );
                 let _ = stream.write_all(resp.as_bytes());
-                return Err(OAuthError::Auth("Missing code in callback".into()));
+                return Err(OAuthError::Auth(format!("authorization failed — {detail}")));
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 std::thread::sleep(std::time::Duration::from_millis(100));
@@ -617,9 +646,42 @@ fn open_browser(url: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Escape text that came from the provider before putting it in the callback
+/// page, so an error description cannot inject markup into the browser.
+fn html_escape(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The listener must ignore anything that is not the redirect. Browsers
+    /// open speculative sockets and fetch /favicon.ico, and treating the
+    /// first of those as the callback used to abort the flow and close the
+    /// port before the real redirect arrived — the user saw "can't connect
+    /// to the server" while the CLI reported a missing code.
+    #[test]
+    fn only_the_redirect_counts_as_the_callback() {
+        let is_callback = |path: &str| path.contains("code=") || path.contains("error=");
+
+        assert!(!is_callback("/favicon.ico"));
+        assert!(!is_callback("/"));
+        assert!(!is_callback("/callback"));
+        assert!(is_callback("/callback?state=abc&code=xyz"));
+        assert!(is_callback("/callback?error=access_denied"));
+    }
+
+    #[test]
+    fn provider_errors_are_escaped_for_the_browser() {
+        assert_eq!(
+            html_escape("<script>alert(\"x\")</script>&"),
+            "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;&amp;"
+        );
+    }
 
     #[test]
     fn test_provider_client_ids() {
