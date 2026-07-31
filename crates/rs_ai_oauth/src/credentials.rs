@@ -103,8 +103,64 @@ pub fn load(provider: &OAuthProvider) -> Option<OAuthTokens> {
         if let Ok(tokens) = serde_json::from_str::<OAuthTokens>(&text) {
             return Some(tokens);
         }
+        if let Some(tokens) = parse_foreign(&text) {
+            return Some(tokens);
+        }
     }
     None
+}
+
+/// Read a token file written by another tool in its own shape.
+///
+/// Claude Code stores `{"claudeAiOauth":{"accessToken","refreshToken",
+/// "expiresAt"}}` with the expiry in MILLISECONDS, not the flat
+/// seconds-based shape this crate writes. Without this the Claude fallback
+/// silently never matched, and an existing Claude Code login looked like no
+/// login at all.
+fn parse_foreign(text: &str) -> Option<OAuthTokens> {
+    let value: serde_json::Value = serde_json::from_str(text).ok()?;
+    // Accept the nested wrapper or a bare camelCase object.
+    let node = value.get("claudeAiOauth").unwrap_or(&value);
+
+    let access_token = node
+        .get("accessToken")
+        .or_else(|| node.get("access_token"))?
+        .as_str()?
+        .to_string();
+    if access_token.is_empty() {
+        return None;
+    }
+    let refresh_token = node
+        .get("refreshToken")
+        .or_else(|| node.get("refresh_token"))
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let expires_at = node
+        .get("expiresAt")
+        .or_else(|| node.get("expires_at"))
+        .and_then(serde_json::Value::as_u64)
+        .map(normalise_expiry)
+        .unwrap_or(0);
+
+    Some(OAuthTokens {
+        access_token,
+        refresh_token,
+        expires_at,
+    })
+}
+
+/// Convert a possibly-millisecond expiry to seconds.
+///
+/// A seconds timestamp will not exceed 10^12 until the year 33658, so a value
+/// above that came from a tool that stores milliseconds. Getting this wrong
+/// makes a live token look decades expired.
+fn normalise_expiry(value: u64) -> u64 {
+    const MILLISECOND_THRESHOLD: u64 = 1_000_000_000_000;
+    if value >= MILLISECOND_THRESHOLD {
+        value / 1000
+    } else {
+        value
+    }
 }
 
 /// True when the token is missing or already expired.
@@ -137,6 +193,10 @@ pub fn logged_in_providers() -> Vec<OAuthProvider> {
 mod tests {
     use super::*;
 
+    /// RS_AI_CREDENTIALS_DIR is process-global, so the tests that set it must
+    /// not run concurrently — otherwise one clears it while another is mid-run.
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     fn tokens() -> OAuthTokens {
         OAuthTokens {
             access_token: "at".into(),
@@ -148,6 +208,7 @@ mod tests {
     /// Uses RS_AI_CREDENTIALS_DIR so the real user's tokens are never touched.
     #[test]
     fn a_saved_token_round_trips_and_is_owner_only() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = std::env::temp_dir().join(format!("rsai-cred-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         // SAFETY: single-threaded test process.
@@ -176,6 +237,7 @@ mod tests {
 
     #[test]
     fn a_missing_provider_loads_as_none() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let dir = std::env::temp_dir().join(format!("rsai-cred-empty-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         unsafe { std::env::set_var("RS_AI_CREDENTIALS_DIR", &dir) };
@@ -183,6 +245,29 @@ mod tests {
         // pre-existing file in the developer's home directory.
         assert!(load(&OAuthProvider::Kimi).is_none());
         unsafe { std::env::remove_var("RS_AI_CREDENTIALS_DIR") };
+    }
+
+    #[test]
+    fn a_claude_code_credentials_file_is_understood() {
+        // The exact shape Claude Code writes: nested, camelCase, and an
+        // expiry in milliseconds.
+        let text = r#"{"claudeAiOauth":{"accessToken":"tok","refreshToken":"ref","expiresAt":2000000000000}}"#;
+        let parsed = parse_foreign(text).expect("claude code shape must parse");
+        assert_eq!(parsed.access_token, "tok");
+        assert_eq!(parsed.refresh_token.as_deref(), Some("ref"));
+        // Milliseconds converted to seconds, not carried through as-is.
+        assert_eq!(parsed.expires_at, 2_000_000_000);
+        assert!(
+            !is_expired(&parsed),
+            "a token valid until 2033 is not expired"
+        );
+    }
+
+    #[test]
+    fn a_seconds_expiry_is_left_alone() {
+        assert_eq!(normalise_expiry(2_000_000_000), 2_000_000_000);
+        assert_eq!(normalise_expiry(2_000_000_000_000), 2_000_000_000);
+        assert_eq!(normalise_expiry(0), 0);
     }
 
     #[test]
