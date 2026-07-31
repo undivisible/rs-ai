@@ -60,16 +60,34 @@ fn write_private(path: &Path, contents: &str) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         use std::io::Write as _;
-        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        use std::os::unix::fs::OpenOptionsExt;
+
+        // Write a fresh temp file and rename over the target.
+        //
+        // `create_new` refuses to follow a symlink someone planted at the temp
+        // path, and `mode(0o600)` applies because the file is genuinely new —
+        // on an existing file that flag is silently ignored, which is why the
+        // previous version's guarantee came from a path-based chmod that
+        // followed links to whatever they pointed at.
+        //
+        // The rename also makes the write atomic: a crash can no longer leave
+        // a truncated credential file that reads as "logged out".
+        let parent = path.parent().unwrap_or_else(|| Path::new("."));
+        let temp = parent.join(format!(
+            ".{}.{}.tmp",
+            path.file_name().and_then(|n| n.to_str()).unwrap_or("cred"),
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&temp);
         let mut file = std::fs::OpenOptions::new()
             .write(true)
-            .create(true)
-            .truncate(true)
+            .create_new(true)
             .mode(0o600)
-            .open(path)?;
+            .open(&temp)?;
         file.write_all(contents.as_bytes())?;
-        // Tighten a file that already existed with looser permissions.
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+        file.sync_all()?;
+        drop(file);
+        std::fs::rename(&temp, path)?;
         Ok(())
     }
     #[cfg(not(unix))]
@@ -268,6 +286,39 @@ mod tests {
         assert_eq!(normalise_expiry(2_000_000_000), 2_000_000_000);
         assert_eq!(normalise_expiry(2_000_000_000_000), 2_000_000_000);
         assert_eq!(normalise_expiry(0), 0);
+    }
+
+    /// A planted symlink must not receive the token, and must not have its
+    /// target chmodded. Found by probe, not by a test — hence this one.
+    #[cfg(unix)]
+    #[test]
+    fn a_planted_symlink_does_not_capture_the_token() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = std::env::temp_dir().join(format!("rsai-symlink-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let victim = dir.join("victim.txt");
+        std::fs::write(&victim, "untouched").unwrap();
+        // Ask for the real filename — Xai's provider name is "grok", so a
+        // hardcoded "xai.json" would plant the link where nothing writes.
+        let target = dir.join(format!("{}.json", OAuthProvider::Xai.name()));
+        std::os::unix::fs::symlink(&victim, &target).unwrap();
+
+        unsafe { std::env::set_var("RS_AI_CREDENTIALS_DIR", &dir) };
+        save(&OAuthProvider::Xai, &tokens()).expect("save");
+        unsafe { std::env::remove_var("RS_AI_CREDENTIALS_DIR") };
+
+        assert_eq!(
+            std::fs::read_to_string(&victim).unwrap(),
+            "untouched",
+            "the symlink target must not receive the credential"
+        );
+        assert!(
+            !std::fs::symlink_metadata(&target).unwrap().is_symlink(),
+            "the symlink must have been replaced, not followed"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

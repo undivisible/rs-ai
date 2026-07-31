@@ -350,12 +350,15 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
     }
 }
 
+/// A random CSRF state value.
+///
+/// This must be unguessable. It was previously a hex-formatted nanosecond
+/// timestamp, which an attacker can predict to within the clock's resolution —
+/// and on macOS consecutive calls were measured returning the identical value.
+/// Rejecting a mismatched state is only a defence if the value cannot be
+/// guessed, so the check and this generator have to be correct together.
 fn generate_state() -> String {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    format!("{now:032x}")
+    oauth2::CsrfToken::new_random().secret().clone()
 }
 
 fn read_code_from_stdin() -> Result<String, OAuthError> {
@@ -608,8 +611,17 @@ fn url_decode(s: &str) -> String {
                 out.push(' ');
                 i += 1;
             }
+            // Decode from the byte slice, never a str slice. The input is
+            // from_utf8_lossy of raw socket bytes, so `%` followed by an
+            // invalid byte yields a replacement character and slicing `&s`
+            // lands inside it — which panicked the process, and the binary
+            // is built with panic = abort.
             b'%' if i + 2 < b.len() => {
-                if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                if let Ok(v) = std::str::from_utf8(&b[i + 1..i + 3])
+                    .ok()
+                    .and_then(|hex| u8::from_str_radix(hex, 16).ok())
+                    .ok_or(())
+                {
                     out.push(v as char);
                     i += 3;
                 } else {
@@ -671,6 +683,33 @@ mod tests {
     /// first of those as the callback used to abort the flow and close the
     /// port before the real redirect arrived — the user saw "can't connect
     /// to the server" while the CLI reported a missing code.
+    /// A percent sign followed by a non-UTF-8 byte used to panic, and the
+    /// binaries build with panic = abort, so one local request killed the
+    /// process mid-login.
+    #[test]
+    fn a_malformed_percent_escape_does_not_panic() {
+        let raw = String::from_utf8_lossy(b"code=x%\xff\xfe").to_string();
+        let decoded = url_decode(&raw);
+        assert!(decoded.starts_with("code=x"));
+        assert_eq!(url_decode("a%zz"), "a%zz");
+        assert_eq!(url_decode("a%41b"), "aAb");
+        assert_eq!(url_decode("a+b"), "a b");
+    }
+
+    /// State must be unguessable — it was a hex nanosecond timestamp, and
+    /// consecutive calls could return the same value.
+    #[test]
+    fn state_is_random_and_not_a_timestamp() {
+        let a = generate_state();
+        let b = generate_state();
+        assert_ne!(a, b, "two states must differ");
+        assert!(
+            a.len() >= 22,
+            "state should carry real entropy, got {}",
+            a.len()
+        );
+    }
+
     #[test]
     fn only_the_redirect_counts_as_the_callback() {
         let is_callback = |path: &str| path.contains("code=") || path.contains("error=");
