@@ -22,5 +22,7 @@
 mod fetch;
 mod flow;
 
+pub mod credentials;
+
 pub use fetch::{fetch_models, fetch_models_async, ModelInfo};
 pub use flow::{refresh_oauth_token, start_oauth_flow, OAuthError, OAuthProvider, OAuthTokens};
