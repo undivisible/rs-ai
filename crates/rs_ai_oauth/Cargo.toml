@@ -1,6 +1,6 @@
 [package]
 name = "rs_ai_oauth"
-version = "0.2.29"
+version = "0.2.30"
 edition.workspace = true
 rust-version.workspace = true
 license = "ISC"
@@ -20,3 +20,4 @@ thiserror = "2"
 oauth2 = { version = "5.0", default-features = false, features = ["reqwest", "rustls-tls"] }
 reqwest = { version = "0.12", features = ["blocking", "json"], default-features = false }
 url = "2"
+base64 = "0.22"

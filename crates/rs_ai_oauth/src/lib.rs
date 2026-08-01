@@ -22,6 +22,7 @@
 mod fetch;
 mod flow;
 
+pub mod codex;
 pub mod credentials;
 
 pub use fetch::{fetch_models, fetch_models_async, ModelInfo};
