@@ -1,6 +1,6 @@
 [package]
 name = "rs_ai_oauth"
-version.workspace = true
+version = "0.2.29"
 edition.workspace = true
 rust-version.workspace = true
 license = "ISC"

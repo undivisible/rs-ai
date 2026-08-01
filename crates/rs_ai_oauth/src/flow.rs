@@ -325,7 +325,11 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
 
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
-    let state = generate_state();
+    let state = if matches!(provider, OAuthProvider::Claude) {
+        pkce_verifier.secret().clone()
+    } else {
+        generate_state()
+    };
 
     let scopes = provider.scopes();
     let scope_str = scopes.join(" ");
@@ -357,10 +361,19 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
     // every interface: anyone on the network could deliver a callback during
     // the login window and have the CLI exchange *their* authorization code,
     // ending up with a token for the attacker's account.
+    println!(
+        "\nAuthorize {name} in your browser:",
+        name = provider.name()
+    );
+    println!("{authorize_url}\n");
+
     match TcpListener::bind(("127.0.0.1", redirect_port)) {
         Ok(listener) => {
             listener.set_nonblocking(true).ok();
-            open_browser(&authorize_url).map_err(OAuthError::Network)?;
+            match open_browser(&authorize_url) {
+                Ok(()) => println!("Opened browser. Waiting for callback on port {redirect_port}…"),
+                Err(e) => println!("Could not open browser ({e}). Open the URL above manually."),
+            }
             let code = wait_for_callback(&listener, &state)?;
             exchange_code(
                 &provider,
@@ -375,10 +388,12 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
             // says localhost:<port>, so after authorizing the browser will try
             // to hit a server that isn't ours; the user copies the code from
             // the URL bar instead.
-            println!("\nCould not bind the callback port {redirect_port}.");
-            println!("Open this URL in your browser to authorize:\n");
-            println!("{authorize_url}");
-            println!("\nAfter authorizing, paste the redirect URL (or just the code) here:");
+            println!("Could not bind the callback port {redirect_port}.");
+            match open_browser(&authorize_url) {
+                Ok(()) => {}
+                Err(e) => println!("Could not open browser ({e}). Open the URL above manually."),
+            }
+            println!("After authorizing, paste the redirect URL (or just the code) here:");
 
             let code = read_code_from_stdin()?;
             exchange_code(
@@ -556,35 +571,70 @@ fn exchange_code(
 
     let http_client = BlockingClient::new();
 
-    let mut body = format!(
-        "grant_type=authorization_code&client_id={}&code={}&state={}&redirect_uri={}&code_verifier={}",
-        url_encode(&provider.client_id()),
-        url_encode(code),
-        url_encode(state),
-        url_encode(redirect_uri),
-        url_encode(code_verifier),
-    );
-    if let Some(secret) = provider.client_secret() {
-        body.push_str("&client_secret=");
-        body.push_str(&url_encode(&secret));
+    let response = match provider {
+        OAuthProvider::Claude => {
+            let body = serde_json::json!({
+                "grant_type": "authorization_code",
+                "client_id": provider.client_id(),
+                "code": code,
+                "state": state,
+                "redirect_uri": redirect_uri,
+                "code_verifier": code_verifier,
+            });
+            http_client
+                .post(provider.token_url())
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .json(&body)
+                .send()
+        }
+        _ => {
+            let mut body = format!(
+                "grant_type=authorization_code&client_id={}&code={}&redirect_uri={}&code_verifier={}",
+                url_encode(&provider.client_id()),
+                url_encode(code),
+                url_encode(redirect_uri),
+                url_encode(code_verifier),
+            );
+            if let Some(secret) = provider.client_secret() {
+                body.push_str("&client_secret=");
+                body.push_str(&url_encode(&secret));
+            }
+            http_client
+                .post(provider.token_url())
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Accept", "application/json")
+                .body(body)
+                .send()
+        }
     }
+    .map_err(|e| OAuthError::Network(format!("token exchange request failed: {e}")))?;
 
-    let response = http_client
-        .post(provider.token_url())
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .header("Accept", "application/json")
-        .body(body)
-        .send()
-        .map_err(|e| OAuthError::Network(format!("token exchange request failed: {e}")))?;
+    let status = response.status();
+    let text = response
+        .text()
+        .map_err(|e| OAuthError::Network(format!("token exchange body failed: {e}")))?;
+    let v: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
+        OAuthError::Network(format!(
+            "token exchange parse failed (HTTP {status}): {e}; body={text}"
+        ))
+    })?;
 
-    let v: serde_json::Value = response
-        .json()
-        .map_err(|e| OAuthError::Network(format!("token exchange parse failed: {e}")))?;
+    if !status.is_success() {
+        let detail = v
+            .get("error_description")
+            .or_else(|| v.get("error"))
+            .and_then(|x| x.as_str())
+            .unwrap_or(text.as_str());
+        return Err(OAuthError::Auth(format!(
+            "token exchange failed (HTTP {status}): {detail}"
+        )));
+    }
 
     let access_token = v
         .get("access_token")
         .and_then(|x| x.as_str())
-        .ok_or_else(|| OAuthError::Auth("no access_token in response".into()))?
+        .ok_or_else(|| OAuthError::Auth(format!("no access_token in response: {text}")))?
         .to_string();
     let refresh_token = v
         .get("refresh_token")
@@ -611,35 +661,69 @@ pub async fn refresh_oauth_token(
         return Err(OAuthError::Auth("No refresh token available".into()));
     }
 
-    let mut body = format!(
-        "grant_type=refresh_token&refresh_token={}&client_id={}",
-        url_encode(refresh),
-        url_encode(&provider.client_id()),
-    );
-    if let Some(secret) = provider.client_secret() {
-        body.push_str("&client_secret=");
-        body.push_str(&url_encode(&secret));
-    }
-
     let http_client = reqwest::Client::new();
-    let response = http_client
-        .post(provider.token_url())
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .header("Accept", "application/json")
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| OAuthError::Network(format!("token refresh failed: {e}")))?;
+    let response = match provider {
+        OAuthProvider::Claude => {
+            let body = serde_json::json!({
+                "grant_type": "refresh_token",
+                "client_id": provider.client_id(),
+                "refresh_token": refresh,
+            });
+            http_client
+                .post(provider.token_url())
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .json(&body)
+                .send()
+                .await
+        }
+        _ => {
+            let mut body = format!(
+                "grant_type=refresh_token&refresh_token={}&client_id={}",
+                url_encode(refresh),
+                url_encode(&provider.client_id()),
+            );
+            if let Some(secret) = provider.client_secret() {
+                body.push_str("&client_secret=");
+                body.push_str(&url_encode(&secret));
+            }
+            http_client
+                .post(provider.token_url())
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Accept", "application/json")
+                .body(body)
+                .send()
+                .await
+        }
+    }
+    .map_err(|e| OAuthError::Network(format!("token refresh failed: {e}")))?;
 
-    let v: serde_json::Value = response
-        .json()
+    let status = response.status();
+    let text = response
+        .text()
         .await
-        .map_err(|e| OAuthError::Network(format!("token refresh json: {e}")))?;
+        .map_err(|e| OAuthError::Network(format!("token refresh body: {e}")))?;
+    let v: serde_json::Value = serde_json::from_str(&text).map_err(|e| {
+        OAuthError::Network(format!(
+            "token refresh json (HTTP {status}): {e}; body={text}"
+        ))
+    })?;
+
+    if !status.is_success() {
+        let detail = v
+            .get("error_description")
+            .or_else(|| v.get("error"))
+            .and_then(|x| x.as_str())
+            .unwrap_or(text.as_str());
+        return Err(OAuthError::Auth(format!(
+            "token refresh failed (HTTP {status}): {detail}"
+        )));
+    }
 
     let access_token = v
         .get("access_token")
         .and_then(|x| x.as_str())
-        .ok_or_else(|| OAuthError::Auth("no access_token in refresh response".into()))?
+        .ok_or_else(|| OAuthError::Auth(format!("no access_token in refresh response: {text}")))?
         .to_string();
     let new_refresh = v
         .get("refresh_token")
@@ -702,23 +786,45 @@ fn url_encode(s: &str) -> String {
 fn open_browser(url: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open").arg(url).status().ok();
+        let status = std::process::Command::new("open")
+            .arg(url)
+            .status()
+            .map_err(|e| format!("open failed: {e}"))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(format!("open exited with {status}"))
+        }
     }
     #[cfg(target_os = "linux")]
     {
-        std::process::Command::new("xdg-open")
+        let status = std::process::Command::new("xdg-open")
             .arg(url)
             .status()
-            .ok();
+            .map_err(|e| format!("xdg-open failed: {e}"))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(format!("xdg-open exited with {status}"))
+        }
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("cmd")
-            .args(["/c", "start", url])
+        let status = std::process::Command::new("cmd")
+            .args(["/c", "start", "", url])
             .status()
-            .ok();
+            .map_err(|e| format!("start failed: {e}"))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(format!("start exited with {status}"))
+        }
     }
-    Ok(())
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        let _ = url;
+        Err("no browser opener for this platform".into())
+    }
 }
 
 /// Escape text that came from the provider before putting it in the callback
@@ -1018,5 +1124,34 @@ mod tests {
         assert!(OAuthProvider::Gemini.extra_authorize_params().is_empty());
         assert!(OAuthProvider::Copilot.extra_authorize_params().is_empty());
         assert!(OAuthProvider::Kimi.extra_authorize_params().is_empty());
+    }
+
+    #[test]
+    fn claude_token_exchange_is_json() {
+        let body = serde_json::json!({
+            "grant_type": "authorization_code",
+            "client_id": OAuthProvider::Claude.client_id(),
+            "code": "abc",
+            "state": "xyz",
+            "redirect_uri": OAuthProvider::Claude.redirect_uri(),
+            "code_verifier": "verifier",
+        });
+        let s = body.to_string();
+        assert!(s.contains("\"grant_type\":\"authorization_code\""));
+        assert!(s.contains("\"state\":\"xyz\""));
+        assert!(!s.contains('='));
+    }
+
+    #[test]
+    fn chatgpt_token_exchange_is_form_without_state() {
+        let body = format!(
+            "grant_type=authorization_code&client_id={}&code={}&redirect_uri={}&code_verifier={}",
+            url_encode(&OAuthProvider::ChatGpt.client_id()),
+            url_encode("abc"),
+            url_encode(&OAuthProvider::ChatGpt.redirect_uri()),
+            url_encode("verifier"),
+        );
+        assert!(body.contains("grant_type=authorization_code"));
+        assert!(!body.contains("state="));
     }
 }
