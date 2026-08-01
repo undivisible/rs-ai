@@ -10,6 +10,7 @@
 //!   authorize <https://auth.openai.com/oauth/authorize>
 //!   token     <https://auth.openai.com/oauth/token>
 //!   redirect  http://localhost:1455/auth/callback
+//!   extra     id_token_add_organizations=true codex_cli_simplified_flow=true originator=rs_ai
 //!   PKCE S256
 //!
 //! xAI / Grok: pi-xai-oauth
@@ -21,9 +22,11 @@
 //! Claude / Anthropic:
 //!   client_id 9d1c250a-e61b-44d9-88ed-5944d1962f5e
 //!   authorize <https://claude.ai/oauth/authorize>
-//!   token     <https://console.anthropic.com/v1/oauth/token>
-//!   redirect  <https://console.anthropic.com/oauth/code/callback> (non-localhost)
+//!   token     <https://platform.claude.com/v1/oauth/token>
+//!   redirect  http://localhost:53692/callback (localhost callback)
 //!   scopes    org:create_api_key user:profile user:inference
+//!             user:sessions:claude_code user:mcp_servers user:file_upload
+//!   extra     code=true
 //!   PKCE S256
 //!
 //! Gemini / Google Gemini CLI:
@@ -130,7 +133,7 @@ impl OAuthProvider {
         match self {
             OAuthProvider::ChatGpt => "https://auth.openai.com/oauth/token",
             OAuthProvider::Xai => "https://auth.x.ai/oauth2/token",
-            OAuthProvider::Claude => "https://console.anthropic.com/v1/oauth/token",
+            OAuthProvider::Claude => "https://platform.claude.com/v1/oauth/token",
             OAuthProvider::Gemini => "https://oauth2.googleapis.com/token",
             OAuthProvider::Antigravity => "https://oauth2.googleapis.com/token",
             OAuthProvider::Copilot => "https://github.com/login/oauth/access_token",
@@ -149,7 +152,14 @@ impl OAuthProvider {
                 "grok-cli:access",
                 "api:access",
             ],
-            OAuthProvider::Claude => vec!["org:create_api_key", "user:profile", "user:inference"],
+            OAuthProvider::Claude => vec![
+                "org:create_api_key",
+                "user:profile",
+                "user:inference",
+                "user:sessions:claude_code",
+                "user:mcp_servers",
+                "user:file_upload",
+            ],
             OAuthProvider::Gemini => vec![
                 "https://www.googleapis.com/auth/cloud-platform",
                 "https://www.googleapis.com/auth/userinfo.email",
@@ -169,13 +179,18 @@ impl OAuthProvider {
 
     /// Whether the redirect URI is a localhost callback (vs. a remote URL
     /// that requires the user to paste the code back).
+    ///
+    /// Every provider now uses a localhost callback — the manual-paste path
+    /// is only a fallback when the callback port is in use. Kept as a method
+    /// so the invariant is documented and tested.
+    #[allow(dead_code)]
     fn redirect_is_localhost(&self) -> bool {
-        !matches!(self, OAuthProvider::Claude)
+        let _ = self;
+        true
     }
 
     fn redirect_host(&self) -> &str {
         match self {
-            OAuthProvider::ChatGpt => "0.0.0.0",
             OAuthProvider::Xai => "127.0.0.1",
             _ => "localhost",
         }
@@ -188,7 +203,7 @@ impl OAuthProvider {
             OAuthProvider::Gemini => 8085,
             OAuthProvider::Antigravity => 51121,
             OAuthProvider::Copilot => 9876,
-            OAuthProvider::Claude => 0,
+            OAuthProvider::Claude => 53692,
         }
     }
 
@@ -203,16 +218,28 @@ impl OAuthProvider {
 
     /// Full redirect URI used in the authorize request and token exchange.
     fn redirect_uri(&self) -> String {
+        format!(
+            "http://{}:{}{}",
+            self.redirect_host(),
+            self.redirect_port(),
+            self.redirect_path()
+        )
+    }
+
+    /// Extra query parameters appended to the authorize URL for this provider.
+    ///
+    /// Claude requires `code=true` to get an authorization code back instead
+    /// of an implicit-flow token. ChatGPT/Codex requires the simplified-flow
+    /// and organization-claim flags to issue subscription-scoped tokens.
+    fn extra_authorize_params(&self) -> Vec<(&str, &str)> {
         match self {
-            OAuthProvider::Claude => {
-                "https://console.anthropic.com/oauth/code/callback".to_string()
-            }
-            _ => format!(
-                "http://{}:{}{}",
-                self.redirect_host(),
-                self.redirect_port(),
-                self.redirect_path()
-            ),
+            OAuthProvider::Claude => vec![("code", "true")],
+            OAuthProvider::ChatGpt => vec![
+                ("id_token_add_organizations", "true"),
+                ("codex_cli_simplified_flow", "true"),
+                ("originator", "rs_ai"),
+            ],
+            _ => vec![],
         }
     }
 
@@ -287,10 +314,10 @@ fn now_secs() -> u64 {
 
 /// Start the OAuth flow for the given provider.
 ///
-/// For providers with a localhost redirect URI, opens the browser and waits
-/// for the callback on a local server. For providers with a remote redirect
-/// URI (e.g. Claude), prints the authorize URL and prompts the user to paste
-/// the redirect URL (or code) back into the terminal.
+/// Opens the browser and waits for the callback on a local server. If the
+/// callback port is already in use, falls back to printing the authorize URL
+/// and prompting the user to paste the redirect URL (or just the code) back
+/// into the terminal.
 ///
 /// Returns OAuth tokens on success.
 pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthError> {
@@ -318,35 +345,50 @@ pub fn start_oauth_flow(provider: OAuthProvider) -> Result<OAuthTokens, OAuthErr
             url.push_str("&nonce=");
             url.push_str(&url_encode(&nonce));
         }
+        for (k, v) in provider.extra_authorize_params() {
+            url.push_str(&format!("&{k}={}", url_encode(v)));
+        }
         url
     };
 
-    if provider.redirect_is_localhost() {
-        let redirect_port = provider.redirect_port();
-        // Bind loopback, never the advertised host. ChatGpt advertises
-        // 0.0.0.0, and binding that would put the callback listener on every
-        // interface: anyone on the network could deliver a callback during the
-        // login window and have the CLI exchange *their* authorization code,
-        // ending up with a token for the attacker's account. Connections to
-        // localhost and to 0.0.0.0 both arrive on 127.0.0.1, so the flow is
-        // unaffected.
-        let listener = TcpListener::bind(("127.0.0.1", redirect_port))
-            .map_err(|_| OAuthError::PortInUse(redirect_port))?;
-        listener.set_nonblocking(true).ok();
+    let redirect_port = provider.redirect_port();
+    // Bind loopback, never the advertised host. The redirect URI says
+    // "localhost" but we bind 127.0.0.1 so the callback listener is not on
+    // every interface: anyone on the network could deliver a callback during
+    // the login window and have the CLI exchange *their* authorization code,
+    // ending up with a token for the attacker's account.
+    match TcpListener::bind(("127.0.0.1", redirect_port)) {
+        Ok(listener) => {
+            listener.set_nonblocking(true).ok();
+            open_browser(&authorize_url).map_err(OAuthError::Network)?;
+            let code = wait_for_callback(&listener, &state)?;
+            exchange_code(
+                &provider,
+                &code,
+                &state,
+                pkce_verifier.secret(),
+                &redirect_uri_str,
+            )
+        }
+        Err(_) => {
+            // Port in use — fall back to manual paste. The redirect URI still
+            // says localhost:<port>, so after authorizing the browser will try
+            // to hit a server that isn't ours; the user copies the code from
+            // the URL bar instead.
+            println!("\nCould not bind the callback port {redirect_port}.");
+            println!("Open this URL in your browser to authorize:\n");
+            println!("{authorize_url}");
+            println!("\nAfter authorizing, paste the redirect URL (or just the code) here:");
 
-        open_browser(&authorize_url).map_err(OAuthError::Network)?;
-        let code = wait_for_callback(&listener, &state)?;
-        exchange_code(&provider, &code, pkce_verifier.secret(), &redirect_uri_str)
-    } else {
-        // Non-localhost flow: user opens the URL manually and pastes the code.
-        // State validation isn't possible here since the user pastes the code
-        // back directly, but we still include it in the authorize URL.
-        println!("\nOpen this URL in your browser to authorize:\n");
-        println!("{authorize_url}");
-        println!("\nAfter authorizing, paste the redirect URL (or just the code) here:");
-
-        let code = read_code_from_stdin()?;
-        exchange_code(&provider, &code, pkce_verifier.secret(), &redirect_uri_str)
+            let code = read_code_from_stdin()?;
+            exchange_code(
+                &provider,
+                &code,
+                &state,
+                pkce_verifier.secret(),
+                &redirect_uri_str,
+            )
+        }
     }
 }
 
@@ -506,6 +548,7 @@ fn wait_for_callback(listener: &TcpListener, expected_state: &str) -> Result<Str
 fn exchange_code(
     provider: &OAuthProvider,
     code: &str,
+    state: &str,
     code_verifier: &str,
     redirect_uri: &str,
 ) -> Result<OAuthTokens, OAuthError> {
@@ -514,9 +557,10 @@ fn exchange_code(
     let http_client = BlockingClient::new();
 
     let mut body = format!(
-        "grant_type=authorization_code&client_id={}&code={}&redirect_uri={}&code_verifier={}",
+        "grant_type=authorization_code&client_id={}&code={}&state={}&redirect_uri={}&code_verifier={}",
         url_encode(&provider.client_id()),
         url_encode(code),
+        url_encode(state),
         url_encode(redirect_uri),
         url_encode(code_verifier),
     );
@@ -857,7 +901,7 @@ mod tests {
     fn test_redirect_is_localhost() {
         assert!(OAuthProvider::ChatGpt.redirect_is_localhost());
         assert!(OAuthProvider::Xai.redirect_is_localhost());
-        assert!(!OAuthProvider::Claude.redirect_is_localhost());
+        assert!(OAuthProvider::Claude.redirect_is_localhost());
         assert!(OAuthProvider::Gemini.redirect_is_localhost());
         assert!(OAuthProvider::Antigravity.redirect_is_localhost());
         assert!(OAuthProvider::Copilot.redirect_is_localhost());
@@ -868,7 +912,7 @@ mod tests {
     fn test_redirect_uri() {
         assert_eq!(
             OAuthProvider::ChatGpt.redirect_uri(),
-            "http://0.0.0.0:1455/auth/callback"
+            "http://localhost:1455/auth/callback"
         );
         assert_eq!(
             OAuthProvider::Xai.redirect_uri(),
@@ -876,7 +920,7 @@ mod tests {
         );
         assert_eq!(
             OAuthProvider::Claude.redirect_uri(),
-            "https://console.anthropic.com/oauth/code/callback"
+            "http://localhost:53692/callback"
         );
         assert_eq!(
             OAuthProvider::Gemini.redirect_uri(),
@@ -925,7 +969,7 @@ mod tests {
     #[test]
     fn test_read_code_from_url() {
         // Simulate the URL parsing logic used by read_code_from_stdin.
-        let url = "https://console.anthropic.com/oauth/code/callback?code=abc123&state=xyz";
+        let url = "http://localhost:53692/callback?code=abc123&state=xyz";
         let q = url.split('?').nth(1).unwrap();
         let mut found = String::new();
         for pair in q.split('&') {
@@ -935,5 +979,44 @@ mod tests {
             }
         }
         assert_eq!(found, "abc123");
+    }
+
+    #[test]
+    fn claude_uses_platform_token_endpoint() {
+        assert_eq!(
+            OAuthProvider::Claude.token_url(),
+            "https://platform.claude.com/v1/oauth/token"
+        );
+    }
+
+    #[test]
+    fn claude_requests_six_scopes() {
+        let scopes = OAuthProvider::Claude.scopes();
+        assert_eq!(scopes.len(), 6);
+        assert!(scopes.contains(&"user:sessions:claude_code"));
+        assert!(scopes.contains(&"user:mcp_servers"));
+        assert!(scopes.contains(&"user:file_upload"));
+    }
+
+    #[test]
+    fn claude_authorize_url_carries_code_true() {
+        let params = OAuthProvider::Claude.extra_authorize_params();
+        assert!(params.contains(&("code", "true")));
+    }
+
+    #[test]
+    fn chatgpt_authorize_url_carries_codex_flow_params() {
+        let params = OAuthProvider::ChatGpt.extra_authorize_params();
+        assert!(params.contains(&("codex_cli_simplified_flow", "true")));
+        assert!(params.contains(&("id_token_add_organizations", "true")));
+        assert!(params.iter().any(|(k, _)| *k == "originator"));
+    }
+
+    #[test]
+    fn providers_with_no_extra_params_return_empty() {
+        assert!(OAuthProvider::Xai.extra_authorize_params().is_empty());
+        assert!(OAuthProvider::Gemini.extra_authorize_params().is_empty());
+        assert!(OAuthProvider::Copilot.extra_authorize_params().is_empty());
+        assert!(OAuthProvider::Kimi.extra_authorize_params().is_empty());
     }
 }
