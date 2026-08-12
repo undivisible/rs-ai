@@ -18,12 +18,26 @@
 //!     println!("  {}", m.id);
 //! }
 //! ```
+//!
+//! For a long-running model picker, keep a catalog and refresh it periodically:
+//!
+//! ```no_run
+//! # use rs_ai_oauth::{ModelCatalog, OAuthProvider};
+//! # let token = String::new();
+//! let mut catalog = ModelCatalog::new(OAuthProvider::Xai);
+//! let update = catalog.refresh(&token).unwrap();
+//! println!("new models: {}", update.added.len());
+//! ```
 
+pub mod claude_code;
 mod fetch;
 mod flow;
 
 pub mod codex;
 pub mod credentials;
 
-pub use fetch::{fetch_models, fetch_models_async, ModelInfo};
+pub use fetch::{
+    fetch_logged_in_models, fetch_logged_in_models_async, fetch_models, fetch_models_async,
+    ModelCatalog, ModelCatalogUpdate, ModelInfo, ModelLimits, ModelPricing, ProviderModels,
+};
 pub use flow::{refresh_oauth_token, start_oauth_flow, OAuthError, OAuthProvider, OAuthTokens};

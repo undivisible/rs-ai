@@ -103,6 +103,7 @@ impl Provider for MockProvider {
                 capabilities: rs_ai_core::CapabilitySet::new()
                     .with(rs_ai_core::Capability::TextInput)
                     .with(rs_ai_core::Capability::TextOutput),
+                ..Default::default()
             });
         }
         for model in self.embedding_models.values() {
@@ -112,6 +113,7 @@ impl Provider for MockProvider {
                 display_name: format!("Mock Embedding {}", model.id()),
                 capabilities: rs_ai_core::CapabilitySet::new()
                     .with(rs_ai_core::Capability::Embeddings),
+                ..Default::default()
             });
         }
         infos

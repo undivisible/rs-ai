@@ -63,6 +63,7 @@ impl Provider for BrowserAiProvider {
                 .with(Capability::TextOutput)
                 .with(Capability::LocalExecution)
                 .with(Capability::PlatformNative),
+            ..Default::default()
         }]
     }
 }

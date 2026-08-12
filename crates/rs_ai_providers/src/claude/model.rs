@@ -22,6 +22,7 @@ pub struct ClaudeModel {
     client: reqwest::Client,
     base_url: String,
     cache_config: Option<rs_ai_core::CacheConfig>,
+    claude_code_session_id: Option<String>,
 }
 
 impl ClaudeModel {
@@ -30,6 +31,8 @@ impl ClaudeModel {
     /// `api_key` is the Anthropic API key and `model_id` is a model identifier
     /// such as `"claude-sonnet-4-20250514"`.
     pub fn new(api_key: impl Into<String>, model_id: &str) -> Self {
+        let api_key = api_key.into();
+        let is_claude_code_oauth = rs_ai_oauth::claude_code::is_anthropic_oauth_token(&api_key);
         let capabilities = CapabilitySet::new()
             .with(Capability::TextInput)
             .with(Capability::TextOutput)
@@ -40,12 +43,17 @@ impl ClaudeModel {
             .with(Capability::StructuredOutput);
 
         Self {
-            api_key: SecretString::from(api_key.into()),
+            api_key: SecretString::from(api_key),
             model_id: model_id.to_string(),
             capabilities,
             client: reqwest::Client::new(),
             base_url: DEFAULT_BASE_URL.to_string(),
             cache_config: None,
+            claude_code_session_id: if is_claude_code_oauth {
+                Some(uuid::Uuid::new_v4().to_string())
+            } else {
+                None
+            },
         }
     }
 
@@ -80,6 +88,7 @@ impl ClaudeModel {
         options: &GenerateOptions,
         stream: bool,
     ) -> AiResult<reqwest::Response> {
+        let first_user_prompt = first_user_prompt(&prompt);
         let request = convert::build_request(
             &self.model_id,
             prompt,
@@ -88,17 +97,49 @@ impl ClaudeModel {
             self.cache_config.as_ref(),
         );
 
-        let body =
-            serde_json::to_string(&request).map_err(|e| AiError::Serialization(e.to_string()))?;
+        let body = if self.claude_code_session_id.is_some() {
+            let payload = serde_json::to_value(&request)
+                .map_err(|e| AiError::Serialization(e.to_string()))?;
+            let payload = rs_ai_oauth::claude_code::transform_payload(
+                payload,
+                &first_user_prompt,
+                self.claude_code_session_id.as_deref(),
+                rs_ai_oauth::claude_code::discover_identity().as_ref(),
+            )
+            .map_err(|e| AiError::AuthError {
+                message: e.to_string(),
+            })?;
+            let serialized = serde_json::to_string(&payload)
+                .map_err(|e| AiError::Serialization(e.to_string()))?;
+            rs_ai_oauth::claude_code::patch_cch(&serialized).map_err(|e| AiError::AuthError {
+                message: e.to_string(),
+            })?
+        } else {
+            serde_json::to_string(&request).map_err(|e| AiError::Serialization(e.to_string()))?
+        };
 
         tracing::debug!(model = %self.model_id, stream = stream, "Sending request to Anthropic");
 
-        let response = self
+        let mut request = self
             .client
             .post(format!("{}/v1/messages", self.base_url))
-            .header("x-api-key", self.api_key.expose_secret())
             .header("anthropic-version", ANTHROPIC_VERSION)
-            .header("content-type", "application/json")
+            .header("content-type", "application/json");
+        if self.claude_code_session_id.is_some() {
+            request = request.header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.expose_secret()),
+            );
+            for (name, value) in rs_ai_oauth::claude_code::headers(
+                self.claude_code_session_id.as_deref(),
+                &uuid::Uuid::new_v4().to_string(),
+            ) {
+                request = request.header(name, value);
+            }
+        } else {
+            request = request.header("x-api-key", self.api_key.expose_secret());
+        }
+        let response = request
             .body(body)
             .send()
             .await
@@ -143,6 +184,27 @@ impl ClaudeModel {
         }
 
         Ok(response)
+    }
+}
+
+fn first_user_prompt(prompt: &Prompt) -> String {
+    match prompt {
+        Prompt::Text(text) => text.clone(),
+        Prompt::Messages(messages) => messages
+            .iter()
+            .find(|message| message.role == rs_ai_core::Role::User)
+            .map(|message| {
+                message
+                    .content
+                    .iter()
+                    .filter_map(|part| match part {
+                        rs_ai_core::ContentPart::Text { text } => Some(text.as_str()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>()
+                    .join("")
+            })
+            .unwrap_or_default(),
     }
 }
 

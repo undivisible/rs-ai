@@ -104,6 +104,7 @@ impl Provider for GeminiNanoProvider {
                 .with(Capability::ImageInput)
                 .with(Capability::LocalExecution)
                 .with(Capability::PlatformNative),
+            ..Default::default()
         }]
     }
 }

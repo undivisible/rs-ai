@@ -94,6 +94,7 @@ impl ChatGptProvider {
                     .with(Capability::Streaming)
                     .with(Capability::ToolCalling)
                     .with(Capability::StructuredOutput),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: GPT_4O_MINI_LATEST.into(),
@@ -106,6 +107,7 @@ impl ChatGptProvider {
                     .with(Capability::Streaming)
                     .with(Capability::ToolCalling)
                     .with(Capability::StructuredOutput),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: O3_MINI_LATEST.into(),
@@ -116,6 +118,7 @@ impl ChatGptProvider {
                     .with(Capability::TextOutput)
                     .with(Capability::Streaming)
                     .with(Capability::ToolCalling),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: GPT_5_4_LATEST.into(),
@@ -129,6 +132,7 @@ impl ChatGptProvider {
                     .with(Capability::ToolCalling)
                     .with(Capability::StructuredOutput)
                     .with(Capability::ExtendedThinking),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: GPT_5_4_MINI_LATEST.into(),
@@ -141,6 +145,7 @@ impl ChatGptProvider {
                     .with(Capability::Streaming)
                     .with(Capability::ToolCalling)
                     .with(Capability::StructuredOutput),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: GPT_5_4_NANO_LATEST.into(),
@@ -150,6 +155,7 @@ impl ChatGptProvider {
                     .with(Capability::TextInput)
                     .with(Capability::TextOutput)
                     .with(Capability::Streaming),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: WHISPER.into(),
@@ -158,6 +164,7 @@ impl ChatGptProvider {
                 capabilities: CapabilitySet::new()
                     .with(Capability::AudioInput)
                     .with(Capability::TextOutput),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: TTS.into(),
@@ -166,6 +173,7 @@ impl ChatGptProvider {
                 capabilities: CapabilitySet::new()
                     .with(Capability::TextInput)
                     .with(Capability::AudioOutput),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: TTS_HD.into(),
@@ -174,6 +182,7 @@ impl ChatGptProvider {
                 capabilities: CapabilitySet::new()
                     .with(Capability::TextInput)
                     .with(Capability::AudioOutput),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: GPT_4O_REALTIME.into(),
@@ -185,6 +194,7 @@ impl ChatGptProvider {
                     .with(Capability::AudioInput)
                     .with(Capability::AudioOutput)
                     .with(Capability::Streaming),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: GPT_4O_AUDIO.into(),
@@ -196,6 +206,7 @@ impl ChatGptProvider {
                     .with(Capability::AudioInput)
                     .with(Capability::AudioOutput)
                     .with(Capability::Streaming),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: GPT_4O_MINI_REALTIME.into(),
@@ -207,18 +218,21 @@ impl ChatGptProvider {
                     .with(Capability::AudioInput)
                     .with(Capability::AudioOutput)
                     .with(Capability::Streaming),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: DALL_E_3.into(),
                 provider: "chatgpt".into(),
                 display_name: "DALL-E 3".into(),
                 capabilities: CapabilitySet::new().with(Capability::ImageGeneration),
+                ..Default::default()
             })
             .with_model_info(ModelInfo {
                 id: DALL_E_2.into(),
                 provider: "chatgpt".into(),
                 display_name: "DALL-E 2".into(),
                 capabilities: CapabilitySet::new().with(Capability::ImageGeneration),
+                ..Default::default()
             });
         Self {
             inner,

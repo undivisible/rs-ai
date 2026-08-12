@@ -64,7 +64,10 @@ pub use tool::{
     ToolCallRequest, ToolCallResult, ToolChoice, ToolContext, ToolDefinition, ToolExecutionOptions,
     ToolSet,
 };
-pub use types::{FinishReason, ModelInfo, ModelRegistry, RequestMetadata, ResponseMetadata};
+pub use types::{
+    FinishReason, ModelInfo, ModelLimits, ModelPricing, ModelRegistry, ModelRegistryUpdate,
+    RequestMetadata, ResponseMetadata,
+};
 pub use usage::Usage;
 
 // Re-exports from merged crates.

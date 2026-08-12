@@ -14,7 +14,7 @@ use super::api_types::{
 
 /// Holds the separated system prompt and non-system messages.
 pub(crate) struct ConvertedPrompt {
-    pub system: Option<String>,
+    pub system: Option<serde_json::Value>,
     pub messages: Vec<ApiMessage>,
 }
 
@@ -92,7 +92,7 @@ pub(crate) fn convert_prompt(
     let system = if system_parts.is_empty() {
         None
     } else {
-        Some(system_parts.join("\n"))
+        Some(serde_json::Value::String(system_parts.join("\n")))
     };
 
     ConvertedPrompt {

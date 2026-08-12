@@ -48,7 +48,7 @@ pub enum Capability {
 }
 
 /// An ordered set of capabilities.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CapabilitySet {
     /// Underlying set of capabilities.
     inner: BTreeSet<Capability>,
@@ -71,6 +71,11 @@ impl CapabilitySet {
     /// Check whether the set contains a specific capability.
     pub fn has(&self, cap: &Capability) -> bool {
         self.inner.contains(cap)
+    }
+
+    /// Remove a capability from the set.
+    pub fn remove(&mut self, cap: &Capability) -> bool {
+        self.inner.remove(cap)
     }
 
     /// Returns `true` if every capability in the slice is present.

@@ -15,6 +15,23 @@ pub mod openrouter {
             .with_header("X-Title", "RAI SDK")
     }
 
+    /// Create a provider that can refresh its model metadata from OpenRouter.
+    ///
+    /// ```no_run
+    /// # async fn example() -> rs_ai_core::AiResult<()> {
+    /// use rs_ai_providers::openai_compatible::presets::openrouter;
+    ///
+    /// let mut provider = openrouter::provider("sk-or-...");
+    /// let update = provider.refresh_models().await?;
+    /// let model = provider.language_model("anthropic/claude-sonnet-4-6");
+    /// assert!(model.capabilities().iter().next().is_some());
+    /// # let _ = update;
+    /// # Ok(())
+    /// # }
+    pub fn provider(api_key: impl Into<String>) -> super::super::OpenAiCompatibleProvider {
+        super::super::OpenAiCompatibleProvider::new(config(api_key), "openrouter", "OpenRouter")
+    }
+
     /// Claude 3.5 Sonnet model identifier.
     pub const CLAUDE_SONNET: &str = "anthropic/claude-3.5-sonnet";
     /// Claude 3 Opus model identifier.

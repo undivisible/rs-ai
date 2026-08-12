@@ -75,6 +75,7 @@ impl Provider for PhiSilicaProvider {
                 .with(Capability::TextOutput)
                 .with(Capability::LocalExecution)
                 .with(Capability::PlatformNative),
+            ..Default::default()
         }]
     }
 }

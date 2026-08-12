@@ -100,18 +100,21 @@ impl Provider for ClaudeProvider {
                 provider: "anthropic".to_string(),
                 display_name: "Claude Opus 4.6".to_string(),
                 capabilities: caps.clone(),
+                ..Default::default()
             },
             ModelInfo {
                 id: CLAUDE_SONNET_LATEST.to_string(),
                 provider: "anthropic".to_string(),
                 display_name: "Claude Sonnet 4.6".to_string(),
                 capabilities: caps.clone(),
+                ..Default::default()
             },
             ModelInfo {
                 id: CLAUDE_HAIKU_LATEST.to_string(),
                 provider: "anthropic".to_string(),
                 display_name: "Claude Haiku 4.5".to_string(),
                 capabilities: caps,
+                ..Default::default()
             },
         ]
     }

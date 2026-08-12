@@ -63,7 +63,7 @@ use std::net::TcpListener;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Supported OAuth providers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OAuthProvider {
     /// OpenAI ChatGPT (oauth.openai.com).
     ChatGpt,
@@ -82,6 +82,24 @@ pub enum OAuthProvider {
 }
 
 impl OAuthProvider {
+    /// Every built-in OAuth provider known to this crate.
+    ///
+    /// Keeping this list in one place lets consumers build login screens and
+    /// discovery loops without maintaining a second provider list. New
+    /// built-in providers appear here when the crate is upgraded; arbitrary
+    /// remote data is never allowed to invent OAuth client credentials.
+    pub const fn all() -> &'static [OAuthProvider] {
+        &[
+            OAuthProvider::ChatGpt,
+            OAuthProvider::Xai,
+            OAuthProvider::Claude,
+            OAuthProvider::Gemini,
+            OAuthProvider::Antigravity,
+            OAuthProvider::Copilot,
+            OAuthProvider::Kimi,
+        ]
+    }
+
     fn client_id(&self) -> String {
         match self {
             OAuthProvider::ChatGpt => "app_EMoamEEZ73f0CkXaXp7hrann".to_string(),

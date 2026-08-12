@@ -1,6 +1,6 @@
 [package]
 name = "rs_ai_oauth"
-version = "0.2.30"
+version = "0.2.31"
 edition.workspace = true
 rust-version.workspace = true
 license = "ISC"
@@ -15,9 +15,10 @@ browser = []
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 thiserror = "2"
 oauth2 = { version = "5.0", default-features = false, features = ["reqwest", "rustls-tls"] }
 reqwest = { version = "0.12", features = ["blocking", "json"], default-features = false }
 url = "2"
 base64 = "0.22"
+sha2 = "0.10"

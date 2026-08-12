@@ -60,6 +60,7 @@ impl Provider for CohereProvider {
             provider: "cohere".to_string(),
             display_name: "Cohere Rerank".to_string(),
             capabilities: CapabilitySet::default(),
+            ..Default::default()
         }]
     }
 }

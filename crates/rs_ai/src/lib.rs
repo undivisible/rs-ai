@@ -732,9 +732,12 @@ impl ClientBuilder {
             message: "Model ID not set. Use .model() to specify a model.".to_string(),
         })?;
 
-        let api_key = self.api_key.ok_or_else(|| AiError::AuthError {
-            message: "API key not set. Use .api_key() to specify credentials.".to_string(),
-        })?;
+        let api_key = self
+            .api_key
+            .or_else(|| self.oauth_token.clone())
+            .ok_or_else(|| AiError::AuthError {
+                message: "API key not set. Use .api_key() to specify credentials.".to_string(),
+            })?;
 
         // Compute the CF AI Gateway base URL if configured.
         // Accepts either "account_id/gateway_id" or a full URL prefix.
@@ -751,7 +754,8 @@ impl ClientBuilder {
 
         let model: Box<dyn LanguageModel> = match self.provider_type {
             ProviderType::Claude => {
-                let mut provider = ClaudeProvider::new(api_key);
+                let claude_key = self.oauth_token.clone().unwrap_or(api_key);
+                let mut provider = ClaudeProvider::new(claude_key);
                 if let Some(gw) = &cf_base {
                     provider = provider.with_base_url(format!("{}/anthropic", gw));
                 }

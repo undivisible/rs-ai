@@ -82,6 +82,27 @@ impl ProviderRegistry {
     pub fn get_provider(&self, name: &str) -> Option<&dyn Provider> {
         self.providers.get(name).map(|p| p.as_ref())
     }
+
+    /// Fetch the latest model metadata from every registered provider.
+    ///
+    /// Providers that do not implement remote discovery return their local
+    /// snapshot through the trait's default implementation. Consumers can
+    /// feed the result into [`crate::ModelRegistry::replace`] to obtain additions,
+    /// updates, and removals.
+    pub async fn fetch_models(&self) -> AiResult<Vec<ModelInfo>> {
+        let mut models = Vec::new();
+        for provider in self.providers.values() {
+            models.extend(provider.fetch_models().await?);
+        }
+        Ok(models)
+    }
+
+    /// Names of all providers currently registered in this registry.
+    pub fn provider_names(&self) -> Vec<String> {
+        let mut names: Vec<_> = self.providers.keys().cloned().collect();
+        names.sort();
+        names
+    }
 }
 
 impl Default for ProviderRegistry {
@@ -132,6 +153,7 @@ mod tests {
                 provider: self.id.clone(),
                 display_name: "M1".into(),
                 capabilities: CapabilitySet::new(),
+                ..Default::default()
             }]
         }
     }

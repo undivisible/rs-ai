@@ -195,16 +195,11 @@ pub fn is_expired(tokens: &OAuthTokens) -> bool {
 
 /// Every provider that currently has a usable token, for "am I logged in?".
 pub fn logged_in_providers() -> Vec<OAuthProvider> {
-    const ALL: [OAuthProvider; 7] = [
-        OAuthProvider::Claude,
-        OAuthProvider::ChatGpt,
-        OAuthProvider::Xai,
-        OAuthProvider::Gemini,
-        OAuthProvider::Copilot,
-        OAuthProvider::Kimi,
-        OAuthProvider::Antigravity,
-    ];
-    ALL.into_iter().filter(|p| load(p).is_some()).collect()
+    OAuthProvider::all()
+        .iter()
+        .copied()
+        .filter(|provider| load(provider).is_some())
+        .collect()
 }
 
 #[cfg(test)]
