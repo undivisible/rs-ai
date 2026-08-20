@@ -124,8 +124,48 @@ mod tests {
     use crate::model::{EmbeddingModel, LanguageModel};
     use async_trait::async_trait;
 
+    struct StubModel {
+        id: String,
+        provider: String,
+        capabilities: CapabilitySet,
+    }
+
+    #[async_trait]
+    impl LanguageModel for StubModel {
+        fn model_id(&self) -> &str {
+            &self.id
+        }
+        fn provider_id(&self) -> &str {
+            &self.provider
+        }
+        fn capabilities(&self) -> &CapabilitySet {
+            &self.capabilities
+        }
+        async fn generate(
+            &self,
+            _prompt: crate::prompt::Prompt,
+            _options: crate::model::GenerateOptions,
+        ) -> AiResult<crate::structured::GenerateResult> {
+            Err(AiError::UnsupportedCapability {
+                capability: "generate".into(),
+                provider: self.provider.clone(),
+            })
+        }
+        async fn stream(
+            &self,
+            _prompt: crate::prompt::Prompt,
+            _options: crate::model::GenerateOptions,
+        ) -> AiResult<crate::stream::AiStream> {
+            Err(AiError::UnsupportedCapability {
+                capability: "stream".into(),
+                provider: self.provider.clone(),
+            })
+        }
+    }
+
     struct MockProvider {
         id: String,
+        remote_models: Vec<ModelInfo>,
     }
 
     #[async_trait]
@@ -137,9 +177,11 @@ mod tests {
             &self.id
         }
         fn language_model(&self, model_id: &str) -> AiResult<Box<dyn LanguageModel>> {
-            Err(crate::error::AiError::ModelUnavailable {
-                model: model_id.into(),
-            })
+            Ok(Box::new(StubModel {
+                id: model_id.to_owned(),
+                provider: self.id.clone(),
+                capabilities: CapabilitySet::new(),
+            }))
         }
         fn embedding_model(&self, _mid: &str) -> AiResult<Box<dyn EmbeddingModel>> {
             Err(crate::error::AiError::UnsupportedCapability {
@@ -156,6 +198,20 @@ mod tests {
                 ..Default::default()
             }]
         }
+        async fn fetch_models(&self) -> AiResult<Vec<ModelInfo>> {
+            if self.remote_models.is_empty() {
+                Ok(self.available_models())
+            } else {
+                Ok(self.remote_models.clone())
+            }
+        }
+    }
+
+    fn provider(id: &str) -> MockProvider {
+        MockProvider {
+            id: id.into(),
+            remote_models: Vec::new(),
+        }
     }
 
     #[test]
@@ -166,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_registry_register() {
-        let registry = ProviderRegistry::new().register("test", MockProvider { id: "test".into() });
+        let registry = ProviderRegistry::new().register("test", provider("test"));
         assert_eq!(registry.available_models().len(), 1);
         assert_eq!(registry.available_models()[0].id, "test/m1");
     }
@@ -186,8 +242,70 @@ mod tests {
 
     #[test]
     fn test_registry_get_provider() {
-        let registry = ProviderRegistry::new().register("test", MockProvider { id: "test".into() });
+        let registry = ProviderRegistry::new().register("test", provider("test"));
         assert!(registry.get_provider("test").is_some());
         assert!(registry.get_provider("missing").is_none());
+    }
+
+    #[test]
+    fn model_resolves_provider_and_model_id() {
+        let registry = ProviderRegistry::new().register("openai", provider("openai"));
+        let model = registry.model("openai/gpt-4o").unwrap();
+        assert_eq!(model.model_id(), "gpt-4o");
+        assert_eq!(model.provider_id(), "openai");
+    }
+
+    #[test]
+    fn model_splits_on_first_slash_only() {
+        let registry = ProviderRegistry::new().register("openrouter", provider("openrouter"));
+        let model = registry.model("openrouter/openai/gpt-4o").unwrap();
+        assert_eq!(model.model_id(), "openai/gpt-4o");
+        assert_eq!(model.provider_id(), "openrouter");
+    }
+
+    #[test]
+    fn model_unknown_provider_is_unavailable() {
+        let registry = ProviderRegistry::new().register("openai", provider("openai"));
+        match registry.model("missing/gpt-4o") {
+            Err(AiError::ModelUnavailable { model }) => {
+                assert!(model.contains("Unknown provider 'missing'"), "{model}");
+            }
+            Err(e) => panic!("expected ModelUnavailable, got {e}"),
+            Ok(_) => panic!("expected ModelUnavailable, got a model"),
+        }
+    }
+
+    #[test]
+    fn model_empty_provider_segment_is_unavailable() {
+        let registry = ProviderRegistry::new().register("openai", provider("openai"));
+        assert!(matches!(
+            registry.model("/gpt-4o"),
+            Err(AiError::ModelUnavailable { .. })
+        ));
+    }
+
+    #[test]
+    fn provider_names_are_sorted() {
+        let registry = create_provider_registry()
+            .register("b", provider("b"))
+            .register("a", provider("a"));
+        assert_eq!(registry.provider_names(), ["a", "b"]);
+    }
+
+    #[tokio::test]
+    async fn fetch_models_uses_provider_override() {
+        let mut mock = provider("openai");
+        mock.remote_models = vec![ModelInfo {
+            id: "remote-1".into(),
+            provider: "openai".into(),
+            display_name: "Remote".into(),
+            capabilities: CapabilitySet::new(),
+            ..Default::default()
+        }];
+        let registry = ProviderRegistry::new().register("openai", mock);
+        let models = registry.fetch_models().await.unwrap();
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id, "remote-1");
+        assert_ne!(models[0].id, registry.available_models()[0].id);
     }
 }

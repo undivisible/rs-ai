@@ -76,21 +76,21 @@ impl Provider for MockProvider {
         // interior sharing. For simplicity, return an error if the model is
         // not registered -- callers should use `MockLanguageModel` directly
         // in most tests.
-        Err(AiError::ModelUnavailable {
-            model: format!(
-                "MockProvider does not support runtime model lookup; \
-                 use MockLanguageModel directly. Requested: {model_id}"
-            ),
-        })
+        self.models
+            .get(model_id)
+            .map(|model| Box::new(model.clone()) as Box<dyn LanguageModel>)
+            .ok_or_else(|| AiError::ModelUnavailable {
+                model: model_id.to_owned(),
+            })
     }
 
     fn embedding_model(&self, model_id: &str) -> AiResult<Box<dyn EmbeddingModel>> {
-        Err(AiError::ModelUnavailable {
-            model: format!(
-                "MockProvider does not support runtime model lookup; \
-                 use MockEmbeddingModel directly. Requested: {model_id}"
-            ),
-        })
+        self.embedding_models
+            .get(model_id)
+            .map(|model| Box::new(model.clone()) as Box<dyn EmbeddingModel>)
+            .ok_or_else(|| AiError::ModelUnavailable {
+                model: model_id.to_owned(),
+            })
     }
 
     fn available_models(&self) -> Vec<ModelInfo> {
@@ -117,5 +117,52 @@ impl Provider for MockProvider {
             });
         }
         infos
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rs_ai_core::registry::ProviderRegistry;
+
+    #[test]
+    fn language_model_returns_registered_model() {
+        let provider = MockProvider::new()
+            .with_id("openai")
+            .with_model(MockLanguageModel::new("gpt-4o").with_provider("openai"));
+        let model = provider.language_model("gpt-4o").unwrap();
+        assert_eq!(model.model_id(), "gpt-4o");
+        assert_eq!(model.provider_id(), "openai");
+    }
+
+    #[test]
+    fn language_model_rejects_unknown_id() {
+        let provider = MockProvider::new().with_model(MockLanguageModel::new("gpt-4o"));
+        assert!(matches!(
+            provider.language_model("missing"),
+            Err(AiError::ModelUnavailable { model }) if model == "missing"
+        ));
+    }
+
+    #[test]
+    fn embedding_model_returns_registered_model() {
+        let provider = MockProvider::new()
+            .with_embedding_model(MockEmbeddingModel::new("text-embedding-3-small", 3));
+        let model = provider.embedding_model("text-embedding-3-small").unwrap();
+        assert_eq!(model.model_id(), "text-embedding-3-small");
+        assert_eq!(model.dimensions(), Some(3));
+    }
+
+    #[test]
+    fn registry_keeps_slashy_model_ids_after_first_slash() {
+        let registry = ProviderRegistry::new().register(
+            "openrouter",
+            MockProvider::new()
+                .with_id("openrouter")
+                .with_model(MockLanguageModel::new("openai/gpt-4o").with_provider("openrouter")),
+        );
+        let model = registry.model("openrouter/openai/gpt-4o").unwrap();
+        assert_eq!(model.model_id(), "openai/gpt-4o");
+        assert_eq!(model.provider_id(), "openrouter");
     }
 }

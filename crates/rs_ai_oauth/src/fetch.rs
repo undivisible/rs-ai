@@ -365,10 +365,7 @@ fn parse_openai_model(value: &serde_json::Value) -> Option<ModelInfo> {
         .and_then(serde_json::Value::as_str)
         .unwrap_or(&id)
         .to_string();
-    info.created = value
-        .get("created")
-        .and_then(serde_json::Value::as_u64)
-        .unwrap_or(0);
+    info.created = value.get("created").and_then(as_u64).unwrap_or(0);
     info.owned_by = value
         .get("owned_by")
         .and_then(serde_json::Value::as_str)
@@ -459,11 +456,15 @@ fn parse_gemini_model(value: &serde_json::Value) -> Option<ModelInfo> {
             match method {
                 "generateContent" | "countTokens" => {}
                 "embedContent" => {
-                    info.capabilities.remove("text_output");
                     info.capabilities.insert("embeddings".into());
                 }
                 _ => {}
             }
+        }
+        if info.capabilities.contains("embeddings")
+            && !info.supported_parameters.contains("generateContent")
+        {
+            info.capabilities.remove("text_output");
         }
     }
     if value.get("thinking").and_then(serde_json::Value::as_bool) == Some(true) {
@@ -481,6 +482,9 @@ fn apply_modality_capabilities(info: &mut ModelInfo) {
             "audio" => {
                 info.capabilities.insert("audio_input".into());
             }
+            "video" => {
+                info.capabilities.insert("video_input".into());
+            }
             _ => {}
         }
     }
@@ -492,6 +496,9 @@ fn apply_modality_capabilities(info: &mut ModelInfo) {
             }
             "audio" => {
                 info.capabilities.insert("audio_output".into());
+            }
+            "video" => {
+                info.capabilities.insert("video_generation".into());
             }
             _ => {}
         }
@@ -618,6 +625,144 @@ mod tests {
         let second = catalog.replace(vec![changed.clone()]);
         assert_eq!(second.updated, vec![changed]);
         assert_eq!(second.removed, vec![b]);
+        assert_eq!(second.generation, 2);
+    }
+
+    #[test]
+    fn parse_models_errors_when_neither_data_nor_models() {
+        let err = parse_models(&serde_json::json!({})).unwrap_err();
+        assert!(err.to_string().contains("neither a data nor models"));
+        let err = parse_models(&serde_json::json!({ "data": {} })).unwrap_err();
+        assert!(err.to_string().contains("neither a data nor models"));
+    }
+
+    #[test]
+    fn parse_models_prefers_data_array_over_models() {
+        let json = serde_json::json!({
+            "data": [{ "id": "from-data" }],
+            "models": [{ "name": "models/from-gemini" }]
+        });
+        let models = parse_models(&json).unwrap();
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id, "from-data");
+    }
+
+    #[test]
+    fn parse_models_skips_entries_without_id() {
+        let json = serde_json::json!({
+            "data": [{}, { "id": "ok" }, { "name": "not-an-id" }]
+        });
+        let models = parse_models(&json).unwrap();
+        assert_eq!(
+            models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+            ["ok"]
+        );
+    }
+
+    #[test]
+    fn openai_created_string_and_float_are_accepted() {
+        let json = serde_json::json!({
+            "data": [
+                { "id": "string-created", "created": "1700000000" },
+                { "id": "float-created", "created": 1700000000.0 }
+            ]
+        });
+        let models = parse_models(&json).unwrap();
+        assert_eq!(models[0].created, 1_700_000_000);
+        assert_eq!(models[1].created, 1_700_000_000);
+    }
+
+    #[test]
+    fn video_input_and_output_map_to_capabilities() {
+        let json = serde_json::json!({
+            "data": [{
+                "id": "video-model",
+                "architecture": {
+                    "input_modalities": ["text", "video"],
+                    "output_modalities": ["text", "video"]
+                }
+            }]
+        });
+        let model = &parse_models(&json).unwrap()[0];
+        assert!(model.capabilities.contains("video_input"));
+        assert!(model.capabilities.contains("video_generation"));
+        assert!(model.capabilities.contains("text_output"));
+        assert!(model.capabilities.contains("streaming"));
+    }
+
+    #[test]
+    fn image_only_output_drops_streaming() {
+        let json = serde_json::json!({
+            "data": [{
+                "id": "image-model",
+                "architecture": {
+                    "input_modalities": ["text"],
+                    "output_modalities": ["image"]
+                }
+            }]
+        });
+        let model = &parse_models(&json).unwrap()[0];
+        assert!(model.capabilities.contains("image_generation"));
+        assert!(!model.capabilities.contains("streaming"));
+        assert!(!model.capabilities.contains("text_output"));
+    }
+
+    #[test]
+    fn gemini_embed_only_drops_text_output() {
+        let json = serde_json::json!({
+            "models": [{
+                "name": "models/text-embedding-004",
+                "supportedGenerationMethods": ["embedContent"]
+            }]
+        });
+        let model = &parse_models(&json).unwrap()[0];
+        assert!(model.capabilities.contains("embeddings"));
+        assert!(!model.capabilities.contains("text_output"));
+    }
+
+    #[test]
+    fn gemini_embed_plus_generate_keeps_text_output() {
+        let json = serde_json::json!({
+            "models": [{
+                "name": "models/gemini-embed-and-chat",
+                "supportedGenerationMethods": ["generateContent", "embedContent"]
+            }]
+        });
+        let model = &parse_models(&json).unwrap()[0];
+        assert!(model.capabilities.contains("embeddings"));
+        assert!(model.capabilities.contains("text_output"));
+        assert!(model.capabilities.contains("streaming"));
+    }
+
+    #[test]
+    fn gemini_name_without_models_prefix_is_kept() {
+        let json = serde_json::json!({
+            "models": [{ "name": "gemini-2.5-flash" }]
+        });
+        assert_eq!(parse_models(&json).unwrap()[0].id, "gemini-2.5-flash");
+    }
+
+    #[test]
+    fn catalog_replace_keeps_first_duplicate_id() {
+        let mut catalog = ModelCatalog::new(OAuthProvider::Xai);
+        let mut first = ModelInfo::new("dup".into());
+        first.description = Some("keep".into());
+        let mut second = ModelInfo::new("dup".into());
+        second.description = Some("drop".into());
+        catalog.replace(vec![first.clone(), second]);
+        assert_eq!(catalog.models().len(), 1);
+        assert_eq!(catalog.models()[0].description.as_deref(), Some("keep"));
+    }
+
+    #[test]
+    fn catalog_noop_refresh_still_bumps_generation() {
+        let mut catalog = ModelCatalog::new(OAuthProvider::Xai);
+        let model = ModelInfo::new("a".into());
+        catalog.replace(vec![model.clone()]);
+        let second = catalog.replace(vec![model]);
+        assert!(second.added.is_empty());
+        assert!(second.updated.is_empty());
+        assert!(second.removed.is_empty());
         assert_eq!(second.generation, 2);
     }
 }

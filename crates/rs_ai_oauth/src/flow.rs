@@ -1088,6 +1088,14 @@ mod tests {
         assert_eq!(OAuthProvider::parse("kimi"), Some(OAuthProvider::Kimi));
         assert_eq!(OAuthProvider::parse("moonshot"), Some(OAuthProvider::Kimi));
         assert_eq!(OAuthProvider::parse("unknown"), None);
+        for provider in OAuthProvider::all() {
+            assert_eq!(
+                OAuthProvider::parse(provider.name()),
+                Some(*provider),
+                "{}",
+                provider.name()
+            );
+        }
     }
 
     #[test]

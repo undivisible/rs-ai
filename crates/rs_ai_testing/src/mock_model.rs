@@ -40,6 +40,7 @@ pub struct RecordedCall {
 ///
 /// Responses are consumed in FIFO order. When no responses remain the model
 /// returns an error.
+#[derive(Clone)]
 pub struct MockLanguageModel {
     id: String,
     provider: String,
@@ -249,6 +250,7 @@ impl LanguageModel for MockLanguageModel {
 ///
 /// Returns pre-configured embedding vectors in FIFO order. When the queue is
 /// exhausted it produces zero vectors.
+#[derive(Clone)]
 pub struct MockEmbeddingModel {
     id: String,
     provider: String,

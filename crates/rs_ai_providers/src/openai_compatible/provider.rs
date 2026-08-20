@@ -234,6 +234,7 @@ fn parse_remote_model(value: &serde_json::Value, provider: &str) -> Option<Model
             match modality.as_str() {
                 "image" => info.capabilities = info.capabilities.with(Capability::ImageInput),
                 "audio" => info.capabilities = info.capabilities.with(Capability::AudioInput),
+                "video" => info.capabilities = info.capabilities.with(Capability::VideoInput),
                 _ => {}
             }
         }
@@ -246,6 +247,7 @@ fn parse_remote_model(value: &serde_json::Value, provider: &str) -> Option<Model
                         .with(Capability::ImageGeneration);
                 }
                 "audio" => info.capabilities = info.capabilities.with(Capability::AudioOutput),
+                "video" => info.capabilities = info.capabilities.with(Capability::VideoGeneration),
                 _ => {}
             }
         }
@@ -352,5 +354,21 @@ mod tests {
             "OpenRouter",
         );
         assert!(provider.models().is_empty());
+    }
+
+    #[test]
+    fn parses_video_modalities() {
+        let json = serde_json::json!({
+            "id": "google/veo",
+            "architecture": {
+                "input_modalities": ["text", "video"],
+                "output_modalities": ["video"]
+            }
+        });
+        let model = parse_remote_model(&json, "openrouter").unwrap();
+        assert!(model.capabilities.has(&Capability::VideoInput));
+        assert!(model.capabilities.has(&Capability::VideoGeneration));
+        assert!(!model.capabilities.has(&Capability::TextOutput));
+        assert!(!model.capabilities.has(&Capability::Streaming));
     }
 }
