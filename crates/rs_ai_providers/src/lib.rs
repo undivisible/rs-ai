@@ -13,6 +13,11 @@
 //! - `ollama` — Local Ollama
 //! - `portkey` — Portkey AI Gateway
 //! - `langfuse` — Langfuse observability wrapper
+//!
+//! The `catalog` module (always on) provides static metadata for
+//! API-key-based providers — id, name, env vars, base URLs, models.
+
+pub mod catalog;
 
 #[cfg(feature = "chatgpt")]
 pub mod chatgpt;
