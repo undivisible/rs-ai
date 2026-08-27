@@ -28,38 +28,35 @@ pub struct ProviderSpec {
     pub aliases: &'static [&'static str],
 }
 
-// ─── Model lists ──────────────────────────────────────────────
+// ─── Model lists (synced from models.dev / pi snapshots, 2026-08) ──
 
 const CLAUDE: &[&str] = &[
-    "claude-sonnet-4-6", "claude-opus-4-6", "claude-haiku-4-5",
-    "claude-opus-4-5-20251101", "claude-sonnet-4-20250514",
+    "claude-opus-4-7", "claude-sonnet-4-6", "claude-opus-4-6",
+    "claude-haiku-4-5",
 ];
 const OPENAI: &[&str] = &[
-    "gpt-5.6-sol", "gpt-5.4", "gpt-5.4-mini",
-    "gpt-5.1-codex-max", "gpt-4o",
+    "gpt-5.5", "gpt-5.5-pro", "gpt-5.4", "gpt-5.4-mini",
+    "gpt-5.3-codex",
 ];
 const XAI: &[&str] = &[
-    "grok-4.6", "grok-4.5", "grok-4.3", "grok-3-mini",
-    "grok-4.20-0309-reasoning", "grok-4.20-multi-agent-0309",
-    "grok-4-1-fast-reasoning", "grok-imagine-image",
+    "grok-4.3", "grok-4.20-0309-reasoning",
+    "grok-4.20-multi-agent-0309", "grok-4-1-fast", "grok-3-mini",
 ];
 const GEMINI: &[&str] = &[
-    "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash",
-    "gemini-2.5-flash-lite", "gemini-2.5-flash-nothink",
-    "gemini-3.1-pro-preview",
+    "gemini-3.1-pro-preview", "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash",
 ];
 const DEEPSEEK: &[&str] = &[
+    "deepseek-v4-pro", "deepseek-v4-flash",
     "deepseek-chat", "deepseek-reasoner",
-    "deepseek-v4-flash", "deepseek-v4-pro",
 ];
 const GROQ: &[&str] = &[
     "llama-3.3-70b-versatile", "llama-3.1-8b-instant",
-    "mixtral-8x7b-32768", "deepseek-r1-distill-llama-70b",
+    "deepseek-r1-distill-llama-70b",
 ];
 const TOGETHER: &[&str] = &[
     "Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8",
     "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    "Qwen/Qwen3.5-397B-A17B",
 ];
 const MISTRAL: &[&str] = &[
     "mistral-large-latest", "mistral-small-latest",
@@ -69,74 +66,67 @@ const FIREWORKS: &[&str] = &[
     "accounts/fireworks/models/deepseek-v3p2",
     "accounts/fireworks/models/llama-v3p3-70b-instruct",
     "accounts/fireworks/models/glm-5",
-    "accounts/fireworks/models/minimax-m2p5",
 ];
 const NVIDIA: &[&str] = &[
     "meta/llama-3.3-70b-instruct", "deepseek-ai/deepseek-r1",
-    "mistralai/mistral-large-2512",
 ];
 const HUGGINGFACE: &[&str] = &[
-    "Qwen/Qwen3.5-397B-A17B", "Qwen/Qwen3-Coder-Next",
-    "deepseek-ai/DeepSeek-V3.2",
+    "Qwen/Qwen3-Coder-Next", "deepseek-ai/DeepSeek-V3.2",
 ];
 const PERPLEXITY: &[&str] = &[
     "sonar-pro", "sonar-deep-research", "sonar", "sonar-reasoning-pro",
 ];
 const COHERE: &[&str] = &[
     "command-a-reasoning-08-2025", "command-r7b-12-2024",
-    "c4ai-aya-vision-8b",
 ];
 const DEEPINFRA: &[&str] = &[
-    "Qwen/Qwen3.5-397B-A17B", "Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo",
+    "Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo",
     "zai-org/GLM-4.7-Flash",
 ];
 const CEREBRAS: &[&str] = &[
     "llama3.1-8b", "zai-glm-4.7", "gpt-oss-120b",
-    "qwen-3-235b-a22b-instruct-2507",
 ];
 const OPENROUTER: &[&str] = &[
-    "openrouter/auto", "anthropic/claude-sonnet-4-6",
-    "openai/gpt-5.4", "deepseek/deepseek-chat",
+    "openrouter/auto", "openai/gpt-5.5",
+    "anthropic/claude-opus-4-7", "x-ai/grok-4.3",
+    "deepseek/deepseek-v4-pro",
 ];
 const ALIBABA: &[&str] = &[
-    "qwen3-235b-a22b", "qwen3.5-122b-a10b",
-    "qwen3-coder-plus", "qwen3.6-27b",
+    "qwen3.6-plus", "qwen3.6-max-preview", "qwen3.6-27b",
+    "qwen3.5-122b-a10b", "qwen3-coder-plus",
 ];
 const MOONSHOT: &[&str] = &[
-    "kimi-k2.7-code", "kimi-k2.6", "kimi-k2.5",
-    "kimi-k2-thinking", "kimi-k2-0905-preview",
+    "kimi-k2.6", "kimi-k2.5", "kimi-k2-thinking",
+    "kimi-k2-turbo-preview",
 ];
 const MINIMAX: &[&str] = &[
-    "MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2",
-    "MiniMax-M2.5-highspeed",
+    "MiniMax-M2.7", "MiniMax-M2.7-highspeed",
+    "MiniMax-M2.5", "MiniMax-M2.1",
 ];
 const STEPFUN: &[&str] = &[
-    "step-3.5-flash-2603", "step-1-32k", "step-3.5-flash",
+    "step-3.5-flash", "step-1-32k",
 ];
 const SILICONFLOW: &[&str] = &[
     "Qwen/Qwen3-235B-A22B-Instruct-2507",
     "Qwen/Qwen2.5-7B-Instruct",
-    "Qwen/Qwen3-VL-235B-A22B-Thinking",
 ];
 const ZHIPU: &[&str] = &[
-    "glm-5.2", "glm-5.1", "glm-4.7", "glm-5v-turbo",
+    "glm-5.2", "glm-5.2-fast", "glm-5.1", "glm-5-turbo",
+    "glm-5", "glm-4.7", "glm-5v-turbo",
 ];
 const XIAOMI: &[&str] = &[
-    "mimo-v2.5-pro", "mimo-v2.5", "mimo-v2-pro", "mimo-v2-omni",
-    "mimo-v2.5-pro-ultraspeed",
+    "mimo-v2.5-pro", "mimo-v2.5", "mimo-v2-pro",
 ];
 const VENICE: &[&str] = &[
-    "qwen3-235b-a22b-instruct-2507", "grok-4-20-multi-agent",
-    "z-ai-glm-5v-turbo",
+    "qwen3-235b-a22b-instruct-2507", "z-ai-glm-5v-turbo",
 ];
 const CLINEPASS: &[&str] = &[
     "cline-pass/deepseek-v4-flash", "cline-pass/qwen3.7-max",
     "cline-pass/glm-5.2",
 ];
 const OPENCODE: &[&str] = &[
-    "deepseek-v4-flash", "deepseek-v4-pro",
-    "glm-5.1", "glm-5.2", "kimi-k2.6",
-    "kimi-k2.7-code", "mimo-v2.5",
+    "deepseek-v4-flash", "deepseek-v4-pro", "mimo-v2.5-pro",
+    "kimi-k2.6", "glm-5.1", "qwen3.6-plus", "minimax-m2.7",
 ];
 const BASETEN: &[&str] = &[
     "zai-org/GLM-4.7", "meta-llama/Llama-3.3-70B-Instruct",
@@ -149,7 +139,7 @@ const NEBIUS: &[&str] = &[
 ];
 const GITHUB: &[&str] = &[
     "gpt-5.1-codex-max", "claude-opus-4.6",
-    "gemini-3.1-pro-preview", "gemini-3-flash-preview",
+    "gemini-3.1-pro-preview",
 ];
 const OLLAMA_CLOUD: &[&str] = &[
     "minimax-m2.7", "deepseek-v3.2", "llama-3.3-70b",
@@ -166,7 +156,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["OPENAI_API_KEY"],
         base_url: "https://api.openai.com/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &["gpt"],
     },
@@ -176,7 +166,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["ANTHROPIC_API_KEY"],
         base_url: "https://api.anthropic.com/v1",
         api: ProviderApi::Anthropic,
-        default_model: "claude-sonnet-4-6",
+        default_model: "claude-opus-4-7",
         models: CLAUDE,
         aliases: &["claude"],
     },
@@ -196,7 +186,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["XAI_API_KEY"],
         base_url: "https://api.x.ai/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "grok-4.5",
+        default_model: "grok-4.3",
         models: XAI,
         aliases: &["grok"],
     },
@@ -266,7 +256,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["HF_TOKEN"],
         base_url: "https://router.huggingface.co/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "Qwen/Qwen3.5-397B-A17B",
+        default_model: "Qwen/Qwen3-Coder-Next",
         models: HUGGINGFACE,
         aliases: &["hf"],
     },
@@ -306,7 +296,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["DEEPINFRA_API_KEY"],
         base_url: "https://api.deepinfra.com/v1/openai",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "Qwen/Qwen3.5-397B-A17B",
+        default_model: "Qwen/Qwen3-Coder-Next",
         models: DEEPINFRA,
         aliases: &["di"],
     },
@@ -594,7 +584,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["KILO_API_KEY"],
         base_url: "https://api.kilo.ai/api/gateway",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &[],
     },
@@ -614,7 +604,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["ZENMUX_API_KEY"],
         base_url: "https://zenmux.ai/api/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &["zmux"],
     },
@@ -624,7 +614,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["HELICONE_API_KEY"],
         base_url: "https://ai-gateway.helicone.ai/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &[],
     },
@@ -634,7 +624,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["REQUESTY_API_KEY"],
         base_url: "https://router.requesty.ai/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &[],
     },
@@ -644,7 +634,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["AI_GATEWAY_API_KEY"],
         base_url: "",
         api: ProviderApi::Custom,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: &[],
         aliases: &["ai-gateway"],
     },
@@ -868,7 +858,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_GATEWAY_ID"],
         base_url: "",
         api: ProviderApi::Custom,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: &[],
         aliases: &["cf-gateway", "cf-aig"],
     },
@@ -889,7 +879,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["AZURE_RESOURCE_NAME", "AZURE_API_KEY"],
         base_url: "",
         api: ProviderApi::Custom,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &[],
     },
@@ -899,7 +889,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["AZURE_COGNITIVE_SERVICES_RESOURCE_NAME", "AZURE_COGNITIVE_SERVICES_API_KEY"],
         base_url: "",
         api: ProviderApi::Custom,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &["azure-cog"],
     },
@@ -939,7 +929,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["AICORE_SERVICE_KEY"],
         base_url: "",
         api: ProviderApi::Custom,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: &[],
         aliases: &["sap"],
     },
@@ -960,7 +950,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["ABACUS_API_KEY"],
         base_url: "https://routellm.abacus.ai/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &[],
     },
@@ -1110,7 +1100,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["MORPH_API_KEY"],
         base_url: "https://api.morphllm.com/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &[],
     },
@@ -1180,7 +1170,7 @@ pub const API_KEY_PROVIDERS: &[ProviderSpec] = &[
         env_vars: &["V0_API_KEY"],
         base_url: "https://api.v0.ai/v1",
         api: ProviderApi::OpenAiCompatible,
-        default_model: "gpt-5.4",
+        default_model: "gpt-5.5",
         models: OPENAI,
         aliases: &[],
     },
