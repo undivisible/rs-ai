@@ -1,1 +1,1 @@
-PLACEHOLDER_REPLACE_WITH_REAL
+/workspace/rs_ai_catalog.rs
