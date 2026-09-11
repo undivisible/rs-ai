@@ -1,20 +1,27 @@
-# rs_ai — Rust AI SDK (v0.2.9)
+# rs_ai — Rust AI SDK (v0.2.35)
 
 Comprehensive Rust SDK for AI applications. Cloud + local providers, streaming, agent loop, image/video generation, realtime voice, and a clean async-first API.
 
+**For agents:** see [AGENTS.md](AGENTS.md) for workspace layout, trait definitions, provider internals, and testing conventions.
+
 ## Quick Start
+
+Add the SDK and pick a provider. API keys are read from the environment by
+default (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, …), or pass
+one explicitly with `.api_key(...)`.
 
 ```toml
 [dependencies]
 rs_ai = "0.2"
+tokio = { version = "1", features = ["full"] }
 ```
 
 ```rust
-use rs_ai::rs_ai_claude;
+use rs_ai::claude;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let answer = rs_ai_claude()
+    let answer = claude()
         .model("claude-sonnet-4-6")
         .generate("What is 2+2?")
         .await?;
@@ -23,13 +30,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+```bash
+ANTHROPIC_API_KEY=sk-ant-... cargo run
+```
+
 ### Streaming
 
 ```rust
-use rs_ai::rs_ai_claude;
+use rs_ai::claude;
 use futures::StreamExt;
 
-let mut stream = rs_ai_claude().stream("Write a poem").await?;
+let mut stream = claude()
+    .model("claude-sonnet-4-6")
+    .stream("Write a poem")
+    .await?;
 while let Some(chunk) = stream.next().await {
     print!("{}", chunk?);
 }
@@ -38,9 +52,8 @@ while let Some(chunk) = stream.next().await {
 ### Agent Loop (auto tool execution)
 
 ```rust
-use rs_ai::rs_ai_chatgpt;
 use rs_ai_core::agent_loop;
-use rs_ai_core::tool::{ToolSet, Tool};
+use rs_ai_core::tool::ToolSet;
 
 let mut tools = ToolSet::new();
 tools.add(MyWeatherTool);
@@ -64,7 +77,7 @@ let model = registry.model("openai/gpt-4o")?;
 ### Image Generation
 
 ```rust
-let image = rs_ai_chatgpt()
+let image = rs_ai::chatgpt()
     .model("dall-e-3")
     .generate_image("A cat in space", Default::default())
     .await?;
@@ -75,12 +88,12 @@ let image = rs_ai_chatgpt()
 
 | Function | Provider | Env Var | Extras |
 |---|---|---|---|
-| `rs_ai_claude()` | Anthropic Claude | `ANTHROPIC_API_KEY` | streaming, tools, vision |
-| `rs_ai_chatgpt()` | OpenAI ChatGPT | `OPENAI_API_KEY` | DALL-E, Sora, TTS, STT, realtime |
-| `rs_ai_gemini()` | Google Gemini | `GOOGLE_API_KEY` | Imagen, Veo, live API |
-| `rs_ai_xai()` | xAI Grok | `XAI_API_KEY` | Grok Imagine |
-| `rs_ai_cloudflare(id)` | Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN` | — |
-| `rs_ai_compatible(url)` | Any OpenAI-compatible | `OPENAI_API_KEY` | OpenRouter, vLLM, Ollama, etc. |
+| `rs_ai::claude()` | Anthropic Claude | `ANTHROPIC_API_KEY` | streaming, tools, vision |
+| `rs_ai::chatgpt()` | OpenAI ChatGPT | `OPENAI_API_KEY` | DALL-E, Sora, TTS, STT, realtime |
+| `rs_ai::gemini()` | Google Gemini | `GOOGLE_API_KEY` | Imagen, Veo, live API |
+| `rs_ai::xai()` | xAI Grok | `XAI_API_KEY` | Grok Imagine |
+| `rs_ai::cloudflare(id)` | Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN` | — |
+| `rs_ai::compatible(url)` | Any OpenAI-compatible | `OPENAI_API_KEY` | OpenRouter, vLLM, Ollama, etc. |
 
 ## Real TTS/STT
 
